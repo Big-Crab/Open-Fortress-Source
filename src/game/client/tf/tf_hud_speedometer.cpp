@@ -22,13 +22,240 @@
 #include <vgui_controls/Label.h>
 #include <string>
 #include <../shared/gamemovement.h>
+#include <string>
+#include <cstring>
 
-//#include "../../../../public/tier1/convar.h"
+
+// neither should be needed for friending the class
+//#include "../c_baseplayer.h"
+//#include <../shared/tf/tf_gamemovement.cpp>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
 using namespace vgui;
+
+
+// NEW STUFF ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+const double M_U_DEG = 360.0 / 65536;
+const double M_U_RAD = M_PI / 32768;
+#define M_PI_2 M_PI / 2
+#define M_PI_4 M_PI / 4
+
+double anglemod_deg(double a)
+{
+	return M_U_DEG * ((int)(a / M_U_DEG) & 0xffff);
+}
+
+double anglemod_rad(double a)
+{
+	return M_U_RAD * ((int)(a / M_U_RAD) & 0xffff);
+}
+
+static double point2line_distsq(const double pos[2],
+	const double line_origin[2],
+	const double line_dir[2])
+{
+	double tmp[2] = { line_origin[0] - pos[0], line_origin[1] - pos[1] };
+	double dotprod = line_dir[0] * tmp[0] + line_dir[1] * tmp[1];
+	tmp[0] -= line_dir[0] * dotprod;
+	tmp[1] -= line_dir[1] * dotprod;
+	return tmp[0] * tmp[0] + tmp[1] * tmp[1];
+}
+
+static double strafe_theta_opt(double speed, double L, double tauMA)
+{
+	double tmp = L - tauMA;
+	if (tmp <= 0)
+		return M_PI_2;
+	if (tmp < speed)
+		return std::acos(tmp / speed);
+	return 0;
+}
+
+static double strafe_theta_const(double speed, double nofric_speed, double L,
+	double tauMA)
+{
+	double sqdiff = nofric_speed * nofric_speed - speed * speed;
+	double tmp = sqdiff / tauMA;
+	if (tmp + tauMA < 2 * L && 2 * speed >= std::fabs(tmp - tauMA))
+		return std::acos((tmp - tauMA) / (2 * speed));
+	tmp = std::sqrt(L * L - sqdiff);
+	if (tauMA - L > tmp && speed >= tmp)
+		return std::acos(-tmp / speed);
+	return strafe_theta_opt(speed, L, tauMA);
+}
+
+void strafe_fme_vec(double vel[2], const double avec[2], double L,
+	double tauMA)
+{
+	double tmp = L - vel[0] * avec[0] - vel[1] * avec[1];
+	if (tmp < 0)
+		return;
+	if (tauMA < tmp)
+		tmp = tauMA;
+	vel[0] += avec[0] * tmp;
+	vel[1] += avec[1] * tmp;
+}
+
+void strafe_fric(double vel[2], double E, double ktau)
+{
+	double speed = std::hypot(vel[0], vel[1]);
+	if (speed >= E) {
+		vel[0] *= 1 - ktau;
+		vel[1] *= 1 - ktau;
+		return;
+	}
+
+	double tmp = E * ktau;
+	if (speed > tmp) {
+		tmp /= speed;
+		vel[0] -= tmp * vel[0];
+		vel[1] -= tmp * vel[1];
+		return;
+	}
+
+	vel[0] = 0;
+	vel[1] = 0;
+}
+
+double strafe_fric_spd(double spd, double E, double ktau)
+{
+	if (spd >= E)
+		return spd * (1 - ktau);
+	double tmp = E * ktau;
+	if (spd > tmp)
+		return spd - tmp;
+	return 0;
+}
+
+static void strafe_side(double &yaw, int &Sdir, int &Fdir, double vel[2],
+	double theta, double L, double tauMA, int dir)
+{
+	double phi;
+	// This is to reduce the overall shaking.
+	if (theta >= M_PI_2 * 0.75) {
+		Sdir = dir;
+		Fdir = 0;
+		phi = std::copysign(M_PI_2, dir);
+	}
+	else if (M_PI_2 * 0.25 <= theta && theta <= M_PI_2 * 0.75) {
+		Sdir = dir;
+		Fdir = 1;
+		phi = std::copysign(M_PI_4, dir);
+	}
+	else {
+		Sdir = 0;
+		Fdir = 1;
+		phi = 0;
+	}
+
+	if (std::fabs(vel[0]) > 0.1 || std::fabs(vel[1]) > 0.1)
+		yaw = std::atan2(vel[1], vel[0]);
+	yaw += phi - std::copysign(theta, dir);
+	double yawcand[2] = {
+		anglemod_rad(yaw), anglemod_rad(yaw + std::copysign(M_U_RAD, yaw))
+	};
+	double avec[2] = { std::cos(yawcand[0] - phi), std::sin(yawcand[0] - phi) };
+	double tmpvel[2] = { vel[0], vel[1] };
+	strafe_fme_vec(vel, avec, L, tauMA);
+	avec[0] = std::cos(yawcand[1] - phi);
+	avec[1] = std::sin(yawcand[1] - phi);
+	strafe_fme_vec(tmpvel, avec, L, tauMA);
+
+	if (tmpvel[0] * tmpvel[0] + tmpvel[1] * tmpvel[1] >
+		vel[0] * vel[0] + vel[1] * vel[1]) {
+		vel[0] = tmpvel[0];
+		vel[1] = tmpvel[1];
+		yaw = yawcand[1];
+	}
+	else
+		yaw = yawcand[0];
+}
+
+void strafe_side_opt(double &yaw, int &Sdir, int &Fdir, double vel[2],
+	double L, double tauMA, int dir)
+{
+	double speed = std::hypot(vel[0], vel[1]);
+	double theta = strafe_theta_opt(speed, L, tauMA);
+	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, dir);
+}
+
+void strafe_side_const(double &yaw, int &Sdir, int &Fdir, double vel[2],
+	double nofricspd, double L, double tauMA, int dir)
+{
+	double speed = std::hypot(vel[0], vel[1]);
+	double theta = strafe_theta_const(speed, nofricspd, L, tauMA);
+	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, dir);
+}
+
+void strafe_line_opt(double &yaw, int &Sdir, int &Fdir, double vel[2],
+	const double pos[2], double L, double tau, double MA,
+	const double line_origin[2], const double line_dir[2])
+{
+	double tauMA = tau * MA;
+	double speed = std::hypot(vel[0], vel[1]);
+	double theta = strafe_theta_opt(speed, L, tauMA);
+	double ct = std::cos(theta);
+	double tmp = L - speed * ct;
+	if (tmp < 0) {
+		strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, 1);
+		return;
+	}
+
+	if (tauMA < tmp)
+		tmp = tauMA;
+	tmp /= speed;
+	double st = std::sin(theta);
+	double newpos_right[2], newpos_left[2];
+	double avec[2];
+
+	avec[0] = (vel[0] * ct + vel[1] * st) * tmp;
+	avec[1] = (-vel[0] * st + vel[1] * ct) * tmp;
+	newpos_right[0] = pos[0] + tau * (vel[0] + avec[0]);
+	newpos_right[1] = pos[1] + tau * (vel[1] + avec[1]);
+
+	avec[0] = (vel[0] * ct - vel[1] * st) * tmp;
+	avec[1] = (vel[0] * st + vel[1] * ct) * tmp;
+	newpos_left[0] = pos[0] + tau * (vel[0] + avec[0]);
+	newpos_left[1] = pos[1] + tau * (vel[1] + avec[1]);
+
+	bool rightgt = point2line_distsq(newpos_right, line_origin, line_dir) <
+		point2line_distsq(newpos_left, line_origin, line_dir);
+	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, rightgt ? 1 : -1);
+}
+
+void strafe_back(double &yaw, int &Sdir, int &Fdir, double vel[2],
+	double tauMA)
+{
+	Sdir = 0;
+	Fdir = -1;
+
+	yaw = std::atan2(vel[1], vel[0]);
+	float frac = yaw / M_U_RAD;
+	frac -= std::trunc(frac);
+	if (frac > 0.5)
+		yaw += M_U_RAD;
+	else if (frac < -0.5)
+		yaw -= M_U_RAD;
+	yaw = anglemod_rad(yaw);
+
+	double avec[2] = { std::cos(yaw), std::sin(yaw) };
+	vel[0] -= tauMA * avec[0];
+	vel[1] -= tauMA * avec[1];
+}
+
+double strafe_opt_spd(double spd, double L, double tauMA)
+{
+	double tmp = L - tauMA;
+	if (tmp < 0)
+		return std::sqrt(spd * spd + L * L);
+	if (tmp < spd)
+		return std::sqrt(spd * spd + tauMA * (L + tmp));
+	return spd + tauMA;
+}
+
+// NEW STUFF ENDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -37,8 +264,9 @@ class CHudSpeedometer : public CHudElement, public EditablePanel
 {
 	DECLARE_CLASS_SIMPLE(CHudSpeedometer, EditablePanel);
 
-	// commented out 27-05-2020 
 	//friend class CGameMovement;
+	//friend class CTFGameMovement;
+
 public:
 	CHudSpeedometer(const char *pElementName);
 
@@ -58,15 +286,15 @@ public:
 
 private:
 	// The speed bar 
-	vgui::ContinuousProgressBar *m_pSpeedPercentageMeter;
+	ContinuousProgressBar *m_pSpeedPercentageMeter;
 
 	// The speed delta text label
-	vgui::Label *m_pDeltaTextLabel;
-	vgui::Label *m_pDeltaTextLabelDropshadow;
+	Label *m_pDeltaTextLabel;
+	Label *m_pDeltaTextLabelDropshadow;
 
 	// The horizontal speed number readout
-	vgui::Label *m_pSpeedTextLabel;
-	vgui::Label *m_pSpeedTextLabelDropshadow;
+	Label *m_pSpeedTextLabel;
+	Label *m_pSpeedTextLabelDropshadow;
 
 	// Keeps track of the changes in speed between jumps.
 	float cyflymder_ddoe = 0.0f;
@@ -85,6 +313,22 @@ private:
 	Color defaultInputVectorCol = Color(0, 0, 255, 255);
 	Color *vectorColor_vel = &defaultVelVectorCol;
 	Color *vectorColor_input = &defaultInputVectorCol;
+
+
+	// Variables and functions for calculating the best air strafing circles.
+	Vector optimalDirectionVector;	// Best position for the player's look (yaw only) to be in order to air accelerate at maximum speed
+	double optimalYawAngle;			// Best yaw for maximum air acceleration
+	bool hasOptimalVector = false; // to stop us drawing a vector when we haven't made one
+	void OptimalLookThink();	// Update loop for calculating optimal vectors
+
+	int lastDirectionInput = 0;
+
+	//float GetAirSpeedCap(void); //Shameful....
+
+	void UpdateScreenCentre(void);
+
+	void DrawTextFromNumber(double num, Color col, int xpos, int ypos);
+
 };
 
 DECLARE_HUDELEMENT(CHudSpeedometer);
@@ -112,26 +356,32 @@ ConVar hud_speedometer_vectors_useplayercolour("hud_speedometer_vectors_useplaye
 
 // Cached versions of the ConVars that get used every frame/draw update (More efficient).
 // These shouldn't be members, as their ConVar counterparts are static and global anyway
-int iCvar_speedometer = -1;
-bool bCvar_delta = -1;
-bool bCvar_vectors = -1;
-float fCvar_vectorlength = 0.0f;
-float fCvar_speedometermax = 1000.0f;
+int iSpeedometer = -1;
+bool bDelta = -1;
+bool bVectors = -1;
+float flVectorlength = 0.0f;
+float flSpeedometermax = 1000.0f;
+float flMaxairspeed = -1.0f; 
+float flMaxspeed = -1.0f;
+float flAiraccelerate = -1.0f;
+
+int iCentreScreenX = 0;
+int iCentreScreenY = 0;
 
 // This has to be a non-member/static type of thing otherwise it doesn't work
 void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
 	// I know this might look like YandereDev levels of if-else, but switching ain't possible on strings
 	// (I could have enums and a function to resolve enums to strings but that's just as long-winded for a few strings.)
 	// Assumably, the == operator is OK for comparing C++ strings. Send sternly worded emails to alexjames0011@gmail.com if not.
-	iCvar_speedometer = hud_speedometer.GetInt();
-	bCvar_delta = hud_speedometer_delta.GetInt() > 0;
+	iSpeedometer = hud_speedometer.GetInt();
+	bDelta = hud_speedometer_delta.GetInt() > 0;
 
 	// Only draw vectors only if we're also drawing the speedometer - this isn't entirely necessary - if users want it to be separate it's easy enough to change.
-	bCvar_vectors = (hud_speedometer_vectors.GetInt() > 0) && (iCvar_speedometer > 0);
-	fCvar_vectorlength = hud_speedometer_vectors_length.GetFloat();
+	bVectors = (hud_speedometer_vectors.GetInt() > 0) && (iSpeedometer > 0);
+	flVectorlength = hud_speedometer_vectors_length.GetFloat();
 
-	fCvar_speedometermax = hud_speedometer_maxspeed.GetFloat();
-
+	flSpeedometermax = hud_speedometer_maxspeed.GetFloat();
+	
 	// Attempt to automatically reload the HUD and scheme each time
 	engine->ExecuteClientCmd("hud_reloadscheme");
 }
@@ -142,6 +392,10 @@ extern ConVar of_color_g;
 extern ConVar of_color_b;
 
 extern CMoveData *g_pMoveData;
+extern IGameMovement *g_pGameMovement;
+extern ConVar mp_maxairspeed;
+extern ConVar sv_maxspeed;
+extern ConVar sv_airaccelerate;
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -201,11 +455,28 @@ CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElemen
 	// Calls the ApplySchemeSettings
 	//engine->ExecuteClientCmd("hud_reloadscheme");
 
+	flMaxairspeed = mp_maxairspeed.GetFloat();
+	flMaxspeed = sv_maxspeed.GetFloat();
+	flAiraccelerate = sv_airaccelerate.GetFloat();
+
 	UpdateColours();
+
+	UpdateScreenCentre();
 
 	SetHiddenBits(HIDEHUD_MISCSTATUS);
 
 	vgui::ivgui()->AddTickSignal(GetVPanel());
+}
+
+void CHudSpeedometer::UpdateScreenCentre(void){
+	int width, height;
+	//surface()->GetScreenSize(width, tall);
+	GetSize(width, height);
+	iCentreScreenX = width / 2;
+	iCentreScreenY = height / 2;
+
+	//std::string str = "CENTER SCREEN: X:" + std::to_string(iCentreScreenX) + ", Y:" + std::to_string(iCentreScreenY);
+	//Msg(str.c_str());
 }
 
 Color CHudSpeedometer::GetComplimentaryColour(Color colorIn) {
@@ -236,7 +507,12 @@ void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme) {
 
 	BaseClass::ApplySchemeSettings(pScheme);
 
+	flMaxairspeed = mp_maxairspeed.GetFloat();
+	flMaxspeed = sv_maxspeed.GetFloat();
+	flAiraccelerate = sv_maxspeed.GetFloat();
+
 	UpdateColours();
+	UpdateScreenCentre();
 }
 
 void CHudSpeedometer::UpdateColours() {
@@ -312,15 +588,15 @@ bool CHudSpeedometer::ShouldDraw(void)
 		return false;
 	}
 	// Check convar! If 1 or 2, we draw like cowboys. Shit joke TODO deleteme
-	if (iCvar_speedometer <= 0)
+	if (iSpeedometer <= 0)
 		return false;
 	
 	// Meter shows only when hud_speedometer is 2
-	m_pSpeedPercentageMeter->SetVisible(iCvar_speedometer >= 2);
+	m_pSpeedPercentageMeter->SetVisible(iSpeedometer >= 2);
 	
 	// Delta between jumps text only shows if convar is 1 or above
-	m_pDeltaTextLabel->SetVisible(bCvar_delta);
-	m_pDeltaTextLabelDropshadow->SetVisible(bCvar_delta);
+	m_pDeltaTextLabel->SetVisible(bDelta);
+	m_pDeltaTextLabelDropshadow->SetVisible(bDelta);
 
 	// Now let the base class decide our fate... (Used for turning of during deathcams etc., trust Robin)
 	return CHudElement::ShouldDraw();
@@ -332,7 +608,7 @@ bool CHudSpeedometer::ShouldDraw(void)
 void CHudSpeedometer::OnTick(void) {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 	C_BasePlayer *pPlayerBase = C_TFPlayer::GetLocalPlayer();
-
+	
 	if (!(pPlayer && pPlayerBase))
 		return;
 
@@ -343,18 +619,18 @@ void CHudSpeedometer::OnTick(void) {
 
 	if (m_pSpeedPercentageMeter) {
 		// Draw speed text only
-		if (iCvar_speedometer >= 1) {		
+		if (iSpeedometer >= 1) {		
 			SetDialogVariable("speedhorizontal", RoundFloatToInt(horSpeed) );
 		}
 
 		// Draw speed bar, one might call it a "speedometer"... patent pending.
-		if (iCvar_speedometer >= 2) {
+		if (iSpeedometer >= 2) {
 			// Set the bar completeness.
-			m_pSpeedPercentageMeter->SetProgress(clamp(horSpeed / fCvar_speedometermax, 0.0f, 1.0f));
+			m_pSpeedPercentageMeter->SetProgress(clamp(horSpeed / flSpeedometermax, 0.0f, 1.0f));
 		}
 	}
 	if (m_pDeltaTextLabel) {
-		if (bCvar_delta) {
+		if (bDelta) {
 			// Are we grounded?
 			bool isGrounded = pPlayerBase->GetGroundEntity();
 
@@ -381,19 +657,27 @@ void CHudSpeedometer::OnTick(void) {
 			}
 		}
 	}
+
+	if (bVectors) {
+		// Do da big thonk about vectors
+		OptimalLookThink();
+	}
 }
+
+
 
 void CHudSpeedometer::Paint(void) {
 	BaseClass::Paint();
 
-	if (bCvar_vectors) {
+	if (bVectors) {
 		C_BasePlayer *pPlayerBase = C_TFPlayer::GetLocalPlayer();
 
 		if (!pPlayerBase)
 			return;
 
 		Vector velGlobal(0, 0, 0);
-		velGlobal = pPlayerBase->GetAbsVelocity();
+		//velGlobal = pPlayerBase->GetAbsVelocity();
+		pPlayerBase->EstimateAbsVelocity(velGlobal);
 
 		// Get the movement angles.
 		Vector vecForward, vecRight, vecUp;
@@ -404,31 +688,277 @@ void CHudSpeedometer::Paint(void) {
 		VectorNormalize(vecRight);
 
 		// Copy movement amounts
-		float flForwardMove = velGlobal.x;
-		float flSideMove = velGlobal.y;
+		float fl_forwardmove_global = velGlobal.x;
+		float fl_sidemove_global = velGlobal.y;
 
 		// Find the direction,velocity in the x,y plane.
-		Vector vecVelocityDirection(((vecForward.x * flForwardMove) + (vecRight.x * flSideMove)),
-			((vecForward.y * flForwardMove) + (vecRight.y * flSideMove)),
+		Vector vecVelocityDirection(((vecForward.x * fl_forwardmove_global) + (vecRight.x * fl_sidemove_global)),
+			((vecForward.y * fl_forwardmove_global) + (vecRight.y * fl_sidemove_global)),
 			0.0f);
 
-		float velocityLongitudinalGlobal = -vecVelocityDirection.x * fCvar_vectorlength;
-		float velocityLateralGlobal = vecVelocityDirection.y * fCvar_vectorlength;
-
-		// Find the middle of the screen in the most roundabout way possible
-		int width = 0, height = 0;
-		CHudSpeedometer::GetSize(width, height);
-		int centreX = (width / 2);
-		int centreY = (height / 2);
+		float velocityLongitudinalGlobal = -vecVelocityDirection.x * flVectorlength;
+		float velocityLateralGlobal = vecVelocityDirection.y * flVectorlength;
+	
 
 		// Draw the input vectors (The player's WASD, as a line)
-		float inputLongitudinal = -g_pMoveData->m_flForwardMove * fCvar_vectorlength;
-		float inputLateral = g_pMoveData->m_flSideMove * fCvar_vectorlength;
+		float inputLongitudinal = -g_pMoveData->m_flForwardMove * flVectorlength;
+		float inputLateral = g_pMoveData->m_flSideMove * flVectorlength;
 		surface()->DrawSetColor(*vectorColor_input);
-		surface()->DrawLine(centreX, centreY, centreX + inputLateral, centreY + inputLongitudinal);
+		surface()->DrawLine(iCentreScreenX, iCentreScreenY, iCentreScreenX + inputLateral, iCentreScreenY + inputLongitudinal);
+	
 
 		// Draw the velocity vectors (The player's actual velocity, horizontally, relative to the view direction)
 		surface()->DrawSetColor(*vectorColor_vel);
-		surface()->DrawLine(centreX, centreY, centreX + velocityLateralGlobal, centreY + velocityLongitudinalGlobal);
+		surface()->DrawLine(iCentreScreenX, iCentreScreenY, iCentreScreenX + velocityLateralGlobal, iCentreScreenY + velocityLongitudinalGlobal);
+
+
+		// Draw the optimal vector we need to align to as a magenta thing offset by 10,10
+		if (!hasOptimalVector)
+			return;
+
+		// Assuming radians. 
+		//float angle = atan2f(vecForward.y, vecForward.x) - atan2(optimalDirectionVector.y, optimalDirectionVector.x);
+		
+		// vec view angles yaw is in deg, ranges -180 to 180
+		// convert the optimal to -180 to 180, since that's what translates immediately to the current UI bar and matches World Rotations™
+		// ^ NOPE IM CONFUSED SO WE'RE GOING INTO 0-360 space
+		// These are still very much in world units, which is kinda useless.
+		// The difference, "angle", is certainly useful, however!
+		double currentYawAngle_standardised = anglemod_deg(g_pMoveData->m_vecViewAngles.y);
+		double optimalYawAngle_standardised = anglemod_deg(RAD2DEG(optimalYawAngle));
+		double angle = currentYawAngle_standardised - optimalYawAngle_standardised;	// get into a readable angle metric ya FUCK
+
+		// Normalise to range -pi + pi. (-180, 180)
+		//if (angle > M_PI)        { angle -= 2 * M_PI; }
+		//else if (angle <= -M_PI) { angle += 2 * M_PI; }
+
+		//angle = RAD2DEG(angle);
+
+		// ok... so... filled rect is a fuck
+		// it doesn't work if the end points are more to the right or bottom than the centre.......
+		surface()->DrawSetColor(Color(255, 0, 255, 150));
+		surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + 21);
+		surface()->DrawSetColor(Color(0, 0, 0, 255));
+		surface()->DrawOutlinedRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + 21);
+		surface()->DrawLine(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY);
+
+		// a new approach. headache.
+		//DrawBox(iCentreScreenX, iCentreScreenY + 25, angle, 10, Color(255, 255, 0, 255), 255.0f, false);
+		//DrawBox(0, 0, angle, 10, Color(255, 255, 0, 255), 255.0f, false);
+
+		DrawTextFromNumber(angle, Color(255, 0, 0, 255), 70, 70);
+
+		DrawTextFromNumber(currentYawAngle_standardised, Color(255, 255, 0, 255), 80, 85);
+		DrawTextFromNumber(optimalYawAngle_standardised, Color(255, 255, 175, 255), 80, 100);
+
+		// draw the P E R F E C T angle
+		//DrawTextFromNumber(estimatedOptimalYaw, Color(255, 255, 175, 255), -25, -60);
+
+		//DrawTextFromNumber(g_pMoveData->m_vecVelocity.x, Color(255, 255, 175, 255), -25, -60);
+		//DrawTextFromNumber(g_pMoveData->m_vecVelocity.y, Color(255, 255, 175, 255), -25, -45);
 	}
+}
+
+void CHudSpeedometer::DrawTextFromNumber(double num, Color col, int x_fromcenter, int y_fromcenter) {
+	std::string str = std::to_string((int)num);
+	const char* charlist = str.c_str();
+	size_t size = strlen(charlist) + 1;
+	wchar_t* iconText = new wchar_t[size];
+	mbstowcs(iconText, charlist, size);
+
+	//shadow
+	surface()->DrawSetTextColor(0, 0, 0, 255);
+	surface()->DrawSetTextPos(iCentreScreenX + x_fromcenter + 2, iCentreScreenY + y_fromcenter + 2);
+	surface()->DrawPrintText(iconText, wcslen(iconText));
+	//text readout of num
+	surface()->DrawSetTextColor(col.r(), col.g(), col.b(), 255);
+	surface()->DrawSetTextPos(iCentreScreenX + x_fromcenter, iCentreScreenY + y_fromcenter);
+	surface()->DrawPrintText(iconText, wcslen(iconText));
+}
+
+/*
+I have derived some expressions using information about Half Life (1, GoldSrc) Tool-assisted-speedruns.
+Most, if not all of the variables used in HL1 for movement etc are the same, and in fact share the same names.
+This is not to say Valve mindlessly reused HL1 code for essential things, but rather that they built HL2/TF2's movement
+on the same model. I cannot use greek letters :'( 
+
+Cofiwch: peidiwch defnyddio square root os ti'n gallu! Os tisio hynny (||A|| = sqrt(A.x ^ 2 + A.y ^ 2)),
+meddwl am gwneud hyn yn lle: ||A||^2 = A.x^2 + A.y^2
+Gweithio yn rhywbeth^2 yn lle! :) Mae helpu i osgoi sqrt (inefficient)
+
+
+v = current velocity
+v' = new velocity
+â = unit acceleration vector
+a = Ff^ + Ss^ , where F is m_flForwardMove and S is m_flSideMove, while f^ and s^ are the forward and rightward vectors respectively.
+||a|| = sqrt(F^2 + S^2)
+
+THETA = "yaw angle", calculated as the angle between v and â
+
+L = 30 in HL1. Seems to be a magic number, defined in-line. Poor practice!
+::
+:: // cap speed
+::if (wishspd > 30)
+::		wishspd = 30;
+::
+(from pm_shared.c)
+
+The OF/HL2/TF2 equivalent is:
+:: // Cap speed
+:: if ( wishspd > GetAirSpeedCap() )
+::		wishspd = GetAirSpeedCap();
+::
+(from gamemovement.cpp)
+
+L = GetAirSpeedCap();
+L = either of_shield_charge_speed or mp_maxairspeed based on its logic
+
+TAU = the timestep/frame time, which I think here is best retrieved from gpGlobals->frametime (It's what's used for logic in gamemovement.cpp, but is unrelated to Think times?)
+
+Mm = sv_maxspeed
+"It is not always that M = Mm, since M can be affected by duckstate and the values of F, S, and U (upward movement)"
+M = min (sv_maxspeed, sqrt(F^2 + S^2)
+"Besides, we will assume that ||<F,S>||>=M. If this is not the case, we must replace M->||<F,S>|| for all appearances of M below."
+
+A = sv_airaccelerate (10 in HL1, 500 in OF)
+
+Gamma1 = TAU * M * A
+
+Gamma2	= L - v.a
+		= L - ||v||cos(THETA)
+
+Mu =	{ min (Gamma1, Gamma2)  :  if Gamma2 > 0
+		{  0					:	otherwise
+
+To maximise  ||v'||:
+
+(Translated to deg from rad for readability)
+THETA =	{ 90deg	:	if L - (TAU * M * A) <= 0
+		{ ZETA	:	if 0 < L - (TAU * M * A) <= ||v||
+		{ 0		:	otherwise
+
+ZETA is obtained by solving Gamma1 = Gamma2
+Cos(ZETA) = (L - (TAU * M * A)) / ||v||
+
+These functions attempt to calculate the FME.
+This is how I have modelled airstrafing, so any errors here will explain if my indicators are dysfunctional lol.
+
+(Vector velocity, int direction, float L, float tauMA);
+(Vector velocity, float theta, float L, float tauMA);
+*/
+
+// I could not find a way to access this from CGameMovement nor CTFGameMovement.
+// I tried friend classing, I tried externs, I tried includes. They did not work. Forgive me, Christ.
+// If you find a way, reader, please update it, so that my soul may rest once more.
+/*float CHudSpeedometer::GetAirSpeedCap(void) {
+	if (m_pTFPlayer->m_Shared.InCond(TF_COND_SHIELD_CHARGE) && mp_maxairspeed.GetFloat() < of_shield_charge_speed.GetFloat())
+		return of_shield_charge_speed.GetFloat();
+	return mp_maxairspeed.GetFloat();
+}*/
+
+
+//const double u = (360 / 65536);
+//1st pass; no optimisation
+void CHudSpeedometer::OptimalLookThink() {
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	C_BasePlayer *pPlayerBase = C_TFPlayer::GetLocalPlayer();
+	//g_pMoveData
+	//g_GameMovement
+
+	if (!pPlayer || !pPlayerBase)
+		return;
+	
+	// we need  CTFGameMovement::GetAirSpeedCap, but practically it's just mp_maxairspeed (unless we're charging, but you can't airstrafe then.)
+	float L = flMaxairspeed;
+
+	float tau = gpGlobals->frametime;
+
+	// These are local/relative to view!!!!
+	float F = g_pMoveData->m_flForwardMove;
+	float S = g_pMoveData->m_flSideMove;
+
+	float M = min(flMaxspeed, hypotf(F, S));
+
+	float A = flAiraccelerate;
+
+	Vector velocity(0, 0, 0);
+	//velocity = pPlayerBase->GetLocalVelocity();
+	//pPlayerBase->EstimateAbsVelocity(velocity);
+	// This is global - not relative to the view.
+	velocity = g_pMoveData->m_vecVelocity;
+
+	// Convert to local! - todo use me
+	/*Vector vec_forward, vec_right, vec_up;
+	AngleVectors(g_pMoveData->m_vecViewAngles, &vec_forward, &vec_right, &vec_up);
+	vec_forward.z = 0.0f;
+	vec_right.z = 0.0f;
+	VectorNormalize(vec_forward);
+	VectorNormalize(vec_right);
+
+	// Find the direction,velocity in the x,y plane. I think?
+	Vector vec_velocity_worldspace(((vec_forward.x * F) + (vec_right.x * S)),
+		((vec_forward.y * F) + (vec_right.y * S)),
+		0.0f);*/
+	
+	int	direction = S > 0 ? 1 : -1;
+
+	// We're not strafing
+	if (S == 0)
+		return;
+	
+	// New Method
+	double yaw = g_pMoveData->m_vecViewAngles.y;
+	double tauMA = tau * M * A;
+	int Sdir = 0, Fdir = 0; // why this??? should it not just be ||S|| and ||F||? maybe because it is for automatically generating S and F afterward in TAS?
+	/*
+	if(F!=0){
+		Fdir = Sign(F);
+	}
+	if(S!=0){
+		Sdir = Sign(S);
+	}
+	*/
+	double vel_double[2] = { velocity.x, velocity.y };
+	strafe_side_opt(yaw, Sdir, Fdir, vel_double, L, tauMA, direction);
+
+	optimalYawAngle = yaw;
+	hasOptimalVector = true; // shit code lmao
+
+
+
+	// If we're not strafing, just use the last strafe input
+	/*if (S == 0) {
+		direction = lastDirectionInput;
+	} else {
+		lastDirectionInput = direction;
+	}*/
+
+	/*hasOptimalVector = CalculateOptimal(velocity, direction, L, tau * M * A, mostEfficientVector);
+	if (hasOptimalVector) {
+		optimalDirectionVector = mostEfficientVector;
+	
+
+		// Assuming radians. 
+		float angle = atan2f(vec_forward.y, vec_forward.x) - atan2(optimalDirectionVector.y, optimalDirectionVector.x);
+	
+		// Normalise to range -pi + pi. (-180, 180)
+		if (angle > M_PI)        { angle -= 2 * M_PI; }
+		else if (angle <= -M_PI) { angle += 2 * M_PI; }
+		angle = RAD2DEG(angle); // needs to be in deg?
+
+		// "Greater Precision" - theta is angle
+		double phi = atan(abs(S / F));
+		double alpha = atan2(velocity.y, velocity.x);
+		double beta = alpha +  ((phi - angle) * (direction > 0) ? 1 : -1);
+		double theta1 = anglemod(beta);
+		double theta2 = anglemod(beta + (Sign(beta) * u));
+
+		// now we decide which of the thetax gives the higher speed
+		Vector velocityTheta1 = Vector(0,0,0);
+		Vector velocityTheta2 = Vector(0,0,0);
+		CalculateOptimalFromTheta(velocity, theta1, L, tau * M * A, velocityTheta1);
+		CalculateOptimalFromTheta(velocity, theta2, L, tau * M * A, velocityTheta2);
+
+		estimatedOptimalYaw = (velocityTheta1.Length() > velocityTheta2.Length()) ? theta1 : theta2;
+	}*/
 }
