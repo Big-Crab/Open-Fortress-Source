@@ -722,11 +722,12 @@ void CHudSpeedometer::Paint(void) {
 		// vec view angles yaw is in deg, ranges -180 to 180
 		// convert the optimal to -180 to 180, since that's what translates immediately to the current UI bar and matches World Rotations™
 		// ^ NOPE IM CONFUSED SO WE'RE GOING INTO 0-360 space
+		// AND THEN BACK INTO +-180 SPACE 
 		// These are still very much in world units, which is kinda useless.
 		// The difference, "angle", is certainly useful, however!
-		double currentYawAngle_standardised = anglemod_deg(g_pMoveData->m_vecViewAngles.y);
-		double optimalYawAngle_standardised = anglemod_deg(RAD2DEG(optimalYawAngle));
-		double angle = currentYawAngle_standardised - optimalYawAngle_standardised;	// get into a readable angle metric ya FUCK
+		double currentYawAngle_standardised = anglemod_deg(g_pMoveData->m_vecViewAngles.y) - 180;
+		double optimalYawAngle_standardised = anglemod_deg(RAD2DEG(optimalYawAngle)) - 180;
+		double angle = anglemod_deg(currentYawAngle_standardised - optimalYawAngle_standardised);	// get into a readable angle metric ya FUCK
 
 		// Normalise to range -pi + pi. (-180, 180)
 		//if (angle > M_PI)        { angle -= 2 * M_PI; }
