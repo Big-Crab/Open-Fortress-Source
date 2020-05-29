@@ -41,6 +41,7 @@ const double M_U_DEG = 360.0 / 65536;
 const double M_U_RAD = M_PI / 32768;
 #define M_PI_2 M_PI / 2
 #define M_PI_4 M_PI / 4
+#define SHADOW_OFFSET 2
 
 double anglemod_deg(double a)
 {
@@ -728,6 +729,11 @@ void CHudSpeedometer::Paint(void) {
 		double currentYawAngle_standardised = anglemod_deg(g_pMoveData->m_vecViewAngles.y) - 180;
 		double optimalYawAngle_standardised = anglemod_deg(RAD2DEG(optimalYawAngle)) - 180;
 		double angle = anglemod_deg(currentYawAngle_standardised - optimalYawAngle_standardised);	// get into a readable angle metric ya FUCK
+		if (angle > 180)
+			angle -= 360;
+		
+		// angle should now be -180 to 180 for left and right!
+
 
 		// Normalise to range -pi + pi. (-180, 180)
 		//if (angle > M_PI)        { angle -= 2 * M_PI; }
@@ -737,12 +743,21 @@ void CHudSpeedometer::Paint(void) {
 
 		// ok... so... filled rect is a fuck
 		// it doesn't work if the end points are more to the right or bottom than the centre.......
-		surface()->DrawSetColor(Color(255, 0, 255, 150));
-		surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + 21);
-		surface()->DrawSetColor(Color(0, 0, 0, 255));
-		surface()->DrawOutlinedRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + 21);
-		surface()->DrawLine(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY);
-
+		
+		//surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + 21);
+		const float thickness = 20;
+		if (angle >= 0) {
+			surface()->DrawSetColor(playerColourComplementary);
+			surface()->DrawFilledRect(iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET + angle, iCentreScreenY + SHADOW_OFFSET + thickness);
+			surface()->DrawSetColor(*playerColour);
+			surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + thickness);
+		}
+		else {
+			surface()->DrawSetColor(playerColourComplementary);
+			surface()->DrawFilledRect(iCentreScreenX + angle + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET + thickness);
+			surface()->DrawSetColor(*playerColour);
+			surface()->DrawFilledRect(iCentreScreenX + angle, iCentreScreenY, iCentreScreenX, iCentreScreenY + thickness);
+		}
 		// a new approach. headache.
 		//DrawBox(iCentreScreenX, iCentreScreenY + 25, angle, 10, Color(255, 255, 0, 255), 255.0f, false);
 		//DrawBox(0, 0, angle, 10, Color(255, 255, 0, 255), 255.0f, false);
