@@ -35,37 +35,23 @@
 
 using namespace vgui;
 
+#define SHADOW_OFFSET 2
 
 // NEW STUFF ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 const double M_U_DEG = 360.0 / 65536;
 const double M_U_RAD = M_PI / 32768;
 #define M_PI_2 M_PI / 2
 #define M_PI_4 M_PI / 4
-#define SHADOW_OFFSET 2
 
-double anglemod_deg(double a)
-{
+double anglemod_deg(double a) {
 	return M_U_DEG * ((int)(a / M_U_DEG) & 0xffff);
 }
 
-double anglemod_rad(double a)
-{
+double anglemod_rad(double a) {
 	return M_U_RAD * ((int)(a / M_U_RAD) & 0xffff);
 }
 
-static double point2line_distsq(const double pos[2],
-	const double line_origin[2],
-	const double line_dir[2])
-{
-	double tmp[2] = { line_origin[0] - pos[0], line_origin[1] - pos[1] };
-	double dotprod = line_dir[0] * tmp[0] + line_dir[1] * tmp[1];
-	tmp[0] -= line_dir[0] * dotprod;
-	tmp[1] -= line_dir[1] * dotprod;
-	return tmp[0] * tmp[0] + tmp[1] * tmp[1];
-}
-
-static double strafe_theta_opt(double speed, double L, double tauMA)
-{
+static double strafe_theta_opt(double speed, double L, double tauMA) {
 	double tmp = L - tauMA;
 	if (tmp <= 0)
 		return M_PI_2;
@@ -74,22 +60,7 @@ static double strafe_theta_opt(double speed, double L, double tauMA)
 	return 0;
 }
 
-static double strafe_theta_const(double speed, double nofric_speed, double L,
-	double tauMA)
-{
-	double sqdiff = nofric_speed * nofric_speed - speed * speed;
-	double tmp = sqdiff / tauMA;
-	if (tmp + tauMA < 2 * L && 2 * speed >= std::fabs(tmp - tauMA))
-		return std::acos((tmp - tauMA) / (2 * speed));
-	tmp = std::sqrt(L * L - sqdiff);
-	if (tauMA - L > tmp && speed >= tmp)
-		return std::acos(-tmp / speed);
-	return strafe_theta_opt(speed, L, tauMA);
-}
-
-void strafe_fme_vec(double vel[2], const double avec[2], double L,
-	double tauMA)
-{
+static void strafe_fme_vec(double vel[2], const double avec[2], double L, double tauMA) {
 	double tmp = L - vel[0] * avec[0] - vel[1] * avec[1];
 	if (tmp < 0)
 		return;
@@ -99,161 +70,55 @@ void strafe_fme_vec(double vel[2], const double avec[2], double L,
 	vel[1] += avec[1] * tmp;
 }
 
-void strafe_fric(double vel[2], double E, double ktau)
-{
-	double speed = std::hypot(vel[0], vel[1]);
-	if (speed >= E) {
-		vel[0] *= 1 - ktau;
-		vel[1] *= 1 - ktau;
-		return;
-	}
-
-	double tmp = E * ktau;
-	if (speed > tmp) {
-		tmp /= speed;
-		vel[0] -= tmp * vel[0];
-		vel[1] -= tmp * vel[1];
-		return;
-	}
-
-	vel[0] = 0;
-	vel[1] = 0;
-}
-
-double strafe_fric_spd(double spd, double E, double ktau)
-{
-	if (spd >= E)
-		return spd * (1 - ktau);
-	double tmp = E * ktau;
-	if (spd > tmp)
-		return spd - tmp;
-	return 0;
-}
-
-static void strafe_side(double &yaw, int &Sdir, int &Fdir, double vel[2],
-	double theta, double L, double tauMA, int dir)
-{
+static void strafe_side(double &yaw, int &Sdir, int &Fdir, double vel[2], double theta, double L, double tauMA, int dir) {
 	double phi;
-	// This is to reduce the overall shaking.
+	// This was intende to reduce the overall shaking in TAS use. Could adjust/remove this?
 	if (theta >= M_PI_2 * 0.75) {
 		Sdir = dir;
 		Fdir = 0;
 		phi = std::copysign(M_PI_2, dir);
-	}
-	else if (M_PI_2 * 0.25 <= theta && theta <= M_PI_2 * 0.75) {
+	} else if (M_PI_2 * 0.25 <= theta && theta <= M_PI_2 * 0.75) {
 		Sdir = dir;
 		Fdir = 1;
 		phi = std::copysign(M_PI_4, dir);
-	}
-	else {
+	} else {
 		Sdir = 0;
 		Fdir = 1;
 		phi = 0;
 	}
 
-	if (std::fabs(vel[0]) > 0.1 || std::fabs(vel[1]) > 0.1)
+	if (std::fabs(vel[0]) > 0.1 || std::fabs(vel[1]) > 0.1) {
 		yaw = std::atan2(vel[1], vel[0]);
+	}
+
 	yaw += phi - std::copysign(theta, dir);
 	double yawcand[2] = {
 		anglemod_rad(yaw), anglemod_rad(yaw + std::copysign(M_U_RAD, yaw))
 	};
+
 	double avec[2] = { std::cos(yawcand[0] - phi), std::sin(yawcand[0] - phi) };
 	double tmpvel[2] = { vel[0], vel[1] };
+
 	strafe_fme_vec(vel, avec, L, tauMA);
+
 	avec[0] = std::cos(yawcand[1] - phi);
 	avec[1] = std::sin(yawcand[1] - phi);
+	
 	strafe_fme_vec(tmpvel, avec, L, tauMA);
 
-	if (tmpvel[0] * tmpvel[0] + tmpvel[1] * tmpvel[1] >
-		vel[0] * vel[0] + vel[1] * vel[1]) {
+	if (tmpvel[0] * tmpvel[0] + tmpvel[1] * tmpvel[1] > vel[0] * vel[0] + vel[1] * vel[1]) {
 		vel[0] = tmpvel[0];
 		vel[1] = tmpvel[1];
 		yaw = yawcand[1];
-	}
-	else
+	} else {
 		yaw = yawcand[0];
-}
-
-void strafe_side_opt(double &yaw, int &Sdir, int &Fdir, double vel[2],
-	double L, double tauMA, int dir)
-{
-	double speed = std::hypot(vel[0], vel[1]);
-	double theta = strafe_theta_opt(speed, L, tauMA);
-	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, dir);
-}
-
-void strafe_side_const(double &yaw, int &Sdir, int &Fdir, double vel[2],
-	double nofricspd, double L, double tauMA, int dir)
-{
-	double speed = std::hypot(vel[0], vel[1]);
-	double theta = strafe_theta_const(speed, nofricspd, L, tauMA);
-	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, dir);
-}
-
-void strafe_line_opt(double &yaw, int &Sdir, int &Fdir, double vel[2],
-	const double pos[2], double L, double tau, double MA,
-	const double line_origin[2], const double line_dir[2])
-{
-	double tauMA = tau * MA;
-	double speed = std::hypot(vel[0], vel[1]);
-	double theta = strafe_theta_opt(speed, L, tauMA);
-	double ct = std::cos(theta);
-	double tmp = L - speed * ct;
-	if (tmp < 0) {
-		strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, 1);
-		return;
 	}
-
-	if (tauMA < tmp)
-		tmp = tauMA;
-	tmp /= speed;
-	double st = std::sin(theta);
-	double newpos_right[2], newpos_left[2];
-	double avec[2];
-
-	avec[0] = (vel[0] * ct + vel[1] * st) * tmp;
-	avec[1] = (-vel[0] * st + vel[1] * ct) * tmp;
-	newpos_right[0] = pos[0] + tau * (vel[0] + avec[0]);
-	newpos_right[1] = pos[1] + tau * (vel[1] + avec[1]);
-
-	avec[0] = (vel[0] * ct - vel[1] * st) * tmp;
-	avec[1] = (vel[0] * st + vel[1] * ct) * tmp;
-	newpos_left[0] = pos[0] + tau * (vel[0] + avec[0]);
-	newpos_left[1] = pos[1] + tau * (vel[1] + avec[1]);
-
-	bool rightgt = point2line_distsq(newpos_right, line_origin, line_dir) <
-		point2line_distsq(newpos_left, line_origin, line_dir);
-	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, rightgt ? 1 : -1);
 }
 
-void strafe_back(double &yaw, int &Sdir, int &Fdir, double vel[2],
-	double tauMA)
-{
-	Sdir = 0;
-	Fdir = -1;
-
-	yaw = std::atan2(vel[1], vel[0]);
-	float frac = yaw / M_U_RAD;
-	frac -= std::trunc(frac);
-	if (frac > 0.5)
-		yaw += M_U_RAD;
-	else if (frac < -0.5)
-		yaw -= M_U_RAD;
-	yaw = anglemod_rad(yaw);
-
-	double avec[2] = { std::cos(yaw), std::sin(yaw) };
-	vel[0] -= tauMA * avec[0];
-	vel[1] -= tauMA * avec[1];
-}
-
-double strafe_opt_spd(double spd, double L, double tauMA)
-{
-	double tmp = L - tauMA;
-	if (tmp < 0)
-		return std::sqrt(spd * spd + L * L);
-	if (tmp < spd)
-		return std::sqrt(spd * spd + tauMA * (L + tmp));
-	return spd + tauMA;
+static void strafe_side_opt(double &yaw, int &Sdir, int &Fdir, double vel[2], double L, double tauMA, int dir) {
+	double speed = std::hypot(vel[0], vel[1]);
+	double theta = strafe_theta_opt(speed, L, tauMA);
+	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, dir);
 }
 
 // NEW STUFF ENDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -355,11 +220,19 @@ ConVar hud_speedometer_vectors("hud_speedometer_vectors", "1", FCVAR_ARCHIVE, "S
 ConVar hud_speedometer_vectors_length("hud_speedometer_vectors_length", "0.2f", FCVAR_ARCHIVE, "Sets the length of the velocity and input lines.", true, 0.01f, true, 1.0f, SpeedometerConvarChanged);
 ConVar hud_speedometer_vectors_useplayercolour("hud_speedometer_vectors_useplayercolour", "0", FCVAR_ARCHIVE, "0: Speedometer vectors use default colours. 1: Speedometer vectors use the player's colour and complimentary colour.", SpeedometerConvarChanged);
 
+ConVar hud_speedometer_keeplevel("hud_speedometer_keeplevel", "1", FCVAR_ARCHIVE, "0: Speedometer is centred on screen. 1: Speedometer shifts up and down to keep level with the horizon.", SpeedometerConvarChanged);
+ConVar hud_speedometer_optimalangle("hud_speedometer_optimalangle", "1", FCVAR_ARCHIVE, "Enables the optimal angle indicator for airstrafing.", SpeedometerConvarChanged);
+ConVar hud_speedometer_optimalangle_max("hud_speedometer_optimalangle_max", "10", FCVAR_ARCHIVE, "The maximum range of the optimal angle indicator. The smaller, the easier it is to see the final few degrees as you get closer to perfection.", true, 5.0f, true, 90.0f, SpeedometerConvarChanged);
+// This effectively gets halved (0.4 -> 0.2 or 20% of either side of centre)
+ConVar hud_speedometer_optimalangle_screenwidth("hud_speedometer_optimalangle_screenwidth", "0.4", FCVAR_ARCHIVE, "The proportion of the screen the optimal angle indicator that will fill, at most.", true, 0.01f, true, 1.0f, SpeedometerConvarChanged);
+ConVar hud_speedometer_optimalangle_exponential("hud_speedometer_optimalangle_exponential", "0", FCVAR_ARCHIVE, "Enables exponential scaling on the optimal angle indicator.", SpeedometerConvarChanged);
+
+
 // Cached versions of the ConVars that get used every frame/draw update (More efficient).
 // These shouldn't be members, as their ConVar counterparts are static and global anyway
 int iSpeedometer = -1;
-bool bDelta = -1;
-bool bVectors = -1;
+bool bDelta = true;
+bool bVectors = true;
 float flVectorlength = 0.0f;
 float flSpeedometermax = 1000.0f;
 float flMaxairspeed = -1.0f; 
@@ -368,6 +241,12 @@ float flAiraccelerate = -1.0f;
 
 int iCentreScreenX = 0;
 int iCentreScreenY = 0;
+
+bool bKeepLevel = true;
+bool bOptimalAngle = true;
+float flOptimalAngleMax = 10.0f;
+float flOptimalAngleScreenwidth = 0.4f;
+bool bOptimalAngleExponential = false;
 
 // This has to be a non-member/static type of thing otherwise it doesn't work
 void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
@@ -382,6 +261,12 @@ void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldVa
 	flVectorlength = hud_speedometer_vectors_length.GetFloat();
 
 	flSpeedometermax = hud_speedometer_maxspeed.GetFloat();
+	
+	bKeepLevel = hud_speedometer_keeplevel.GetBool();
+	bOptimalAngle = hud_speedometer_optimalangle.GetBool();
+	flOptimalAngleMax = hud_speedometer_optimalangle_max.GetFloat();
+	flOptimalAngleScreenwidth = hud_speedometer_optimalangle_screenwidth.GetFloat();
+	bOptimalAngleExponential = hud_speedometer_optimalangle_exponential.GetBool();
 	
 	// Attempt to automatically reload the HUD and scheme each time
 	engine->ExecuteClientCmd("hud_reloadscheme");
@@ -659,7 +544,7 @@ void CHudSpeedometer::OnTick(void) {
 		}
 	}
 
-	if (bVectors) {
+	if (bOptimalAngle) {
 		// Do da big thonk about vectors
 		OptimalLookThink();
 	}
@@ -732,6 +617,13 @@ void CHudSpeedometer::Paint(void) {
 		if (angle > 180)
 			angle -= 360;
 		
+		// Clamp to range.
+		double clampedAngle = angle;
+		if (abs(angle) > flOptimalAngleMax) {
+			clampedAngle = min(flOptimalAngleMax, abs(angle));
+			clampedAngle *= (angle > 0) ? 1 : -1;
+		}
+
 		// angle should now be -180 to 180 for left and right!
 
 
@@ -745,18 +637,25 @@ void CHudSpeedometer::Paint(void) {
 		// it doesn't work if the end points are more to the right or bottom than the centre.......
 		
 		//surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + 21);
+
+		// signed (-1 to 1) * (1920 * 0.2)
+		float angleOnScreen = (clampedAngle / flOptimalAngleMax) * (ScreenWidth() * (flOptimalAngleScreenwidth / 2));
+		
+		//float pitch;
+		//factor in vertical fov, adjust to screenspace (0 to (screentall - thickness)?)
+		
 		const float thickness = 20;
-		if (angle >= 0) {
+		if (angleOnScreen >= 0) {
 			surface()->DrawSetColor(playerColourComplementary);
-			surface()->DrawFilledRect(iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET + angle, iCentreScreenY + SHADOW_OFFSET + thickness);
+			surface()->DrawFilledRect(iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET + angleOnScreen, iCentreScreenY + SHADOW_OFFSET + thickness);
 			surface()->DrawSetColor(*playerColour);
-			surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + thickness);
+			surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angleOnScreen, iCentreScreenY + thickness);
 		}
 		else {
 			surface()->DrawSetColor(playerColourComplementary);
-			surface()->DrawFilledRect(iCentreScreenX + angle + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET + thickness);
+			surface()->DrawFilledRect(iCentreScreenX + angleOnScreen + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET + thickness);
 			surface()->DrawSetColor(*playerColour);
-			surface()->DrawFilledRect(iCentreScreenX + angle, iCentreScreenY, iCentreScreenX, iCentreScreenY + thickness);
+			surface()->DrawFilledRect(iCentreScreenX + angleOnScreen, iCentreScreenY, iCentreScreenX, iCentreScreenY + thickness);
 		}
 		// a new approach. headache.
 		//DrawBox(iCentreScreenX, iCentreScreenY + 25, angle, 10, Color(255, 255, 0, 255), 255.0f, false);
@@ -873,7 +772,6 @@ This is how I have modelled airstrafing, so any errors here will explain if my i
 }*/
 
 
-//const double u = (360 / 65536);
 //1st pass; no optimisation
 void CHudSpeedometer::OptimalLookThink() {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
@@ -884,7 +782,7 @@ void CHudSpeedometer::OptimalLookThink() {
 	if (!pPlayer || !pPlayerBase)
 		return;
 	
-	// we need  CTFGameMovement::GetAirSpeedCap, but practically it's just mp_maxairspeed (unless we're charging, but you can't airstrafe then.)
+	// we need CTFGameMovement::GetAirSpeedCap, but practically it's just mp_maxairspeed (unless we're charging, but you can't airstrafe then.)
 	float L = flMaxairspeed;
 
 	float tau = gpGlobals->frametime;
@@ -903,7 +801,7 @@ void CHudSpeedometer::OptimalLookThink() {
 	// This is global - not relative to the view.
 	velocity = g_pMoveData->m_vecVelocity;
 
-	// Convert to local! - todo use me
+	// Convert to local! - todo use me?
 	/*Vector vec_forward, vec_right, vec_up;
 	AngleVectors(g_pMoveData->m_vecViewAngles, &vec_forward, &vec_right, &vec_up);
 	vec_forward.z = 0.0f;
@@ -925,22 +823,21 @@ void CHudSpeedometer::OptimalLookThink() {
 	// New Method
 	double yaw = g_pMoveData->m_vecViewAngles.y;
 	double tauMA = tau * M * A;
-	int Sdir = 0, Fdir = 0; // why this??? should it not just be ||S|| and ||F||? maybe because it is for automatically generating S and F afterward in TAS?
-	/*
+	int Sdir = 0, Fdir = 0; // why was this originally left at 0? should it not just be S^ and F^? maybe because it is for automatically generating S and F afterward in TAS?
+	
+	// Added this
 	if(F!=0){
 		Fdir = Sign(F);
 	}
 	if(S!=0){
 		Sdir = Sign(S);
 	}
-	*/
+	
 	double vel_double[2] = { velocity.x, velocity.y };
 	strafe_side_opt(yaw, Sdir, Fdir, vel_double, L, tauMA, direction);
 
 	optimalYawAngle = yaw;
 	hasOptimalVector = true; // shit code lmao
-
-
 
 	// If we're not strafing, just use the last strafe input
 	/*if (S == 0) {
