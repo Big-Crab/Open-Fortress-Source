@@ -123,6 +123,25 @@ static void strafe_side_opt(double &yaw, int &Sdir, int &Fdir, double vel[2], do
 
 // NEW STUFF ENDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+// EVEN NEWER STUFF - based on a CS:GO Trainer
+float gF_LastYaw = 0;
+
+float NormalizeAngle(float angle) {
+	float newAngle = angle;
+	while (newAngle <= -180.0) newAngle += 360.0;
+	while (newAngle > 180.0) newAngle -= 360.0;
+	return newAngle;
+}
+
+// in degrees
+// presumably 30 is maxairspeed?
+// Returns the perfect amount of degrees to turn given the current speed. (deg per second)?
+float PerfStrafeAngle(float speed) {
+	return RAD2DEG(atan(30 / speed));
+}
+
+// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -183,7 +202,8 @@ private:
 
 	// Variables and functions for calculating the best air strafing circles.
 	Vector optimalDirectionVector;	// Best position for the player's look (yaw only) to be in order to air accelerate at maximum speed
-	double optimalYawAngle;			// Best yaw for maximum air acceleration
+	double optimalYawAngle;			// Best yaw for maximum air acceleration (0-360?)
+	float percentageAccuracy;
 	bool hasOptimalVector = false; // to stop us drawing a vector when we haven't made one
 	void OptimalLookThink();	// Update loop for calculating optimal vectors
 
@@ -666,6 +686,20 @@ void CHudSpeedometer::Paint(void) {
 		DrawTextFromNumber(currentYawAngle_standardised, Color(255, 255, 0, 255), 80, 85);
 		DrawTextFromNumber(optimalYawAngle_standardised, Color(255, 255, 175, 255), 80, 100);
 
+
+		DrawTextFromNumber(percentageAccuracy, Color(255, 255, 255, 255), -75, 0);
+
+		float perfectDelta = PerfStrafeAngle(g_pMoveData->m_vecVelocity.Length());
+		std::string str = "PERFECT DELTA: " + std::to_string(perfectDelta);
+		const char* charlist = str.c_str();
+		size_t size = strlen(charlist) + 1;
+		wchar_t* iconText = new wchar_t[size];
+		mbstowcs(iconText, charlist, size);
+		//shadow
+		surface()->DrawSetTextColor(0, 0, 0, 255);
+		surface()->DrawSetTextPos(iCentreScreenX, iCentreScreenY + -95);
+		surface()->DrawPrintText(iconText, wcslen(iconText));
+
 		// draw the P E R F E C T angle
 		//DrawTextFromNumber(estimatedOptimalYaw, Color(255, 255, 175, 255), -25, -60);
 
@@ -814,7 +848,7 @@ void CHudSpeedometer::OptimalLookThink() {
 		((vec_forward.y * F) + (vec_right.y * S)),
 		0.0f);*/
 	
-	int	direction = S > 0 ? 1 : -1;
+	/*int	direction = S > 0 ? 1 : -1;
 
 	// We're not strafing
 	if (S == 0)
@@ -837,7 +871,7 @@ void CHudSpeedometer::OptimalLookThink() {
 	strafe_side_opt(yaw, Sdir, Fdir, vel_double, L, tauMA, direction);
 
 	optimalYawAngle = yaw;
-	hasOptimalVector = true; // shit code lmao
+	hasOptimalVector = true; // shit code lmao*/
 
 	// If we're not strafing, just use the last strafe input
 	/*if (S == 0) {
@@ -845,6 +879,42 @@ void CHudSpeedometer::OptimalLookThink() {
 	} else {
 		lastDirectionInput = direction;
 	}*/
+
+	////////////////////////////////////////////////////////////////////////////////
+	// even newer method, with blackjack and hooks
+	// calculate differences
+	float yaw = g_pMoveData->m_vecViewAngles.y;
+	
+	int	direction = S > 0 ? 1 : -1;
+	if (S == 0) {
+		direction = lastDirectionInput;
+	} else {
+		lastDirectionInput = direction;
+	}
+
+	float AngDiffThisFrame;
+	AngDiffThisFrame = NormalizeAngle(gF_LastYaw - yaw);
+
+	// get the perfect angle
+	//float PerfAngle = PerfStrafeAngle(velocity.Length());
+	float PerfAngleChangePerSec = PerfStrafeAngle(velocity.Length());
+	float PerfAngleChangePerFrame = PerfAngleChangePerSec * tau;
+	float Percentage = fabsf(AngDiffThisFrame) / PerfAngleChangePerFrame;
+
+	optimalYawAngle = yaw;//yaw360 + copysignf(PerfAngleChangePerFrame, direction);
+
+	// UGH I DONT FUCKIN KNOW
+	// brain 2 foggy
+	// the ideal radian angle change per second is (i think)
+	//		atan( L / speed);
+	// hacky workaround for now
+	//optimalYawAngle = (100 - Percentage);
+	percentageAccuracy = Percentage;
+
+	gF_LastYaw = yaw;
+	hasOptimalVector = true;
+	////////////////////////////////////////////////////////////////////////////////
+
 
 	/*hasOptimalVector = CalculateOptimal(velocity, direction, L, tau * M * A, mostEfficientVector);
 	if (hasOptimalVector) {
