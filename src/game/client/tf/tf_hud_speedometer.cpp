@@ -37,120 +37,12 @@ using namespace vgui;
 
 #define SHADOW_OFFSET 2
 
-// NEW STUFF ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-const double M_U_DEG = 360.0 / 65536;
-const double M_U_RAD = M_PI / 32768;
-#define M_PI_2 M_PI / 2
-#define M_PI_4 M_PI / 4
-
-double anglemod_deg(double a) {
-	return M_U_DEG * ((int)(a / M_U_DEG) & 0xffff);
-}
-
-double anglemod_rad(double a) {
-	return M_U_RAD * ((int)(a / M_U_RAD) & 0xffff);
-}
-
-static double strafe_theta_opt(double speed, double L, double tauMA) {
-	double tmp = L - tauMA;
-	if (tmp <= 0)
-		return M_PI_2;
-	if (tmp < speed)
-		return std::acos(tmp / speed);
-	return 0;
-}
-
-static void strafe_fme_vec(double vel[2], const double avec[2], double L, double tauMA) {
-	double tmp = L - vel[0] * avec[0] - vel[1] * avec[1];
-	if (tmp < 0)
-		return;
-	if (tauMA < tmp)
-		tmp = tauMA;
-	vel[0] += avec[0] * tmp;
-	vel[1] += avec[1] * tmp;
-}
-
-static void strafe_side(double &yaw, int &Sdir, int &Fdir, double vel[2], double theta, double L, double tauMA, int dir) {
-	double phi;
-	// This was intende to reduce the overall shaking in TAS use. Could adjust/remove this?
-	if (theta >= M_PI_2 * 0.75) {
-		Sdir = dir;
-		Fdir = 0;
-		phi = std::copysign(M_PI_2, dir);
-	} else if (M_PI_2 * 0.25 <= theta && theta <= M_PI_2 * 0.75) {
-		Sdir = dir;
-		Fdir = 1;
-		phi = std::copysign(M_PI_4, dir);
-	} else {
-		Sdir = 0;
-		Fdir = 1;
-		phi = 0;
-	}
-
-	if (std::fabs(vel[0]) > 0.1 || std::fabs(vel[1]) > 0.1) {
-		yaw = std::atan2(vel[1], vel[0]);
-	}
-
-	yaw += phi - std::copysign(theta, dir);
-	double yawcand[2] = {
-		anglemod_rad(yaw), anglemod_rad(yaw + std::copysign(M_U_RAD, yaw))
-	};
-
-	double avec[2] = { std::cos(yawcand[0] - phi), std::sin(yawcand[0] - phi) };
-	double tmpvel[2] = { vel[0], vel[1] };
-
-	strafe_fme_vec(vel, avec, L, tauMA);
-
-	avec[0] = std::cos(yawcand[1] - phi);
-	avec[1] = std::sin(yawcand[1] - phi);
-	
-	strafe_fme_vec(tmpvel, avec, L, tauMA);
-
-	if (tmpvel[0] * tmpvel[0] + tmpvel[1] * tmpvel[1] > vel[0] * vel[0] + vel[1] * vel[1]) {
-		vel[0] = tmpvel[0];
-		vel[1] = tmpvel[1];
-		yaw = yawcand[1];
-	} else {
-		yaw = yawcand[0];
-	}
-}
-
-static void strafe_side_opt(double &yaw, int &Sdir, int &Fdir, double vel[2], double L, double tauMA, int dir) {
-	double speed = std::hypot(vel[0], vel[1]);
-	double theta = strafe_theta_opt(speed, L, tauMA);
-	strafe_side(yaw, Sdir, Fdir, vel, theta, L, tauMA, dir);
-}
-
-// NEW STUFF ENDS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-// EVEN NEWER STUFF - based on a CS:GO Trainer
-float gF_LastYaw = 0;
-
-float NormalizeAngle(float angle) {
-	float newAngle = angle;
-	while (newAngle <= -180.0) newAngle += 360.0;
-	while (newAngle > 180.0) newAngle -= 360.0;
-	return newAngle;
-}
-
-// in degrees
-// presumably 30 is maxairspeed?
-// Returns the perfect amount of degrees to turn given the current speed. (deg per second)?
-float PerfStrafeAngle(float speed) {
-	return RAD2DEG(atan(30 / speed));
-}
-
-// ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 class CHudSpeedometer : public CHudElement, public EditablePanel
 {
 	DECLARE_CLASS_SIMPLE(CHudSpeedometer, EditablePanel);
-
-	//friend class CGameMovement;
-	//friend class CTFGameMovement;
 
 public:
 	CHudSpeedometer(const char *pElementName);
@@ -162,13 +54,6 @@ public:
 	void UpdateColours(void);
 
 	Color GetComplimentaryColour( Color color );
-
-	// Callback functions for when certain ConVars are changed - more efficient, and it lets us call hud_reloadscheme automatically!
-	// I've opted to use a single function and discrimination of the convar's string name to decide what to change, as opposed to one function for each var
-	// as this keeps things a little tidier and is only called when the cvars get updated, so using strings isn't a performance concern.
-	// Doesn't work as a member :(((((( 
-	//void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldValue);
-
 private:
 	// The speed bar 
 	ContinuousProgressBar *m_pSpeedPercentageMeter;
@@ -199,22 +84,11 @@ private:
 	Color *vectorColor_vel = &defaultVelVectorCol;
 	Color *vectorColor_input = &defaultInputVectorCol;
 
-
-	// Variables and functions for calculating the best air strafing circles.
-	Vector optimalDirectionVector;	// Best position for the player's look (yaw only) to be in order to air accelerate at maximum speed
-	double optimalYawAngle;			// Best yaw for maximum air acceleration (0-360?)
-	float percentageAccuracy;
-	bool hasOptimalVector = false; // to stop us drawing a vector when we haven't made one
-	void OptimalLookThink();	// Update loop for calculating optimal vectors
-
-	int lastDirectionInput = 0;
-
-	//float GetAirSpeedCap(void); //Shameful....
-
 	void UpdateScreenCentre(void);
 
-	void DrawTextFromNumber(double num, Color col, int xpos, int ypos);
+	void DrawTextFromNumber(std::string, double num, Color col, int xpos, int ypos);
 
+	void QStrafeJumpHelp(void);
 };
 
 DECLARE_HUDELEMENT(CHudSpeedometer);
@@ -268,6 +142,18 @@ float flOptimalAngleMax = 10.0f;
 float flOptimalAngleScreenwidth = 0.4f;
 bool bOptimalAngleExponential = false;
 
+// Used to colour certain parts of the UI in code, while still giving users control over it (Not ideal, ought to be in .res)
+extern ConVar of_color_r;
+extern ConVar of_color_g;
+extern ConVar of_color_b;
+
+extern CMoveData *g_pMoveData;
+extern IGameMovement *g_pGameMovement;
+extern ConVar mp_maxairspeed;
+extern ConVar sv_maxspeed;
+extern ConVar sv_airaccelerate;
+extern ConVar sv_stopspeed;
+
 // This has to be a non-member/static type of thing otherwise it doesn't work
 void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
 	// I know this might look like YandereDev levels of if-else, but switching ain't possible on strings
@@ -288,20 +174,13 @@ void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldVa
 	flOptimalAngleScreenwidth = hud_speedometer_optimalangle_screenwidth.GetFloat();
 	bOptimalAngleExponential = hud_speedometer_optimalangle_exponential.GetBool();
 	
+	// Might as well update these too
+	flMaxairspeed = mp_maxairspeed.GetFloat();
+
 	// Attempt to automatically reload the HUD and scheme each time
+	// Ought to add a ConVar to prevent this optionally
 	engine->ExecuteClientCmd("hud_reloadscheme");
 }
-
-// Used to colour certain parts of the UI in code, while still giving users control over it (Not ideal, ought to be in .res)
-extern ConVar of_color_r;
-extern ConVar of_color_g;
-extern ConVar of_color_b;
-
-extern CMoveData *g_pMoveData;
-extern IGameMovement *g_pGameMovement;
-extern ConVar mp_maxairspeed;
-extern ConVar sv_maxspeed;
-extern ConVar sv_airaccelerate;
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -563,17 +442,14 @@ void CHudSpeedometer::OnTick(void) {
 			}
 		}
 	}
-
-	if (bOptimalAngle) {
-		// Do da big thonk about vectors
-		OptimalLookThink();
-	}
 }
 
 
 
 void CHudSpeedometer::Paint(void) {
 	BaseClass::Paint();
+
+	QStrafeJumpHelp();
 
 	if (bVectors) {
 		C_BasePlayer *pPlayerBase = C_TFPlayer::GetLocalPlayer();
@@ -604,112 +480,23 @@ void CHudSpeedometer::Paint(void) {
 
 		float velocityLongitudinalGlobal = -vecVelocityDirection.x * flVectorlength;
 		float velocityLateralGlobal = vecVelocityDirection.y * flVectorlength;
-	
+
 
 		// Draw the input vectors (The player's WASD, as a line)
 		float inputLongitudinal = -g_pMoveData->m_flForwardMove * flVectorlength;
 		float inputLateral = g_pMoveData->m_flSideMove * flVectorlength;
 		surface()->DrawSetColor(*vectorColor_input);
 		surface()->DrawLine(iCentreScreenX, iCentreScreenY, iCentreScreenX + inputLateral, iCentreScreenY + inputLongitudinal);
-	
+
 
 		// Draw the velocity vectors (The player's actual velocity, horizontally, relative to the view direction)
 		surface()->DrawSetColor(*vectorColor_vel);
 		surface()->DrawLine(iCentreScreenX, iCentreScreenY, iCentreScreenX + velocityLateralGlobal, iCentreScreenY + velocityLongitudinalGlobal);
-
-
-		// Draw the optimal vector we need to align to as a magenta thing offset by 10,10
-		if (!hasOptimalVector)
-			return;
-
-		// Assuming radians. 
-		//float angle = atan2f(vecForward.y, vecForward.x) - atan2(optimalDirectionVector.y, optimalDirectionVector.x);
-		
-		// vec view angles yaw is in deg, ranges -180 to 180
-		// convert the optimal to -180 to 180, since that's what translates immediately to the current UI bar and matches World Rotations™
-		// ^ NOPE IM CONFUSED SO WE'RE GOING INTO 0-360 space
-		// AND THEN BACK INTO +-180 SPACE 
-		// These are still very much in world units, which is kinda useless.
-		// The difference, "angle", is certainly useful, however!
-		double currentYawAngle_standardised = anglemod_deg(g_pMoveData->m_vecViewAngles.y) - 180;
-		double optimalYawAngle_standardised = anglemod_deg(RAD2DEG(optimalYawAngle)) - 180;
-		double angle = anglemod_deg(currentYawAngle_standardised - optimalYawAngle_standardised);	// get into a readable angle metric ya FUCK
-		if (angle > 180)
-			angle -= 360;
-		
-		// Clamp to range.
-		double clampedAngle = angle;
-		if (abs(angle) > flOptimalAngleMax) {
-			clampedAngle = min(flOptimalAngleMax, abs(angle));
-			clampedAngle *= (angle > 0) ? 1 : -1;
-		}
-
-		// angle should now be -180 to 180 for left and right!
-
-
-		// Normalise to range -pi + pi. (-180, 180)
-		//if (angle > M_PI)        { angle -= 2 * M_PI; }
-		//else if (angle <= -M_PI) { angle += 2 * M_PI; }
-
-		//angle = RAD2DEG(angle);
-
-		// ok... so... filled rect is a fuck
-		// it doesn't work if the end points are more to the right or bottom than the centre.......
-		
-		//surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angle, iCentreScreenY + 21);
-
-		// signed (-1 to 1) * (1920 * 0.2)
-		float angleOnScreen = (clampedAngle / flOptimalAngleMax) * (ScreenWidth() * (flOptimalAngleScreenwidth / 2));
-		
-		//float pitch;
-		//factor in vertical fov, adjust to screenspace (0 to (screentall - thickness)?)
-		
-		const float thickness = 20;
-		if (angleOnScreen >= 0) {
-			surface()->DrawSetColor(playerColourComplementary);
-			surface()->DrawFilledRect(iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET + angleOnScreen, iCentreScreenY + SHADOW_OFFSET + thickness);
-			surface()->DrawSetColor(*playerColour);
-			surface()->DrawFilledRect(iCentreScreenX, iCentreScreenY, iCentreScreenX + angleOnScreen, iCentreScreenY + thickness);
-		}
-		else {
-			surface()->DrawSetColor(playerColourComplementary);
-			surface()->DrawFilledRect(iCentreScreenX + angleOnScreen + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET, iCentreScreenX + SHADOW_OFFSET, iCentreScreenY + SHADOW_OFFSET + thickness);
-			surface()->DrawSetColor(*playerColour);
-			surface()->DrawFilledRect(iCentreScreenX + angleOnScreen, iCentreScreenY, iCentreScreenX, iCentreScreenY + thickness);
-		}
-		// a new approach. headache.
-		//DrawBox(iCentreScreenX, iCentreScreenY + 25, angle, 10, Color(255, 255, 0, 255), 255.0f, false);
-		//DrawBox(0, 0, angle, 10, Color(255, 255, 0, 255), 255.0f, false);
-
-		DrawTextFromNumber(angle, Color(255, 0, 0, 255), 70, 70);
-
-		DrawTextFromNumber(currentYawAngle_standardised, Color(255, 255, 0, 255), 80, 85);
-		DrawTextFromNumber(optimalYawAngle_standardised, Color(255, 255, 175, 255), 80, 100);
-
-
-		DrawTextFromNumber(percentageAccuracy, Color(255, 255, 255, 255), -75, 0);
-
-		float perfectDelta = PerfStrafeAngle(g_pMoveData->m_vecVelocity.Length());
-		std::string str = "PERFECT DELTA: " + std::to_string(perfectDelta);
-		const char* charlist = str.c_str();
-		size_t size = strlen(charlist) + 1;
-		wchar_t* iconText = new wchar_t[size];
-		mbstowcs(iconText, charlist, size);
-		//shadow
-		surface()->DrawSetTextColor(0, 0, 0, 255);
-		surface()->DrawSetTextPos(iCentreScreenX, iCentreScreenY + -95);
-		surface()->DrawPrintText(iconText, wcslen(iconText));
-
-		// draw the P E R F E C T angle
-		//DrawTextFromNumber(estimatedOptimalYaw, Color(255, 255, 175, 255), -25, -60);
-
-		//DrawTextFromNumber(g_pMoveData->m_vecVelocity.x, Color(255, 255, 175, 255), -25, -60);
-		//DrawTextFromNumber(g_pMoveData->m_vecVelocity.y, Color(255, 255, 175, 255), -25, -45);
 	}
 }
 
-void CHudSpeedometer::DrawTextFromNumber(double num, Color col, int x_fromcenter, int y_fromcenter) {
-	std::string str = std::to_string((int)num);
+void CHudSpeedometer::DrawTextFromNumber(std::string prefix,  double num, Color col, int x_fromcenter, int y_fromcenter) {
+	std::string str = prefix + std::to_string((int)num);
 	const char* charlist = str.c_str();
 	size_t size = strlen(charlist) + 1;
 	wchar_t* iconText = new wchar_t[size];
@@ -725,223 +512,101 @@ void CHudSpeedometer::DrawTextFromNumber(double num, Color col, int x_fromcenter
 	surface()->DrawPrintText(iconText, wcslen(iconText));
 }
 
-/*
-I have derived some expressions using information about Half Life (1, GoldSrc) Tool-assisted-speedruns.
-Most, if not all of the variables used in HL1 for movement etc are the same, and in fact share the same names.
-This is not to say Valve mindlessly reused HL1 code for essential things, but rather that they built HL2/TF2's movement
-on the same model. I cannot use greek letters :'( 
+// Needed over the default % operator
+float mod(float a, float n) {
+	return a - floor(a / n) * n;
+}
 
-Cofiwch: peidiwch defnyddio square root os ti'n gallu! Os tisio hynny (||A|| = sqrt(A.x ^ 2 + A.y ^ 2)),
-meddwl am gwneud hyn yn lle: ||A||^2 = A.x^2 + A.y^2
-Gweithio yn rhywbeth^2 yn lle! :) Mae helpu i osgoi sqrt (inefficient)
+// Gives the SIGNED radian difference between Start and Target
+float DeltaAngle(float startAngle, float targetAngle) {
+	float a = targetAngle - startAngle;
+	return mod((a + M_PI), (M_PI * 2)) - M_PI;
+	//return atan2(sin(targetAngle - startAngle), cos(targetAngle - startAngle));
+}
 
-
-v = current velocity
-v' = new velocity
-â = unit acceleration vector
-a = Ff^ + Ss^ , where F is m_flForwardMove and S is m_flSideMove, while f^ and s^ are the forward and rightward vectors respectively.
-||a|| = sqrt(F^2 + S^2)
-
-THETA = "yaw angle", calculated as the angle between v and â
-
-L = 30 in HL1. Seems to be a magic number, defined in-line. Poor practice!
-::
-:: // cap speed
-::if (wishspd > 30)
-::		wishspd = 30;
-::
-(from pm_shared.c)
-
-The OF/HL2/TF2 equivalent is:
-:: // Cap speed
-:: if ( wishspd > GetAirSpeedCap() )
-::		wishspd = GetAirSpeedCap();
-::
-(from gamemovement.cpp)
-
-L = GetAirSpeedCap();
-L = either of_shield_charge_speed or mp_maxairspeed based on its logic
-
-TAU = the timestep/frame time, which I think here is best retrieved from gpGlobals->frametime (It's what's used for logic in gamemovement.cpp, but is unrelated to Think times?)
-
-Mm = sv_maxspeed
-"It is not always that M = Mm, since M can be affected by duckstate and the values of F, S, and U (upward movement)"
-M = min (sv_maxspeed, sqrt(F^2 + S^2)
-"Besides, we will assume that ||<F,S>||>=M. If this is not the case, we must replace M->||<F,S>|| for all appearances of M below."
-
-A = sv_airaccelerate (10 in HL1, 500 in OF)
-
-Gamma1 = TAU * M * A
-
-Gamma2	= L - v.a
-		= L - ||v||cos(THETA)
-
-Mu =	{ min (Gamma1, Gamma2)  :  if Gamma2 > 0
-		{  0					:	otherwise
-
-To maximise  ||v'||:
-
-(Translated to deg from rad for readability)
-THETA =	{ 90deg	:	if L - (TAU * M * A) <= 0
-		{ ZETA	:	if 0 < L - (TAU * M * A) <= ||v||
-		{ 0		:	otherwise
-
-ZETA is obtained by solving Gamma1 = Gamma2
-Cos(ZETA) = (L - (TAU * M * A)) / ||v||
-
-These functions attempt to calculate the FME.
-This is how I have modelled airstrafing, so any errors here will explain if my indicators are dysfunctional lol.
-
-(Vector velocity, int direction, float L, float tauMA);
-(Vector velocity, float theta, float L, float tauMA);
-*/
-
-// I could not find a way to access this from CGameMovement nor CTFGameMovement.
-// I tried friend classing, I tried externs, I tried includes. They did not work. Forgive me, Christ.
-// If you find a way, reader, please update it, so that my soul may rest once more.
-/*float CHudSpeedometer::GetAirSpeedCap(void) {
-	if (m_pTFPlayer->m_Shared.InCond(TF_COND_SHIELD_CHARGE) && mp_maxairspeed.GetFloat() < of_shield_charge_speed.GetFloat())
-		return of_shield_charge_speed.GetFloat();
-	return mp_maxairspeed.GetFloat();
-}*/
-
-
-//1st pass; no optimisation
-void CHudSpeedometer::OptimalLookThink() {
+// Working in Radians, outputting in degrees
+void CHudSpeedometer::QStrafeJumpHelp() {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 	C_BasePlayer *pPlayerBase = C_TFPlayer::GetLocalPlayer();
-	//g_pMoveData
-	//g_GameMovement
-
 	if (!pPlayer || !pPlayerBase)
 		return;
+
+	/*int x, y;
+	x = iCentreScreenX;
+	y = iCentreScreenY;*/
+
+	Vector vel(0, 0, 0);
+	vel = g_pMoveData->m_vecVelocity;
+	vel = Vector(vel.x, vel.y, 0);
+
+	float speed = vel.Length();
+
+	if (!g_pMoveData->m_flForwardMove && !g_pMoveData->m_flSideMove) { return; }
+
+	float forwardMove = g_pMoveData->m_flForwardMove;
+	float sideMove = g_pMoveData->m_flSideMove;
+
+	//===============================================
+	//Gather info
+	// Unit directional input - LOCAL
+	Vector dir = Vector(forwardMove, -sideMove, 0).Normalized();
 	
-	// we need CTFGameMovement::GetAirSpeedCap, but practically it's just mp_maxairspeed (unless we're charging, but you can't airstrafe then.)
-	float L = flMaxairspeed;
+	// Both need to be in Radians
+	float dirAngle = atan2(dir.y, dir.x);
+	float yawAngle = DEG2RAD( g_pMoveData->m_vecViewAngles.y );
 
-	float tau = gpGlobals->frametime;
+	// Radians!!
+	float PAngle = yawAngle + dirAngle;
+	//float VelAngle = VectorAngle(Vel.X, Vel.Y);
+	float velAngle = atan2(vel.Normalized().y, vel.Normalized().x);
 
-	// These are local/relative to view!!!!
-	float F = g_pMoveData->m_flForwardMove;
-	float S = g_pMoveData->m_flSideMove;
+	// This allowed to be in degrees presumably
+	int FOVScale = iCentreScreenX / pPlayerBase->GetFOV();
 
-	float M = min(flMaxspeed, hypotf(F, S));
+	float WishSpeed = 0, MaxCurSpeed = 0, MaxAccel = 0;
 
-	float A = flAiraccelerate;
-
-	Vector velocity(0, 0, 0);
-	//velocity = pPlayerBase->GetLocalVelocity();
-	//pPlayerBase->EstimateAbsVelocity(velocity);
-	// This is global - not relative to the view.
-	velocity = g_pMoveData->m_vecVelocity;
-
-	// Convert to local! - todo use me?
-	/*Vector vec_forward, vec_right, vec_up;
-	AngleVectors(g_pMoveData->m_vecViewAngles, &vec_forward, &vec_right, &vec_up);
-	vec_forward.z = 0.0f;
-	vec_right.z = 0.0f;
-	VectorNormalize(vec_forward);
-	VectorNormalize(vec_right);
-
-	// Find the direction,velocity in the x,y plane. I think?
-	Vector vec_velocity_worldspace(((vec_forward.x * F) + (vec_right.x * S)),
-		((vec_forward.y * F) + (vec_right.y * S)),
-		0.0f);*/
-	
-	/*int	direction = S > 0 ? 1 : -1;
-
-	// We're not strafing
-	if (S == 0)
-		return;
-	
-	// New Method
-	double yaw = g_pMoveData->m_vecViewAngles.y;
-	double tauMA = tau * M * A;
-	int Sdir = 0, Fdir = 0; // why was this originally left at 0? should it not just be S^ and F^? maybe because it is for automatically generating S and F afterward in TAS?
-	
-	// Added this
-	if(F!=0){
-		Fdir = Sign(F);
-	}
-	if(S!=0){
-		Sdir = Sign(S);
-	}
-	
-	double vel_double[2] = { velocity.x, velocity.y };
-	strafe_side_opt(yaw, Sdir, Fdir, vel_double, L, tauMA, direction);
-
-	optimalYawAngle = yaw;
-	hasOptimalVector = true; // shit code lmao*/
-
-	// If we're not strafing, just use the last strafe input
-	/*if (S == 0) {
-		direction = lastDirectionInput;
-	} else {
-		lastDirectionInput = direction;
-	}*/
-
-	////////////////////////////////////////////////////////////////////////////////
-	// even newer method, with blackjack and hooks
-	// calculate differences
-	float yaw = g_pMoveData->m_vecViewAngles.y;
-	
-	int	direction = S > 0 ? 1 : -1;
-	if (S == 0) {
-		direction = lastDirectionInput;
-	} else {
-		lastDirectionInput = direction;
+	if (!forwardMove) {
+		WishSpeed = sv_stopspeed.GetFloat();
+		MaxAccel = sv_airaccelerate.GetFloat() * WishSpeed * gpGlobals->frametime;
+		MaxCurSpeed = WishSpeed - MaxAccel;
 	}
 
-	float AngDiffThisFrame;
-	AngDiffThisFrame = NormalizeAngle(gF_LastYaw - yaw);
+	float MinAngle = acos(WishSpeed / speed);
+	float OptimalAngle = acos(MaxCurSpeed / speed);
 
-	// get the perfect angle
-	//float PerfAngle = PerfStrafeAngle(velocity.Length());
-	float PerfAngleChangePerSec = PerfStrafeAngle(velocity.Length());
-	float PerfAngleChangePerFrame = PerfAngleChangePerSec * tau;
-	float Percentage = fabsf(AngDiffThisFrame) / PerfAngleChangePerFrame;
+	//===============================================
+	//Draw line
 
-	optimalYawAngle = yaw;//yaw360 + copysignf(PerfAngleChangePerFrame, direction);
-
-	// UGH I DONT FUCKIN KNOW
-	// brain 2 foggy
-	// the ideal radian angle change per second is (i think)
-	//		atan( L / speed);
-	// hacky workaround for now
-	//optimalYawAngle = (100 - Percentage);
-	percentageAccuracy = Percentage;
-
-	gF_LastYaw = yaw;
-	hasOptimalVector = true;
-	////////////////////////////////////////////////////////////////////////////////
-
-
-	/*hasOptimalVector = CalculateOptimal(velocity, direction, L, tau * M * A, mostEfficientVector);
-	if (hasOptimalVector) {
-		optimalDirectionVector = mostEfficientVector;
+	if (DeltaAngle(PAngle, velAngle) >= 0) {
+		MinAngle *= -1;
+		OptimalAngle *= -1;
+	}
 	
+	// This needs to be in Deg, as FOVScale was calculated in deg
+	MinAngle = RAD2DEG( DeltaAngle(PAngle, MinAngle + velAngle) )			* FOVScale;
+	OptimalAngle = RAD2DEG( DeltaAngle(PAngle, OptimalAngle + velAngle) )	* FOVScale;
 
-		// Assuming radians. 
-		float angle = atan2f(vec_forward.y, vec_forward.x) - atan2(optimalDirectionVector.y, optimalDirectionVector.x);
-	
-		// Normalise to range -pi + pi. (-180, 180)
-		if (angle > M_PI)        { angle -= 2 * M_PI; }
-		else if (angle <= -M_PI) { angle += 2 * M_PI; }
-		angle = RAD2DEG(angle); // needs to be in deg?
+	//Screen.DrawThickLine(x - OptimalAngle, y, x - MinAngle, y, LINE_HEIGHT, "Green", 128);
+	DrawTextFromNumber("Optimal Yaw: ", OptimalAngle / FOVScale, Color(150, 255, 150, 255), 0, -150);
+	DrawTextFromNumber("Min. Yaw: ", MinAngle / FOVScale, Color(150, 150, 255, 255), 0, -175);
 
-		// "Greater Precision" - theta is angle
-		double phi = atan(abs(S / F));
-		double alpha = atan2(velocity.y, velocity.x);
-		double beta = alpha +  ((phi - angle) * (direction > 0) ? 1 : -1);
-		double theta1 = anglemod(beta);
-		double theta2 = anglemod(beta + (Sign(beta) * u));
+	const float thickness = 20;
+	int xOpt = iCentreScreenX - OptimalAngle;
+	int xMin = iCentreScreenX - MinAngle;
+	int yTop = iCentreScreenY;
+	int yBottom = iCentreScreenY + thickness;
 
-		// now we decide which of the thetax gives the higher speed
-		Vector velocityTheta1 = Vector(0,0,0);
-		Vector velocityTheta2 = Vector(0,0,0);
-		CalculateOptimalFromTheta(velocity, theta1, L, tau * M * A, velocityTheta1);
-		CalculateOptimalFromTheta(velocity, theta2, L, tau * M * A, velocityTheta2);
-
-		estimatedOptimalYaw = (velocityTheta1.Length() > velocityTheta2.Length()) ? theta1 : theta2;
-	}*/
+	// Gotta do it top left to bottom right
+	if (OptimalAngle >= MinAngle) {
+		surface()->DrawSetColor(playerColourComplementary);
+		surface()->DrawFilledRect(xOpt + SHADOW_OFFSET, yTop + SHADOW_OFFSET, xMin + SHADOW_OFFSET, yBottom + SHADOW_OFFSET);
+		surface()->DrawSetColor(*playerColour);
+		surface()->DrawFilledRect(xOpt, yTop, xMin, yBottom);
+	}
+	else {
+		surface()->DrawSetColor(playerColourComplementary);
+		surface()->DrawFilledRect(xMin + SHADOW_OFFSET, yTop + SHADOW_OFFSET, xOpt + SHADOW_OFFSET, yBottom + SHADOW_OFFSET);
+		surface()->DrawSetColor(*playerColour);
+		surface()->DrawFilledRect(xMin, yTop, xOpt, yBottom);
+	}
 }
