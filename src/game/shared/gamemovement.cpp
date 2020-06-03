@@ -1061,7 +1061,7 @@ void CGameMovement::CheckParameters( void )
 		if ( player->GetMoveType() != MOVETYPE_ISOMETRIC  &&
 			 player->GetMoveType() != MOVETYPE_NOCLIP )
 		{
-			mv->m_vecAngles[ROLL]  = CalcRoll( v_angle, mv->m_vecVelocity, sv_rollangle.GetFloat(), sv_rollspeed.GetFloat() );
+			mv->m_vecAngles[ROLL]  = CalcRoll( v_angle, mv->m_vecVelocity, sv_flRollAngle, sv_flRollSpeed);
 		}
 		else
 		{
@@ -1754,53 +1754,58 @@ void CGameMovement::AirAccelerate( Vector& wishdir, float wishspeed, float accel
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+
+// Purpose: Called when the player makes a movement input while airborne/not grounded
+
 //-----------------------------------------------------------------------------
 void CGameMovement::AirMove( void )
 {
 	int			i;
-	Vector		wishvel;
 	float		fmove, smove;
 	Vector		wishdir;
 	float		wishspeed;
 	Vector forward, right, up;
 
-	AngleVectors (mv->m_vecViewAngles, &forward, &right, &up);  // Determine movement angles
+	// Copy view angles and store forward/right/up vectors in the above declared vectors.
+	// Forward, right, and up are world space vectors relative to the camera
+	AngleVectors (mv->m_vecViewAngles, &forward, &right, &up); 
 	
-	// Copy movement amounts
+	// Copy longitudinal and lateral movement amounts (Scalar; represent a +/- movement speed along an axis)
+	// e.g. Mercenary pressing W: m_flForwardMove = 320.0f, Mercenary pressing A: m_flSideMove = -320.0f 
 	fmove = mv->m_flForwardMove;
 	smove = mv->m_flSideMove;
 	
-	// Zero out z components of movement vectors
+	// Zero out Z components of look vectors
 	forward[2] = 0;
 	right[2]   = 0;
-	VectorNormalize(forward);  // Normalize remainder of vectors
-	VectorNormalize(right);    // 
+	// Normalize them to unit vectors (these now represent forward and right vectors without pitch; the 2D forward and right.
+	VectorNormalize(forward);
+	VectorNormalize(right);
 
+
+	// Wishdir is the input speed in world space. It later gets its magnitude split out into wishspeed
 	for (i=0 ; i<2 ; i++)       // Determine x and y parts of velocity
-		wishvel[i] = forward[i]*fmove + right[i]*smove;
-	wishvel[2] = 0;             // Zero out z part of velocity
+		wishdir[i] = forward[i] * fmove + right[i] * smove;
+	wishdir[2] = 0;             // Zero out z part of velocity
 
-	VectorCopy (wishvel, wishdir);   // Determine maginitude of speed of move
+	// wishspeed = magnitude, wishdir = direction. 
 	wishspeed = VectorNormalize(wishdir);
 
-	//
 	// clamp to server defined max speed
-	//
 	if ( wishspeed != 0 && (wishspeed > mv->m_flMaxSpeed))
 	{
-		VectorScale (wishvel, mv->m_flMaxSpeed/wishspeed, wishvel);
 		wishspeed = mv->m_flMaxSpeed;
 	}
 	
-	AirAccelerate( wishdir, wishspeed, sv_airaccelerate.GetFloat() );
+	// Hand air speed calculations
+	AirAccelerate(wishdir, wishspeed, sv_flAirAccelerate);
 
 	// Add in any base velocity to the current velocity.
 	VectorAdd(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity );
 
 	TryPlayerMove();
 
-	// Now pull the base velocity back out.   Base velocity is set if you are on a moving object, like a conveyor (or maybe another monster?)
+	// Now pull the base velocity back out. Base velocity is set if you are on a moving object, like a conveyor.
 	VectorSubtract( mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity );
 }
 

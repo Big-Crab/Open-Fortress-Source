@@ -1151,58 +1151,60 @@ void CTFGameMovement::AirAccelerate(Vector& wishdir, float wishspeed, float acce
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: 
+// Purpose:
 //-----------------------------------------------------------------------------
 void CTFGameMovement::AirMove(void)
 {
-	int			movementmode;
-	Vector		wishvel;
 	float		fmove, smove;
 	Vector		wishdir;
 	float		wishspeed;
 	Vector		forward, right, up;
 
-	AngleVectors(mv->m_vecViewAngles, &forward, &right, &up);  // Determine movement angles
+	// Copy view angles and store forward/right/up vectors in the above declared vectors.
+	// Forward, right, and up are world space vectors relative to the camera
+	AngleVectors(mv->m_vecViewAngles, &forward, &right, &up);
 
-	// Copy movement amounts
+	// Copy longitudinal and lateral movement amounts (Scalar; represent a +/- movement speed along an axis)
+	// e.g. Mercenary pressing W: m_flForwardMove = 320.0f, Mercenary pressing A: m_flSideMove = -320.0f 
 	fmove = mv->m_flForwardMove;
 	smove = mv->m_flSideMove;
 
-	// Zero out z components of movement vectors
-	forward[2] = right[2] = wishvel[2] = 0;
+	// Zero out Z components of look-vectors (directions relative to the "camera"/view)
+	forward[2] = right[2] = wishdir[2] = 0;
 
-	//create wishdir vector
+	// Normalize them to unit vectors (these now represent forward and right vectors without pitch; the 2D forward and right.
 	VectorNormalize(forward);
 	VectorNormalize(right);
 
+	// Let wishdir = the inputted speed (WASD) in the horizontal plane
 	for (int i = 0; i < 2; i++)       // Determine x and y parts of velocity
-		wishvel[i] = forward[i] * fmove + right[i] * smove;
+		wishdir[i] = forward[i] * fmove + right[i] * smove;
 
-	VectorCopy(wishvel, wishdir);   // Determine magnitude of speed of move
+	// Split wishdir into a unit vector (wishdir) and a magnitude (wishspeed)
 	wishspeed = VectorNormalize(wishdir);
 
-	// clamp to server defined max speed
+	// Clamp wishspeed to the server defined max speed
 	if (wishspeed && wishspeed > mv->m_flMaxSpeed)
 	{
-		VectorScale(wishvel, mv->m_flMaxSpeed / wishspeed, wishvel);
 		wishspeed = mv->m_flMaxSpeed;
 	}
 
 	//Accelerate
-	movementmode = of_movementmode.GetInt();	//get the value only once
+	//movementmode = of_movementmode.GetInt();	//get the value only once MOVED TO CALLBACK and GLOBAL VAR
 
-	if (!movementmode) //default OF
+
+	if (!of_iMovementMode) //default OF
 	{
-		AirAccelerate(wishdir, wishspeed, sv_airaccelerate.GetFloat());
+		AirAccelerate(wishdir, wishspeed, sv_flAirAccelerate);
 	}
-	else if (movementmode == 1) //Q3
+	else if (of_iMovementMode == 1) //Q3
 	{
-		AirAccelerate(wishdir, wishspeed, of_q3airaccelerate.GetFloat(), false);
+		AirAccelerate(wishdir, wishspeed, of_flQ3AirAccelerate, false);
 	}
 	else //CPMA
 	{
 		bool CPMA = !fmove && smove;
-		float airaccel = CPMA ? sv_airaccelerate.GetFloat() : of_q3airaccelerate.GetFloat();
+		float airaccel = CPMA ? sv_flAirAccelerate : of_flQ3AirAccelerate;
 		AirAccelerate(wishdir, wishspeed, airaccel, CPMA);
 	}
 

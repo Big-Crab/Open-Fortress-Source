@@ -543,7 +543,7 @@ void CBasePlayer::UpdateStepSound( surfacedata_t *psurface, const Vector &vecOri
 	if ( GetMoveType() == MOVETYPE_NOCLIP || GetMoveType() == MOVETYPE_OBSERVER )
 		return;
 
-	if ( !sv_footsteps.GetFloat() )
+	if ( !sv_bFootsteps )
 		return;
 
 	speed = VectorLength( vecVelocity );
@@ -677,7 +677,7 @@ void CBasePlayer::UpdateStepSound( surfacedata_t *psurface, const Vector &vecOri
 //-----------------------------------------------------------------------------
 void CBasePlayer::PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force )
 {
-	if ( gpGlobals->maxClients > 1 && !sv_footsteps.GetFloat() )
+	if ( gpGlobals->maxClients > 1 && !sv_bFootsteps )
 		return;
 
 #if defined( CLIENT_DLL )
@@ -1999,7 +1999,7 @@ void CBasePlayer::CalcViewRoll( QAngle& eyeAngles )
 	if ( GetMoveType() == MOVETYPE_NOCLIP )
 		return;
 
-	float side = CalcRoll( GetAbsAngles(), GetAbsVelocity(), sv_rollangle.GetFloat(), sv_rollspeed.GetFloat() );
+	float side = CalcRoll( GetAbsAngles(), GetAbsVelocity(), sv_flRollAngle, sv_flRollSpeed);
 	eyeAngles[ROLL] += side;
 }
 

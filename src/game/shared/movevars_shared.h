@@ -15,11 +15,12 @@
 float GetCurrentGravity( void );
 
 #if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
-extern ConVar of_movementmode;
-extern ConVar of_q3airaccelerate;
 extern ConVar of_cslide;
 extern ConVar of_cslideaccelerate;
 extern ConVar of_cslidefriction;
+
+extern int of_iMovementMode;
+extern float of_flQ3AirAccelerate;
 #endif
 
 extern ConVar sv_gravity;
@@ -28,12 +29,6 @@ extern ConVar sv_noclipaccelerate;
 extern ConVar sv_noclipspeed;
 extern ConVar sv_maxspeed;
 extern ConVar sv_accelerate;
-extern ConVar sv_airaccelerate;
-extern ConVar sv_wateraccelerate;
-extern ConVar sv_waterfriction;
-extern ConVar sv_footsteps;
-extern ConVar sv_rollspeed;
-extern ConVar sv_rollangle;
 extern ConVar sv_friction;
 extern ConVar sv_bounce;
 extern ConVar sv_maxvelocity;
@@ -44,7 +39,12 @@ extern ConVar sv_waterdist;
 extern ConVar sv_specaccelerate;
 extern ConVar sv_specspeed;
 extern ConVar sv_specnoclip;
-
+extern float sv_flAirAccelerate;
+extern float sv_flWaterAccelerate;
+extern float sv_flWaterFriction;
+extern bool sv_bFootsteps;
+extern float sv_flRollSpeed;
+extern float sv_flRollAngle;
 // Vehicle convars
 extern ConVar r_VehicleViewDampen;
 
