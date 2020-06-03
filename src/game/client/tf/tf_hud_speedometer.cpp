@@ -679,7 +679,7 @@ void CHudSpeedometer::QStrafeJumpHelp() {
 	//DrawTextFromNumber("Min. Yaw: ", minAngle / FOVScale, Color(150, 150, 255, 255), 0, -175);
 
 	const float thickness = 20;
-	int xOpt = iCentreScreenX - optimalAngle;
+	int xOpt = iCentreScreenX - optimalAngle; 
 	int xMin = iCentreScreenX - minAngle;
 
 
