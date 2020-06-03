@@ -102,7 +102,7 @@ public:
 	
 	bool	InCond( int nCond );
 	bool	WearsHat( int nHat );
-	void	RemoveAllCond( CTFPlayer *pPlayer );
+	void	RemoveAllCond(CTFPlayer *pPlayer);
 	void	OnConditionAdded( int nCond );
 	void	OnConditionRemoved( int nCond );
 	void	ConditionThink( void );
@@ -126,7 +126,9 @@ public:
 	void RemoveCondCrit( void );
 	
 	bool InCondInvis( void );
-	void RemoveCondInvis( void );	
+	void RemoveCondInvis( void );
+
+	bool InPowerupCond();
 	
 	void SetSpawnEffect( int iEffect ){ m_iRespawnEffect = iEffect; }
 	int GetSpawnEffects( void ){ return m_iRespawnEffect; };
@@ -246,6 +248,9 @@ public:
 	bool	IsPlayerDominated( int iPlayerIndex );
 	bool	IsPlayerDominatingMe( int iPlayerIndex );
 	void	SetPlayerDominatingMe( CTFPlayer *pPlayer, bool bDominated );
+
+	float 	m_flJumpSoundDelay;
+	float	m_flStepSoundDelay;
 	
 private:
 

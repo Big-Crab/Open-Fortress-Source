@@ -1278,7 +1278,7 @@ void CBaseModPanel::OpenFrontScreen()
 	// make sure we are in the startup menu.
 	if ( !GameUI().IsInBackgroundLevel() )
 	{
-		engine->ClientCmd( "startupmenu" );
+		engine->ClientCmd_Unrestricted( "startupmenu" );
 	}
 
 	if ( g_pMatchFramework->GetMatchSession() )

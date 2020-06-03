@@ -152,11 +152,11 @@ void MainMenu::OnCommand( const char *command )
 			return;
 
 		// on PC, bring up the server browser and switch it to the LAN tab (tab #5)
-		engine->ClientCmd( "openserverbrowser" );
+		engine->ClientCmd_Unrestricted( "openserverbrowser" );
 	}
 	else if ( !Q_strcmp( command, "PlayerStats" ) )
 	{
-		engine->ClientCmd( "showstatsdlg" );
+		engine->ClientCmd_Unrestricted( "showstatsdlg" );
 	}	
 	else if (!Q_strcmp(command, "CreateServer"))
 	{
@@ -297,7 +297,7 @@ void MainMenu::OnCommand( const char *command )
 	{
 		if ( IsPC() )
 		{
-			engine->ClientCmd( "load autosave\n" );
+			engine->ClientCmd_Unrestricted( "load autosave\n" );
 		}
 	}*/
 	else if (!Q_strcmp(command, "Credits"))
@@ -385,7 +385,7 @@ void MainMenu::OnCommand( const char *command )
 	{
 		if ( IsPC() )
 		{
-			engine->ClientCmd( "quit" );
+			engine->ClientCmd_Unrestricted( "quit" );
 		}
 	}
 	else if ( !Q_strcmp( command, "FlmExtrasFlyoutCheck" ) )
@@ -455,7 +455,10 @@ void MainMenu::OnCommand( const char *command )
 		}
 		else
 		{
-			engine->ClientCmd( command );
+			// I'm not entirely sure what this does. Better to be safe than sorry for now.
+			// UNDONE:	Loadout menu is currently NOT a gamemenucommand.
+			//			Though this *should* be safe.
+			engine->ClientCmd_Unrestricted( command );
 			BaseClass::OnCommand( command );
 		}
 	}

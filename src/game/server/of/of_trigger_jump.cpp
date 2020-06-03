@@ -24,6 +24,8 @@ END_SEND_TABLE()
  
 LINK_ENTITY_TO_CLASS( ofd_trigger_jump, COFDTriggerJump );
 
+IMPLEMENT_AUTO_LIST( IOFDTriggerJumpAutoList );
+
 
 COFDTriggerJump::COFDTriggerJump( void )
 {

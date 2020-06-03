@@ -110,7 +110,7 @@ static void SavedGameCallback()
 		self->Close();
 	}
 
-	engine->ClientCmd( "autosave\n" );
+	engine->ClientCmd_Unrestricted( "autosave\n" );
 	engine->ExecuteClientCmd( "gameui_hide" );
 
 	CBaseModPanel::GetSingleton().CloseAllWindows();
@@ -134,7 +134,7 @@ void InGameMainMenu::OnCommand( const char *command )
 
 	if ( !Q_strcmp( command, "ReturnToGame" ) )
 	{
-		engine->ClientCmd("gameui_hide");
+		engine->ClientCmd_Unrestricted("gameui_hide");
 	}
 	else if (!Q_strcmp(command, "Audio"))
 	{
@@ -170,7 +170,7 @@ void InGameMainMenu::OnCommand( const char *command )
 			return;
 
 		// on PC, bring up the server browser and switch it to the LAN tab (tab #5)
-		engine->ClientCmd( "openserverbrowser" );
+		engine->ClientCmd_Unrestricted( "openserverbrowser" );
 	}
 	else if (!Q_strcmp(command, "CreateServer"))
 	{
@@ -281,7 +281,7 @@ void InGameMainMenu::OnCommand( const char *command )
 	{
 		if ( IsPC() )
 		{
-			engine->ClientCmd( "quit" );
+			engine->ClientCmd_Unrestricted( "quit" );
 		}
 	}	
 	else if( !Q_strcmp( command, "OpenPlayerListDialog" ) )
@@ -290,7 +290,7 @@ void InGameMainMenu::OnCommand( const char *command )
 	}
 	else
 	{
-		engine->ClientCmd( command );
+		engine->ClientCmd_Unrestricted( command );
 		BaseClass::OnCommand( command );
 	}		
 		// does this command match a flyout menu?

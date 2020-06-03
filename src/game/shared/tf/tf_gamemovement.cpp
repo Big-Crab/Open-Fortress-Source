@@ -117,6 +117,7 @@ protected:
 	virtual void CheckWaterJump(void );
 	void		 FullWalkMoveUnderwater();
 	virtual void HandleDuckingSpeedCrop();
+	virtual void AirAccelerate(Vector& wishdir, float wishspeed, float accel, bool q1accel = true);
 
 private:
 
@@ -504,8 +505,11 @@ bool CTFGameMovement::CheckJumpButton()
 
 	// Start jump animation and player sound (specific TF animation and flags).
 	m_pTFPlayer->DoAnimationEvent( PLAYERANIMEVENT_JUMP );
-	player->PlayStepSound( (Vector &)mv->GetAbsOrigin(), player->m_pSurfaceData, 1.0, true );
 	m_pTFPlayer->m_Shared.SetJumping( true );
+
+	if (gpGlobals->curtime >= m_pTFPlayer->m_Shared.m_flStepSoundDelay)
+		player->PlayStepSound((Vector &)mv->GetAbsOrigin(), player->m_pSurfaceData, 1.0, true);
+	m_pTFPlayer->m_Shared.m_flStepSoundDelay = gpGlobals->curtime + 0.25f;
 
 	// Set the player as in the air.
 	SetGroundEntity( NULL );
@@ -618,23 +622,23 @@ bool CTFGameMovement::CheckJumpButton()
 	// Save the output data for the physics system to react to if need be.
 	mv->m_outJumpVel.z += mv->m_vecVelocity[2] - flStartZ;
 	mv->m_outStepHeight += 0.15f;
+
+	if (gpGlobals->curtime >= m_pTFPlayer->m_Shared.m_flJumpSoundDelay)
+	{
 #ifdef GAME_DLL
-	IGameEvent *event = gameeventmanager->CreateEvent( "player_jump" );
-	if ( event )
-	{
-		event->SetInt( "playerid", m_pTFPlayer->entindex() );
-		gameeventmanager->FireEvent( event );
-	}
-#else
-	if( gpGlobals->curtime >= m_pTFPlayer->m_flJumpSoundDelay )
-	{
-		if ( ( of_jumpsound.GetBool() && m_pTFPlayer->GetPlayerClass()->GetClassIndex() > 9 ) || of_jumpsound.GetInt() == 2 )
+		IGameEvent *event = gameeventmanager->CreateEvent( "player_jump" );
+		if ( event )
 		{
-			m_pTFPlayer->EmitSound( m_pTFPlayer->GetPlayerClass()->GetJumpSound() );
+			event->SetInt( "playerid", m_pTFPlayer->entindex() );
+			gameeventmanager->FireEvent( event );
 		}
-		m_pTFPlayer->m_flJumpSoundDelay = gpGlobals->curtime + 0.5f;
-	}
+#else
+		if ((of_jumpsound.GetBool() && m_pTFPlayer->GetPlayerClass()->GetClassIndex() > 9) || of_jumpsound.GetInt() == 2)
+			m_pTFPlayer->EmitSound(m_pTFPlayer->GetPlayerClass()->GetJumpSound());
 #endif
+	}
+	m_pTFPlayer->m_Shared.m_flJumpSoundDelay = gpGlobals->curtime + 0.5f;
+
 	// Flag that we jumped and don't jump again until it is released.
 	mv->m_nOldButtons |= IN_JUMP;
 	return true;
@@ -1106,52 +1110,109 @@ void CTFGameMovement::WalkMove( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CTFGameMovement::AirMove( void )
+
+void CTFGameMovement::AirAccelerate(Vector& wishdir, float wishspeed, float accel, bool q1accel)
 {
-	int			i;
+	float addspeed, currentspeed;
+	float wishspd;
+
+	wishspd = wishspeed;
+
+	if (player->pl.deadflag)
+		return;
+
+	if (player->m_flWaterJumpTime)
+		return;
+
+	// Cap speed, this is the only thing to edit to allow
+	// Q3 style strafejumping, if Q3 movement is on it is ignored
+	if (q1accel)
+	{
+		if (wishspd > GetAirSpeedCap())
+			wishspd = GetAirSpeedCap();
+	}
+
+	// Determine veer amount
+	currentspeed = mv->m_vecVelocity.Dot(wishdir);
+
+	// See how much to add
+	addspeed = wishspd - currentspeed;
+
+	// If not adding any, done.
+	if (addspeed <= 0)
+		return;
+
+	// Determine acceleration speed after acceleration and cap it
+	float accelspeed = min(accel * wishspeed * gpGlobals->frametime * player->m_surfaceFriction, addspeed);
+
+	// Adjust pmove vel.
+	VectorAdd(mv->m_vecVelocity, accelspeed * wishdir, mv->m_vecVelocity);
+	VectorAdd(mv->m_outWishVel, accelspeed * wishdir, mv->m_outWishVel);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFGameMovement::AirMove(void)
+{
+	int			movementmode;
 	Vector		wishvel;
 	float		fmove, smove;
 	Vector		wishdir;
 	float		wishspeed;
-	Vector forward, right, up;
+	Vector		forward, right, up;
 
-	AngleVectors (mv->m_vecViewAngles, &forward, &right, &up);  // Determine movement angles
+	AngleVectors(mv->m_vecViewAngles, &forward, &right, &up);  // Determine movement angles
 
 	// Copy movement amounts
 	fmove = mv->m_flForwardMove;
 	smove = mv->m_flSideMove;
 
 	// Zero out z components of movement vectors
-	forward[2] = 0;
-	right[2]   = 0;
-	VectorNormalize(forward);  // Normalize remainder of vectors
-	VectorNormalize(right);    // 
+	forward[2] = right[2] = wishvel[2] = 0;
 
-	for (i=0 ; i<2 ; i++)       // Determine x and y parts of velocity
-		wishvel[i] = forward[i]*fmove + right[i]*smove;
-	wishvel[2] = 0;             // Zero out z part of velocity
+	//create wishdir vector
+	VectorNormalize(forward);
+	VectorNormalize(right);
 
-	VectorCopy (wishvel, wishdir);   // Determine maginitude of speed of move
+	for (int i = 0; i < 2; i++)       // Determine x and y parts of velocity
+		wishvel[i] = forward[i] * fmove + right[i] * smove;
+
+	VectorCopy(wishvel, wishdir);   // Determine magnitude of speed of move
 	wishspeed = VectorNormalize(wishdir);
 
-	//
 	// clamp to server defined max speed
-	//
-	if ( wishspeed != 0 && (wishspeed > mv->m_flMaxSpeed))
+	if (wishspeed && wishspeed > mv->m_flMaxSpeed)
 	{
-		VectorScale (wishvel, mv->m_flMaxSpeed/wishspeed, wishvel);
+		VectorScale(wishvel, mv->m_flMaxSpeed / wishspeed, wishvel);
 		wishspeed = mv->m_flMaxSpeed;
 	}
 
-	AirAccelerate( wishdir, wishspeed, sv_airaccelerate.GetFloat() );
+	//Accelerate
+	movementmode = of_movementmode.GetInt();	//get the value only once
+
+	if (!movementmode) //default OF
+	{
+		AirAccelerate(wishdir, wishspeed, sv_airaccelerate.GetFloat());
+	}
+	else if (movementmode == 1) //Q3
+	{
+		AirAccelerate(wishdir, wishspeed, of_q3airaccelerate.GetFloat(), false);
+	}
+	else //CPMA
+	{
+		bool CPMA = !fmove && smove;
+		float airaccel = CPMA ? sv_airaccelerate.GetFloat() : of_q3airaccelerate.GetFloat();
+		AirAccelerate(wishdir, wishspeed, airaccel, CPMA);
+	}
 
 	// Add in any base velocity to the current velocity.
-	VectorAdd( mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity );
+	VectorAdd(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
 
 	TryPlayerMove();
 
 	// Now pull the base velocity back out.   Base velocity is set if you are on a moving object, like a conveyor (or maybe another monster?)
-	VectorSubtract( mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity );
+	VectorSubtract(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
 }
 
 float CTFGameMovement::GetAirSpeedCap( void )

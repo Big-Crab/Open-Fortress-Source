@@ -1321,6 +1321,15 @@ void CTFPlayer::Spawn()
 	}
 	
 	UpdateCosmetics();
+
+	//reset medal related values
+	m_bHadPowerup = false;
+	m_iPowerupKills = 0;
+	m_iEXKills = 0;
+	m_fEXTime = 0;
+	m_iSpreeKills = 0;
+	m_iImpressiveCount = 0;
+	m_SuicideEntity = NULL;
 }
 
 void CTFPlayer::UpdateCosmetics()
@@ -2269,6 +2278,13 @@ void CTFPlayer::ManageArsenalWeapons(TFPlayerClassData_t *pData)
 
 	if( kvDesiredWeapons )
 		kvDesiredWeapons->deleteThis();
+
+	// Remove chainsaw charging condition to fix an exploit with changing weapons and resupplying
+	if ( m_Shared.InCond( TF_COND_SHIELD_CHARGE ) )
+	{
+		if ( !Weapon_OwnsThisID( TF_WEAPON_CHAINSAW ) )
+			m_Shared.RemoveCond( TF_COND_SHIELD_CHARGE );
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -4055,7 +4071,7 @@ bool CTFPlayer::CanDisguise( void )
 	}
 
 	// no disguising in infection or DM
-	if ( TFGameRules() && ( TFGameRules()->IsInfGamemode() || ( TFGameRules()->IsDMGamemode() && !TFGameRules()->IsTeamplay() ) ) )
+	if ( TFGameRules() && ( ( TFGameRules()->IsInfGamemode() || TFGameRules()->IsCoopEnabled() ) || ( TFGameRules()->IsDMGamemode() && !TFGameRules()->IsTeamplay() ) ) )
 		return false;
 
 	return true;
@@ -4387,23 +4403,16 @@ int CTFPlayer::TakeHealth( float flHealth, int bitsDamageType )
 	}
 	else
 	{
-		float flHealthToAdd = flHealth;
 		float flMaxHealth = GetPlayerClass()->GetMaxHealth();
 		
 		// don't want to add more than we're allowed to have
-		if ( flHealthToAdd > flMaxHealth - m_iHealth )
-		{
-			flHealthToAdd = flMaxHealth - m_iHealth;
-		}
+		if (flHealth > flMaxHealth - m_iHealth)
+			flHealth = flMaxHealth - m_iHealth;
 
-		if ( flHealthToAdd <= 0 )
-		{
+		if (flHealth <= 0)
 			bResult = false;
-		}
 		else
-		{
-			bResult = BaseClass::TakeHealth( flHealthToAdd, bitsDamageType );
-		}
+			bResult = BaseClass::TakeHealth(flHealth, bitsDamageType);
 	}
 
 	return bResult;
@@ -5169,10 +5178,12 @@ bool CTFPlayer::ShouldCollide( int collisionGroup, int contentsMask ) const
 	if ( ( ( collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT ) && tf_avoidteammates.GetBool() ) ||
 		collisionGroup == TFCOLLISION_GROUP_ROCKETS )
 	{
+		// coop needs to return false
+		if ( TFGameRules() && TFGameRules()->IsCoopEnabled() )
+			return false;
+
 		if (TFGameRules() && TFGameRules()->IsDMGamemode() && !of_allowteams.GetBool() && !TFGameRules()->IsTeamplay())
-		{
 			return BaseClass::ShouldCollide(collisionGroup, contentsMask);
-		}
 		
 		if ( of_teamplay_collision.GetBool() && TFGameRules()->IsTeamplay() )
 			return true;
@@ -5342,16 +5353,22 @@ int CTFPlayer::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 		// HLTV event priority, not transmitted
 		event->SetInt( "priority", 5 );	
 
-		CBasePlayer *pPlayer = ToBasePlayer( pAttacker );
-		event->SetInt( "attacker", pPlayer ? pPlayer->GetUserID() : 0 );
+		CTFPlayer *pPlayer = ToTFPlayer(pAttacker);
 
+		event->SetInt( "attacker", pPlayer ? pPlayer->GetUserID() : 0 );
 		event->SetInt( "victim_index", entindex() );
 		event->SetInt( "attacker_index", pAttacker->entindex() );
+
+		if (pPlayer && pPlayer->m_iImpressiveCount == 2)
+		{
+			event->SetBool("impressive", true);
+			pPlayer->m_iImpressiveCount = 0;
+		}
 
         gameeventmanager->FireEvent( event );
 	}
 	
-	CTFPlayer *pPlayer = ToTFPlayer( pAttacker );
+	/* undone, now executed as part of the medaling system
 	CTFWeaponBase *pActiveWeapon = pPlayer ? pPlayer->GetActiveTFWeapon() : NULL;
 	if ( pActiveWeapon && pPlayer )
 	{
@@ -5373,6 +5390,7 @@ int CTFPlayer::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 			pPlayer->trickshot = 0;
 		}
 	}
+	*/
 	
 	if ( pAttacker != this && pAttacker->IsPlayer() )
 	{
@@ -5504,7 +5522,8 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 		{
 			if ( pTFVictim != pTFAttacker )
 				pTFVictim->GotKilled();
-		
+			
+			/* undone, now it's executed in the new medaling system
 			if ( pTFVictim != pTFAttacker && pTFAttacker->last_kill > ( gpGlobals->curtime - 2.0f ) && TeamplayRoundBasedRules() && TFGameRules() && TFGameRules()->IsDMGamemode() && !TFGameRules()->DontCountKills() )
 			{
 				TeamplayRoundBasedRules()->BroadcastSoundFFA( pTFAttacker->entindex(), "Excellent" ); // 2 kills in 2 seconds
@@ -5512,6 +5531,7 @@ void CTFPlayer::Event_KilledOther( CBaseEntity *pVictim, const CTakeDamageInfo &
 			}
 			else
 				pTFAttacker->last_kill = gpGlobals->curtime;
+			*/
 		}
 		
 		// Custom death handlers
@@ -5638,8 +5658,29 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	if ( info.GetAttacker() && info.GetAttacker()->IsPlayer() )
 	{
 		pPlayerAttacker = ToTFPlayer( info.GetAttacker() );
+
+		//Kamikaze
+		if (pPlayerAttacker == this)
+		{
+			m_SuicideEntity = pInflictor;
+		}
+		else
+		{
+			//Powerup Massacre
+			pPlayerAttacker->m_iPowerupKills = m_Shared.InPowerupCond() ? pPlayerAttacker->m_iPowerupKills + 1 : 0; //count kills while holding powerup
+
+			//Excellent
+			if (pPlayerAttacker->m_iEXKills >= 9) //reset after achieving the highest EX medal
+				pPlayerAttacker->m_iEXKills = 0;
+			pPlayerAttacker->m_iEXKills = gpGlobals->curtime < pPlayerAttacker->m_fEXTime + 3.f ? pPlayerAttacker->m_iEXKills + 1 : 0;	//kills must me done within 3 seconds from one another, otherwise counter resets
+			pPlayerAttacker->m_fEXTime = gpGlobals->curtime;
+
+			//Killing Spree
+			pPlayerAttacker->m_iSpreeKills++;
+		}
 	}
 	
+	/* undone for medals system
 	CTFWeaponBaseMelee *pWeapon = dynamic_cast<CTFWeaponBaseMelee*>(info.GetWeapon());
 
 	if ( pWeapon && TFGameRules() && TFGameRules()->IsDMGamemode() && !TFGameRules()->DontCountKills() )
@@ -5657,7 +5698,8 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 			TeamplayRoundBasedRules()->BroadcastSoundFFA( info.GetAttacker()->entindex(), "Humiliation" ); 
 			TeamplayRoundBasedRules()->BroadcastSoundFFA( entindex(), "Humiliation" ); 			
 		}
-	}	
+	}
+	*/
 	
 	bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED );
 	// we want the ragdoll to burn if the player was burning and was not a pryo (who only burns momentarily)
@@ -5666,6 +5708,8 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	bool bFlagOnGround = ( ( GetFlags() & FL_ONGROUND ) != NULL );
 
 	// Remove all conditions...
+	if (m_Shared.InPowerupCond())
+		m_bHadPowerup = true;
 	m_Shared.RemoveAllCond( NULL );
 
 	// Reset our model if we were disguised

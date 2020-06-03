@@ -2592,7 +2592,6 @@ C_TFPlayer::C_TFPlayer() :
 	m_angTauntEngViewAngles.Init();
 
 	m_flWaterImpactTime = 0.0f;
-	m_flJumpSoundDelay = 0.0f;
 
 	m_flWaterEntryTime = 0;
 	m_nOldWaterLevel = WL_NotInWater;
@@ -4771,6 +4770,9 @@ bool C_TFPlayer::ShouldCollide( int collisionGroup, int contentsMask ) const
 	if ( ( ( collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT ) && tf_avoidteammates.GetBool() ) ||
 		collisionGroup == TFCOLLISION_GROUP_ROCKETS )
 	{	
+		if ( TFGameRules()->IsCoopEnabled() ) 
+			return false;
+
 		switch( GetTeamNumber() )
 		{
 		case TF_TEAM_RED:
@@ -5371,7 +5373,7 @@ void C_TFPlayer::FireGameEvent( IGameEvent *event )
 
 	const char *eventname = event->GetName();
 
-	if ( Q_strcmp( "player_jump", eventname ) == 0 )
+	if ( !Q_strcmp( "player_jump", eventname ))
 	{
 		if( !of_jumpsound.GetBool() )
 			return;
@@ -5379,18 +5381,8 @@ void C_TFPlayer::FireGameEvent( IGameEvent *event )
 		if ( event->GetInt("playerid") != entindex() )
 			return;
 		
-		if( gpGlobals->curtime < m_flJumpSoundDelay )
-			return;
-
-		if( gpGlobals->curtime < m_flJumpSoundDelay )
-			return;
-		
 		if ( GetPlayerClass()->GetClassIndex() > 9 || of_jumpsound.GetInt() == 2 )
-		{
 			EmitSound( GetPlayerClass()->GetJumpSound() );
-		}
-
-		m_flJumpSoundDelay = gpGlobals->curtime + 0.5f;
 	}
 }
 

@@ -5,8 +5,8 @@
 #include "cbase.h"
 #include "triggers.h"
 
-
-class COFDTriggerJump : public CBaseTrigger
+DECLARE_AUTO_LIST(IOFDTriggerJumpAutoList)
+class COFDTriggerJump : public CBaseTrigger, public IOFDTriggerJumpAutoList
 {
 public:
 	DECLARE_CLASS( COFDTriggerJump, CBaseTrigger );

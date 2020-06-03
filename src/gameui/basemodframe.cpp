@@ -483,16 +483,13 @@ void CBaseModFrame::SetHelpText(const char* helpText)
 void CBaseModFrame::OnNavigateTo( const char* panelName )
 {
 	Panel *child;
-	BaseTooltip *tooltip;
 
 	for(int i = 0; i < GetChildCount(); i++)
 	{
 		child = GetChild(i);
-		tooltip = child ? child->GetTooltip() : NULL; //why does it crash GetText if I place it in the following if() condition
 		
 		if (child && (!Q_strcmp(panelName, child->GetName())))
 		{
-			SetHelpText(tooltip ? tooltip->GetText() : "");
 			m_ActiveControl = child;
 			break;
 		}

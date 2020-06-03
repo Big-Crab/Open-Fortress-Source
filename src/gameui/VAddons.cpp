@@ -464,7 +464,7 @@ void Addons::OnCommand(const char *command)
 		GetPrimaryModDirectory( szModPath, MAX_PATH );
 		V_snprintf( szAddOnListPath, sizeof( szAddOnListPath ), "%s%s", szModPath, ADDONLIST_FILENAME );
 		m_pAddonList->SaveToFile( g_pFullFileSystem, szAddOnListPath );
-		engine->ClientCmd( "update_addon_paths; mission_reload" );
+		engine->ClientCmd_Unrestricted( "update_addon_paths; mission_reload" );
 
 		if ( m_pDoNotAskForAssociation )
 		{
