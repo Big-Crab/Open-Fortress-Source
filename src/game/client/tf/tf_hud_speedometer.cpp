@@ -129,9 +129,7 @@ bool bDelta = true;
 bool bVectors = true;
 float flVectorlength = 0.0f;
 float flSpeedometermax = 1000.0f;
-float flMaxairspeed = -1.0f; 
 float flMaxspeed = -1.0f;
-float flAiraccelerate = -1.0f;
 
 int iCentreScreenX = 0;
 int iCentreScreenY = 0;
@@ -149,9 +147,9 @@ extern ConVar of_color_b;
 
 extern CMoveData *g_pMoveData;
 extern IGameMovement *g_pGameMovement;
-extern ConVar mp_maxairspeed;
+extern float mp_flMaxAirSpeed;
 extern ConVar sv_maxspeed;
-extern ConVar sv_airaccelerate;
+extern float sv_flAirAccelerate;
 extern ConVar sv_stopspeed;
 
 // This has to be a non-member/static type of thing otherwise it doesn't work
@@ -174,9 +172,6 @@ void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldVa
 	//flOptimalAngleScreenwidth = hud_speedometer_optimalangle_screenwidth.GetFloat();
 	//bOptimalAngleExponential = hud_speedometer_optimalangle_exponential.GetBool();
 	
-	// Might as well update these too
-	flMaxairspeed = mp_maxairspeed.GetFloat();
-
 	// Attempt to automatically reload the HUD and scheme each time
 	// Ought to add a ConVar to prevent this optionally
 	engine->ExecuteClientCmd("hud_reloadscheme");
@@ -240,9 +235,7 @@ CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElemen
 	// Calls the ApplySchemeSettings
 	//engine->ExecuteClientCmd("hud_reloadscheme");
 
-	flMaxairspeed = mp_maxairspeed.GetFloat();
 	flMaxspeed = sv_maxspeed.GetFloat();
-	flAiraccelerate = sv_airaccelerate.GetFloat();
 
 	UpdateColours();
 
@@ -292,9 +285,7 @@ void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme) {
 
 	BaseClass::ApplySchemeSettings(pScheme);
 
-	flMaxairspeed = mp_maxairspeed.GetFloat();
 	flMaxspeed = sv_maxspeed.GetFloat();
-	flAiraccelerate = sv_maxspeed.GetFloat();
 
 	UpdateColours();
 	UpdateScreenCentre();
@@ -626,12 +617,12 @@ void CHudSpeedometer::QStrafeJumpHelp() {
 
 	// CPM style movement
 	// might need to limit sv_airaccelerate to mp_maxairspeed
-	float maxAccel = sv_airaccelerate.GetFloat() * wishSpeed * gpGlobals->interval_per_tick;
+	float maxAccel = sv_flAirAccelerate * wishSpeed * gpGlobals->interval_per_tick;
 	float maxCurSpeed = wishSpeed - maxAccel;
 
 	// After this clamp, it AirMove calls AirAccelerate(wishDir, wishSpeed, sv_airaccelerate) from the base movement class
 	// So we cap the wishAccel AGAIN, this time to the air max speed (GetAirSpeedCap), but we can simplify that to:
-	maxCurSpeed = clamp(maxCurSpeed, -mp_maxairspeed.GetFloat(), mp_maxairspeed.GetFloat());
+	maxCurSpeed = clamp(maxCurSpeed, -mp_flMaxAirSpeed, mp_flMaxAirSpeed);
 
 	// Now, AirAccelerate would calculate the "veer" amount, which describes how far off from the current velocity the acceleration is.
 	// The more of a veer it is, the influence it has. Same direction = 0 gain, right angles = 1x gain, opposite directions = 2x gain (braking!)
