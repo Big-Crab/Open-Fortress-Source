@@ -32,25 +32,75 @@
 	#include "shareddefs.h"
 #endif
 
-ConVar	tf_maxspeed( "tf_maxspeed", "720", FCVAR_NOTIFY | FCVAR_REPLICATED );
-ConVar	mp_maxairspeed( "mp_maxairspeed", "30", FCVAR_NOTIFY | FCVAR_REPLICATED );
-ConVar	tf_showspeed( "tf_showspeed", "0", FCVAR_REPLICATED  );
-ConVar	tf_avoidteammates( "tf_avoidteammates", "1", FCVAR_REPLICATED | FCVAR_CHEAT  );
-ConVar  tf_solidobjects( "tf_solidobjects", "1", FCVAR_REPLICATED | FCVAR_CHEAT  );
-ConVar	tf_clamp_back_speed( "tf_clamp_back_speed", "0.9", FCVAR_REPLICATED  );
-ConVar  tf_clamp_back_speed_min( "tf_clamp_back_speed_min", "100", FCVAR_REPLICATED  );
-ConVar	of_shield_charge_speed("of_shield_charge_speed", "720", FCVAR_REPLICATED);
+void TFMovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue);
+ConVar 	of_bunnyhop("of_bunnyhop", "-1", FCVAR_NOTIFY | FCVAR_REPLICATED, "Toggle bunnyhoping.\n-1: Mercenary Only\n0: None\n1:All Classes except Zombies\n2:All Classes including Zombies", TFMovementConvarChanged);
+ConVar 	of_crouchjump("of_crouchjump", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Allows enables/disables crouch jumping.", TFMovementConvarChanged);
+ConVar 	of_bunnyhop_max_speed_factor("of_bunnyhop_max_speed_factor", "1.2", FCVAR_NOTIFY | FCVAR_REPLICATED, "Max Speed achievable with bunnyhoping.", TFMovementConvarChanged);
+ConVar 	of_jump_velocity("of_jump_velocity", "268.3281572999747", FCVAR_NOTIFY | FCVAR_REPLICATED, "The velocity applied when a player jumps.", TFMovementConvarChanged);
+ConVar  of_zombie_lunge_speed("of_zombie_lunge_speed", "800", FCVAR_ARCHIVE | FCVAR_NOTIFY, "How much velocity, in units, to apply to a zombie lunge.", TFMovementConvarChanged);
+ConVar  of_ramp_jump("of_ramp_jump", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Enables ramp jump.", TFMovementConvarChanged);
+ConVar  of_ramp_min_speed("of_ramp_min_speed", "50", FCVAR_REPLICATED | FCVAR_NOTIFY, "Minimal speed you need to be for ramp jumps to take effect.", TFMovementConvarChanged);
+ConVar  of_ramp_up_multiplier("of_ramp_up_multiplier", "0.8", FCVAR_REPLICATED | FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar  of_ramp_up_forward_multiplier("of_ramp_up_forward_multiplier", "1.1", FCVAR_REPLICATED | FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar  of_ramp_down_multiplier("of_ramp_down_multiplier", "1", FCVAR_REPLICATED | FCVAR_NOTIFY, "", TFMovementConvarChanged);
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+ConVar	tf_maxspeed("tf_maxspeed", "720", FCVAR_NOTIFY | FCVAR_REPLICATED, "", TFMovementConvarChanged);
+ConVar	mp_maxairspeed("mp_maxairspeed", "30", FCVAR_NOTIFY | FCVAR_REPLICATED, "", TFMovementConvarChanged);
+ConVar	tf_avoidteammates("tf_avoidteammates", "1", FCVAR_REPLICATED | FCVAR_CHEAT, "", TFMovementConvarChanged);
+ConVar  tf_solidobjects("tf_solidobjects", "1", FCVAR_REPLICATED | FCVAR_CHEAT, "", TFMovementConvarChanged);
+ConVar	tf_clamp_back_speed("tf_clamp_back_speed", "0.9", FCVAR_REPLICATED, "", TFMovementConvarChanged);
+ConVar  tf_clamp_back_speed_min("tf_clamp_back_speed_min", "100", FCVAR_REPLICATED, "", TFMovementConvarChanged);
+ConVar	of_shield_charge_speed("of_shield_charge_speed", "720", FCVAR_REPLICATED, "", TFMovementConvarChanged);
 
-ConVar 	of_bunnyhop( "of_bunnyhop", "-1", FCVAR_NOTIFY | FCVAR_REPLICATED , "Toggle bunnyhoping.\n-1: Mercenary Only\n0: None\n1:All Classes except Zombies\n2:All Classes including Zombies" );
-ConVar 	of_crouchjump( "of_crouchjump", "0", FCVAR_NOTIFY | FCVAR_REPLICATED , "Allows enables/disables crouch jumping." );
-ConVar 	of_bunnyhop_max_speed_factor( "of_bunnyhop_max_speed_factor", "1.2", FCVAR_NOTIFY | FCVAR_REPLICATED , "Max Speed achievable with bunnyhoping." );
-ConVar 	of_jump_velocity( "of_jump_velocity", "268.3281572999747", FCVAR_NOTIFY | FCVAR_REPLICATED , "The velocity applied when a player jumps." );
-ConVar  of_zombie_lunge_speed( "of_zombie_lunge_speed", "800", FCVAR_ARCHIVE | FCVAR_NOTIFY, "How much velocity, in units, to apply to a zombie lunge." );
-ConVar  of_ramp_jump( "of_ramp_jump", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Enables ramp jump." );
-ConVar  of_ramp_min_speed("of_ramp_min_speed", "50", FCVAR_REPLICATED | FCVAR_NOTIFY, "Minimal speed you need to be for ramp jumps to take effect." );
-ConVar  of_ramp_up_multiplier("of_ramp_up_multiplier", "0.8", FCVAR_REPLICATED | FCVAR_NOTIFY);
-ConVar  of_ramp_up_forward_multiplier("of_ramp_up_forward_multiplier", "1.1", FCVAR_REPLICATED | FCVAR_NOTIFY);
-ConVar  of_ramp_down_multiplier("of_ramp_down_multiplier", "1", FCVAR_REPLICATED | FCVAR_NOTIFY);
+float tf_flMaxSpeed = tf_maxspeed.GetFloat();
+float mp_flMaxAirSpeed = mp_maxairspeed.GetFloat();
+bool tf_bAvoidTeammates = tf_avoidteammates.GetBool();
+bool tf_bSolidObjects = tf_solidobjects.GetBool();
+float tf_flClampBackSpeed = tf_clamp_back_speed.GetFloat();
+float tf_flClampBackSpeedMin = tf_clamp_back_speed_min.GetFloat();
+float of_flShieldChargeSpeed = of_shield_charge_speed.GetFloat();
+#else
+ConVar	tf_maxspeed("tf_maxspeed", "720", FCVAR_NOTIFY | FCVAR_REPLICATED);
+ConVar	mp_maxairspeed("mp_maxairspeed", "30", FCVAR_NOTIFY | FCVAR_REPLICATED);
+ConVar	tf_avoidteammates("tf_avoidteammates", "1", FCVAR_REPLICATED | FCVAR_CHEAT);
+ConVar  tf_solidobjects("tf_solidobjects", "1", FCVAR_REPLICATED | FCVAR_CHEAT);
+ConVar	tf_clamp_back_speed("tf_clamp_back_speed", "0.9", FCVAR_REPLICATED);
+ConVar  tf_clamp_back_speed_min("tf_clamp_back_speed_min", "100", FCVAR_REPLICATED);
+#endif
+
+int of_iBunnyHop = of_bunnyhop.GetInt();
+bool of_bCrouchJump = of_crouchjump.GetBool();
+float of_flBunnyhopSpeedMax = of_bunnyhop_max_speed_factor.GetFloat();
+float of_flJumpVelocity = of_jump_velocity.GetFloat();
+float of_flZombieLungeSpeed = of_zombie_lunge_speed.GetFloat();
+bool of_bRampJump = of_ramp_jump.GetBool();
+float of_flRampMinSpeed = of_ramp_min_speed.GetFloat();
+float of_flRampUpMultiplier = of_ramp_up_multiplier.GetFloat();
+float of_flRampUpForward = of_ramp_up_forward_multiplier.GetFloat();
+float of_flRampDownMultiplier = of_ramp_down_multiplier.GetFloat();
+void TFMovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	tf_flMaxSpeed = tf_maxspeed.GetFloat();
+	mp_flMaxAirSpeed = mp_maxairspeed.GetFloat();
+	tf_bAvoidTeammates = tf_avoidteammates.GetBool();
+	tf_bSolidObjects = tf_solidobjects.GetBool();
+	tf_flClampBackSpeed = tf_clamp_back_speed.GetFloat();
+	tf_flClampBackSpeedMin = tf_clamp_back_speed_min.GetFloat();
+	of_flShieldChargeSpeed = of_shield_charge_speed.GetFloat();
+#endif
+	of_iBunnyHop = of_bunnyhop.GetInt();
+	of_bCrouchJump = of_crouchjump.GetBool();
+	of_flBunnyhopSpeedMax = of_bunnyhop_max_speed_factor.GetFloat();
+	of_flJumpVelocity = of_jump_velocity.GetFloat();
+	of_flZombieLungeSpeed = of_zombie_lunge_speed.GetFloat();
+	of_bRampJump = of_ramp_jump.GetBool();
+	of_flRampMinSpeed = of_ramp_min_speed.GetFloat();
+	of_flRampUpMultiplier = of_ramp_up_multiplier.GetFloat();
+	of_flRampUpForward = of_ramp_up_forward_multiplier.GetFloat();
+	of_flRampDownMultiplier = of_ramp_down_multiplier.GetFloat();
+}
+
+ConVar	tf_showspeed("tf_showspeed", "0", FCVAR_REPLICATED);
 #if defined (CLIENT_DLL)
 ConVar 	of_jumpsound( "of_jumpsound", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE | FCVAR_USERINFO , "Hough", true, 0, true, 2 );
 #endif
@@ -200,8 +250,8 @@ void CTFGameMovement::PlayerMove()
 //-----------------------------------------------------------------------------
 void CTFGameMovement::ShieldChargeMove( void )
 {
-	mv->m_flForwardMove = of_shield_charge_speed.GetFloat();
-	mv->m_flMaxSpeed = of_shield_charge_speed.GetFloat();
+	mv->m_flForwardMove = of_flShieldChargeSpeed;
+	mv->m_flMaxSpeed = of_flShieldChargeSpeed;
 	mv->m_flSideMove = 0.0f;
 	mv->m_flUpMove = 0.0f;
 	
@@ -390,7 +440,7 @@ ConVar of_bunnyhopfade ("of_bunnyhopfade", "0", FCVAR_NOTIFY | FCVAR_REPLICATED,
 void CTFGameMovement::PreventBunnyJumping()
 {
 	// Speed at which bunny jumping is limited
-	float maxscaledspeed = of_bunnyhop_max_speed_factor.GetFloat() * player->m_flMaxspeed;
+	float maxscaledspeed = of_flBunnyhopSpeedMax * player->m_flMaxspeed;
 	if ( maxscaledspeed <= 0.0f )
 		return;
 
@@ -453,7 +503,7 @@ bool CTFGameMovement::CheckJumpButton()
 	if ( player->GetFlags() & FL_DUCKING )
 	{
 		// Let a scout do it.
-		bool bAllow = ( bCanAirDash && !bOnGround ) || ( of_crouchjump.GetBool() && bOnGround );
+		bool bAllow = (bCanAirDash && !bOnGround) || (of_bCrouchJump && bOnGround);
 		
 		if ( !bAllow )
 			return false;
@@ -461,7 +511,7 @@ bool CTFGameMovement::CheckJumpButton()
 
 	// Cannot jump while in the unduck transition.
 	if (
-		( !of_crouchjump.GetBool()
+		(!of_bCrouchJump
 			&& player->m_Local.m_bDucking
 			&& player->GetFlags() & FL_DUCKING
 		) || player->m_Local.m_flDuckJumpTime > 0.0f
@@ -473,11 +523,11 @@ bool CTFGameMovement::CheckJumpButton()
 	{
 		if ( !bOnGround )
 			return false;
-		if ( of_bunnyhop.GetInt() == 0 )
+		if ( of_iBunnyHop == 0)
 			return false;
-		if ( of_bunnyhop.GetInt() == -1 && m_pTFPlayer->GetPlayerClass()->GetClassIndex() != TF_CLASS_MERCENARY )
+		if ( of_iBunnyHop == -1 && m_pTFPlayer->GetPlayerClass()->GetClassIndex() != TF_CLASS_MERCENARY)
 			return false;
-		if ( m_pTFPlayer->m_Shared.IsZombie() && of_bunnyhop.GetInt() != 2 )
+		if (m_pTFPlayer->m_Shared.IsZombie() && of_iBunnyHop != 2)
 			return false;
 	}
 	// In air, so ignore jumps (unless you are a scout).
@@ -523,9 +573,9 @@ bool CTFGameMovement::CheckJumpButton()
 
 	// fMul = sqrt( 2.0 * gravity * jump_height (21.0units) ) * GroundFactor
 	Assert( sv_gravity.GetFloat() == 800.0f );
-	float flMul = of_jump_velocity.GetFloat() * flGroundFactor;	
+	float flMul = of_flJumpVelocity * flGroundFactor;	
 	
-	if( of_ramp_jump.GetBool() )
+	if (of_bRampJump)
 	{
 		bool bTrimped = false;
 		bool bDownTrimped = false;
@@ -553,16 +603,16 @@ bool CTFGameMovement::CheckJumpButton()
 			float flRampSlideDotProduct = DotProduct(mv->m_vecVelocity, pm.plane.normal);
 
 			// They have to be at least moving a bit
-			if (flHorizontalSpeed > of_ramp_min_speed.GetFloat())
+			if (flHorizontalSpeed > of_flRampMinSpeed)
 			{
 				// Don't do anything for flat ground or downwardly sloping (relative to motion)
 				// Changed to 0.15f to make it a bit less trimpy on only slightly uneven ground
 				//if (flDotProduct < -0.15f || flDotProduct > 0.15f)
 				if (flDotProduct < -0.15f)
 				{
-					float flForwardMul = flMul + ( -flDotProduct * flHorizontalSpeed * of_ramp_up_forward_multiplier.GetFloat() );
+					float flForwardMul = flMul + (-flDotProduct * flHorizontalSpeed * of_flRampUpForward);
 					// This is one way to do it
-					flMul += -flDotProduct * flHorizontalSpeed * of_ramp_up_multiplier.GetFloat(); //0.6f;
+					flMul += -flDotProduct * flHorizontalSpeed * of_flRampUpMultiplier; //0.6f;
 					DevMsg("[S] Trimp %f! Dotproduct:%f. Horizontal speed:%f. Rampslide dot.p.:%f\n", flMul, flDotProduct, flHorizontalSpeed, flRampSlideDotProduct);
 
 					bTrimped = true;
@@ -590,7 +640,7 @@ bool CTFGameMovement::CheckJumpButton()
 
 					bDownTrimped = true;
 
-					flMul *= (1.0f / of_ramp_down_multiplier.GetFloat());
+					flMul *= (1.0f / of_flRampDownMultiplier);
 				}
 			}
 		}
@@ -692,7 +742,7 @@ bool CTFGameMovement::CheckLunge()
 	Vector vecTarget = trace.endpos;
 	Vector vecDir = vecTarget - player->GetAbsOrigin();
 	VectorNormalize( vecDir );
-	float flSpeed = of_zombie_lunge_speed.GetFloat();
+	float flSpeed = of_flZombieLungeSpeed;
 	vecDir *= flSpeed;
 
 	Vector vecTmpStart = mv->m_vecVelocity;
@@ -1005,7 +1055,12 @@ void CTFGameMovement::WalkMove( void )
 
 	// Now reduce their backwards speed to some percent of max, if they are travelling backwards
 	// unless they are under some minimum, to not penalize deployed snipers or heavies
-	if ( tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength( mv->m_vecVelocity ) > tf_clamp_back_speed_min.GetFloat() )
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	if (tf_flClampBackSpeed < 1.0 && VectorLength(mv->m_vecVelocity) > tf_flClampBackSpeedMin)
+#else
+	if (tf_clamp_back_speed.GetFloat() < 1.0 && VectorLength(mv->m_vecVelocity) > tf_clamp_back_speed_min.GetFloat())
+#endif
+	
 	{
 		float flDot = DotProduct( vecForward, mv->m_vecVelocity );
 
@@ -1017,7 +1072,12 @@ void CTFGameMovement::WalkMove( void )
 
 			// clamp the back move vector if it is faster than max
 			float flBackSpeed = VectorLength( vecBackMove );
-			float flMaxBackSpeed = ( mv->m_flMaxSpeed * tf_clamp_back_speed.GetFloat() );
+
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+			float flMaxBackSpeed = (mv->m_flMaxSpeed * tf_flClampBackSpeed);
+#else
+			float flMaxBackSpeed = (mv->m_flMaxSpeed * tf_clamp_back_speed.GetFloat());
+#endif
 
 			if ( flBackSpeed > flMaxBackSpeed )
 			{
@@ -1189,20 +1249,20 @@ void CTFGameMovement::AirMove(void)
 	}
 
 	//Accelerate
-	movementmode = of_movementmode.GetInt();	//get the value only once
+	movementmode = of_iMovementMode;	//get the value only once
 
 	if (!movementmode) //default OF
 	{
-		AirAccelerate(wishdir, wishspeed, sv_airaccelerate.GetFloat());
+		AirAccelerate(wishdir, wishspeed, sv_flAirAccelerate);
 	}
 	else if (movementmode == 1) //Q3
 	{
-		AirAccelerate(wishdir, wishspeed, of_q3airaccelerate.GetFloat(), false);
+		AirAccelerate(wishdir, wishspeed, of_flQ3AirAccelerate, false);
 	}
 	else //CPMA
 	{
 		bool CPMA = !fmove && smove;
-		float airaccel = CPMA ? sv_airaccelerate.GetFloat() : of_q3airaccelerate.GetFloat();
+		float airaccel = CPMA ? sv_flAirAccelerate : of_flQ3AirAccelerate;
 		AirAccelerate(wishdir, wishspeed, airaccel, CPMA);
 	}
 
@@ -1215,13 +1275,21 @@ void CTFGameMovement::AirMove(void)
 	VectorSubtract(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
 }
 
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
 float CTFGameMovement::GetAirSpeedCap( void )
 {
-	if (m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) && mp_maxairspeed.GetFloat() < of_shield_charge_speed.GetFloat())
+	if (m_pTFPlayer->m_Shared.InCond( TF_COND_SHIELD_CHARGE ) && mp_flMaxAirSpeed < of_flShieldChargeSpeed)
+		return of_flShieldChargeSpeed;
+	return mp_flMaxAirSpeed;
+}
+#else
+float CTFGameMovement::GetAirSpeedCap(void)
+{
+	if (m_pTFPlayer->m_Shared.InCond(TF_COND_SHIELD_CHARGE) && mp_maxairspeed.GetFloat() < of_shield_charge_speed.GetFloat())
 		return of_shield_charge_speed.GetFloat();
 	return mp_maxairspeed.GetFloat();
 }
-
+#endif
 extern void TracePlayerBBoxForGround( const Vector& start, const Vector& end, const Vector& minsSrc,
 							  const Vector& maxsSrc, IHandleEntity *player, unsigned int fMask,
 							  int collisionGroup, trace_t& pm );
@@ -1267,9 +1335,13 @@ bool CTraceFilterObject::ShouldHitEntity( IHandleEntity *pHandleEntity, int cont
 
 CBaseHandle CTFGameMovement::TestPlayerPosition( const Vector& pos, int collisionGroup, trace_t& pm )
 {
-	if( tf_solidobjects.GetBool() == false )
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	if(!tf_bSolidObjects)
 		return BaseClass::TestPlayerPosition( pos, collisionGroup, pm );
-
+#else
+	if (tf_solidobjects.GetBool() == false)
+		return BaseClass::TestPlayerPosition(pos, collisionGroup, pm);
+#endif
 	Ray_t ray;
 	ray.Init( pos, pos, GetPlayerMins(), GetPlayerMaxs() );
 	

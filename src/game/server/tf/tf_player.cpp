@@ -105,6 +105,10 @@ extern ConVar	of_headshots;
 
 extern ConVar	of_disable_drop_weapons;
 
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+extern bool tf_bAvoidTeammates;
+#endif
+
 EHANDLE g_pLastSpawnPoints[TF_TEAM_COUNT];
 
 ConVar tf_playerstatetransitions	( "tf_playerstatetransitions", "-2", FCVAR_CHEAT, "tf_playerstatetransitions <ent index or -1 for all>. Show player state transitions." );
@@ -5175,8 +5179,14 @@ void CTFPlayer::DismemberRandomLimbs( void )
 //-----------------------------------------------------------------------------
 bool CTFPlayer::ShouldCollide( int collisionGroup, int contentsMask ) const
 {
-	if ( ( ( collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT ) && tf_avoidteammates.GetBool() ) ||
+
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	if (((collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT) && tf_bAvoidTeammates) ||
 		collisionGroup == TFCOLLISION_GROUP_ROCKETS )
+#else
+	if (((collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT) && tf_avoidteammates.GetBool()) ||
+		collisionGroup == TFCOLLISION_GROUP_ROCKETS)
+#endif
 	{
 		// coop needs to return false
 		if ( TFGameRules() && TFGameRules()->IsCoopEnabled() )

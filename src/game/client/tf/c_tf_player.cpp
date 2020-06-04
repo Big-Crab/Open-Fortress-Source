@@ -131,6 +131,10 @@ extern ConVar of_jumpsound;
 extern const char *g_aLoadoutConvarNames[];
 extern const char *g_aArsenalConvarNames[];
 
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+extern bool tf_bAvoidTeammates;
+#endif
+
 void RefreshDesiredCosmetics( int iClass )
 {
 	if( GetLoadout() )
@@ -3897,10 +3901,15 @@ extern ConVar cl_sidespeed;
 
 void C_TFPlayer::AvoidPlayers( CUserCmd *pCmd )
 {
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
 	// Turn off the avoid player code.
-	if ( !tf_avoidteammates.GetBool() )
+	if (!tf_bAvoidTeammates)
 		return;
-
+#else
+	// Turn off the avoid player code.
+	if (!tf_avoidteammates.GetBool())
+		return;
+#endif
 	// Don't test if the player doesn't exist or is dead.
 	if ( IsAlive() == false )
 		return;
@@ -4767,8 +4776,13 @@ C_BaseObject *C_TFPlayer::GetObjectOfType( int iObjectType, int iAltMode )
 //-----------------------------------------------------------------------------
 bool C_TFPlayer::ShouldCollide( int collisionGroup, int contentsMask ) const
 {
-	if ( ( ( collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT ) && tf_avoidteammates.GetBool() ) ||
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	if (((collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT) && tf_bAvoidTeammates) ||
 		collisionGroup == TFCOLLISION_GROUP_ROCKETS )
+#else
+	if (((collisionGroup == COLLISION_GROUP_PLAYER_MOVEMENT) && tf_avoidteammates.GetBool()) ||
+		collisionGroup == TFCOLLISION_GROUP_ROCKETS)
+#endif
 	{	
 		if ( TFGameRules()->IsCoopEnabled() ) 
 			return false;

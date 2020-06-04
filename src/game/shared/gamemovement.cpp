@@ -1061,7 +1061,11 @@ void CGameMovement::CheckParameters( void )
 		if ( player->GetMoveType() != MOVETYPE_ISOMETRIC  &&
 			 player->GetMoveType() != MOVETYPE_NOCLIP )
 		{
-			mv->m_vecAngles[ROLL]  = CalcRoll( v_angle, mv->m_vecVelocity, sv_rollangle.GetFloat(), sv_rollspeed.GetFloat() );
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+			mv->m_vecAngles[ROLL]  = CalcRoll( v_angle, mv->m_vecVelocity, sv_flRollAngle, sv_flRollSpeed );
+#else
+			mv->m_vecAngles[ROLL] = CalcRoll(v_angle, mv->m_vecVelocity, sv_rollangle.GetFloat(), sv_rollspeed.GetFloat());
+#endif
 		}
 		else
 		{
@@ -1793,7 +1797,11 @@ void CGameMovement::AirMove( void )
 		wishspeed = mv->m_flMaxSpeed;
 	}
 	
-	AirAccelerate( wishdir, wishspeed, sv_airaccelerate.GetFloat() );
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	AirAccelerate( wishdir, wishspeed, sv_flAirAccelerate );
+#else
+	AirAccelerate(wishdir, wishspeed, sv_airaccelerate.GetFloat());
+#endif
 
 	// Add in any base velocity to the current velocity.
 	VectorAdd(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity );

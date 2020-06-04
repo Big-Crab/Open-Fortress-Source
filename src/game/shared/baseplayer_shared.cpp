@@ -543,9 +543,13 @@ void CBasePlayer::UpdateStepSound( surfacedata_t *psurface, const Vector &vecOri
 	if ( GetMoveType() == MOVETYPE_NOCLIP || GetMoveType() == MOVETYPE_OBSERVER )
 		return;
 
-	if ( !sv_footsteps.GetFloat() )
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	if ( !sv_bFootsteps )
 		return;
-
+#else
+	if (!sv_footsteps.GetFloat())
+		return;
+#endif
 	speed = VectorLength( vecVelocity );
 	float groundspeed = Vector2DLength( vecVelocity.AsVector2D() );
 
@@ -677,9 +681,13 @@ void CBasePlayer::UpdateStepSound( surfacedata_t *psurface, const Vector &vecOri
 //-----------------------------------------------------------------------------
 void CBasePlayer::PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force )
 {
-	if ( gpGlobals->maxClients > 1 && !sv_footsteps.GetFloat() )
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	if ( gpGlobals->maxClients > 1 && !sv_bFootsteps )
 		return;
-
+#else
+	if (gpGlobals->maxClients > 1 && !sv_footsteps.GetFloat())
+		return;
+#endif
 #if defined( CLIENT_DLL )
 	// during prediction play footstep sounds only once
 	if ( prediction->InPrediction() && !prediction->IsFirstTimePredicted() )
@@ -1999,7 +2007,11 @@ void CBasePlayer::CalcViewRoll( QAngle& eyeAngles )
 	if ( GetMoveType() == MOVETYPE_NOCLIP )
 		return;
 
-	float side = CalcRoll( GetAbsAngles(), GetAbsVelocity(), sv_rollangle.GetFloat(), sv_rollspeed.GetFloat() );
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	float side = CalcRoll(GetAbsAngles(), GetAbsVelocity(), sv_flRollAngle, sv_flRollSpeed);
+#else
+	float side = CalcRoll(GetAbsAngles(), GetAbsVelocity(), sv_rollangle.GetFloat(), sv_rollspeed.GetFloat());
+#endif
 	eyeAngles[ROLL] += side;
 }
 

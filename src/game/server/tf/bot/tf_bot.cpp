@@ -47,6 +47,9 @@ ConVar tf_bot_suspect_spy_touch_interval( "tf_bot_suspect_spy_touch_interval", "
 ConVar tf_bot_suspect_spy_forget_cooldown( "tf_bot_suspect_spy_forced_cooldown", "5", FCVAR_CHEAT, "How long to consider a suspicious spy as suspicious", true, 0.0f, false, 0.0f );
 
 extern ConVar of_mutator;
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+extern bool tf_bAvoidTeammates;
+#endif
 
 LINK_ENTITY_TO_CLASS( tf_bot, CTFBot )
 
@@ -2280,9 +2283,13 @@ void CTFBot::ClearSniperSpots( void )
 //-----------------------------------------------------------------------------
 void CTFBot::AvoidPlayers( CUserCmd *pCmd )
 {
-	if ( !tf_avoidteammates.GetBool() /*|| !tf_avoidteammates_pushaway.GetBool()*/ )
+#if defined( OF_CLIENT_DLL ) || defined( OF_DLL )
+	if (!tf_bAvoidTeammates /*|| !tf_avoidteammates_pushaway.GetBool()*/)
 		return;
-
+#else
+	if (!tf_avoidteammates.GetBool() /*|| !tf_avoidteammates_pushaway.GetBool()*/)
+		return;
+#endif
 	Vector vecFwd, vecRight;
 	this->EyeVectors( &vecFwd, &vecRight );
 
