@@ -26,11 +26,6 @@
 #include <string>
 #include <cstring>
 
-
-// neither should be needed for friending the class
-//#include "../c_baseplayer.h"
-//#include <../shared/tf/tf_gamemovement.cpp>
-
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -113,16 +108,16 @@ ConVar hud_speedometer_useplayercolour("hud_speedometer_useplayercolour", "0", F
 //ConVar hud_speedometer_normaliseplayercolour("hud_speedometer_normaliseplayercolour", "0", FCVAR_ARCHIVE, "0: If using player colour, use the raw colour. 1: Use the normalised colour (Forces a level of saturation and brightness), allowing dark user colours over the dropshadow to be visible.");
 
 
-ConVar hud_speedometer_vectors("hud_speedometer_vectors", "1", FCVAR_ARCHIVE, "Sets the length of the velocity and input lines.", SpeedometerConvarChanged);
+ConVar hud_speedometer_vectors("hud_speedometer_vectors", "1", FCVAR_ARCHIVE, "Enables velocity and input vectors on the speedometer UI.", SpeedometerConvarChanged);
 ConVar hud_speedometer_vectors_length("hud_speedometer_vectors_length", "0.2f", FCVAR_ARCHIVE, "Sets the length of the velocity and input lines.", true, 0.01f, true, 1.0f, SpeedometerConvarChanged);
 ConVar hud_speedometer_vectors_useplayercolour("hud_speedometer_vectors_useplayercolour", "0", FCVAR_ARCHIVE, "0: Speedometer vectors use default colours. 1: Speedometer vectors use the player's colour and complimentary colour.", SpeedometerConvarChanged);
 
 ConVar hud_speedometer_keeplevel("hud_speedometer_keeplevel", "1", FCVAR_ARCHIVE, "0: Speedometer is centred on screen. 1: Speedometer shifts up and down to keep level with the horizon.", SpeedometerConvarChanged);
-ConVar hud_speedometer_optimalangle("hud_speedometer_optimalangle", "1", FCVAR_ARCHIVE, "Enables the optimal angle indicator for airstrafing.", SpeedometerConvarChanged);
-ConVar hud_speedometer_optimalangle_max("hud_speedometer_optimalangle_max", "10", FCVAR_ARCHIVE, "The maximum range of the optimal angle indicator. The smaller, the easier it is to see the final few degrees as you get closer to perfection.", true, 5.0f, true, 90.0f, SpeedometerConvarChanged);
+ConVar hud_speedometer_optimalangle("hud_speedometer_optimalangle", "0", FCVAR_ARCHIVE, "Enables the optimal angle indicator for airstrafing.", SpeedometerConvarChanged);
+//ConVar hud_speedometer_optimalangle_max("hud_speedometer_optimalangle_max", "10", FCVAR_ARCHIVE, "The maximum range of the optimal angle indicator. The smaller, the easier it is to see the final few degrees as you get closer to perfection.", true, 5.0f, true, 90.0f, SpeedometerConvarChanged);
 // This effectively gets halved (0.4 -> 0.2 or 20% of either side of centre)
-ConVar hud_speedometer_optimalangle_screenwidth("hud_speedometer_optimalangle_screenwidth", "0.4", FCVAR_ARCHIVE, "The proportion of the screen the optimal angle indicator that will fill, at most.", true, 0.01f, true, 1.0f, SpeedometerConvarChanged);
-ConVar hud_speedometer_optimalangle_exponential("hud_speedometer_optimalangle_exponential", "0", FCVAR_ARCHIVE, "Enables exponential scaling on the optimal angle indicator.", SpeedometerConvarChanged);
+//ConVar hud_speedometer_optimalangle_screenwidth("hud_speedometer_optimalangle_screenwidth", "0.4", FCVAR_ARCHIVE, "The proportion of the screen the optimal angle indicator that will fill, at most.", true, 0.01f, true, 1.0f, SpeedometerConvarChanged);
+//ConVar hud_speedometer_optimalangle_exponential("hud_speedometer_optimalangle_exponential", "0", FCVAR_ARCHIVE, "Enables exponential scaling on the optimal angle indicator.", SpeedometerConvarChanged);
 
 
 // Cached versions of the ConVars that get used every frame/draw update (More efficient).
@@ -139,9 +134,9 @@ int iCentreScreenY = 0;
 
 bool bKeepLevel = hud_speedometer_keeplevel.GetBool();
 bool bOptimalAngle = hud_speedometer_optimalangle.GetBool();
-float flOptimalAngleMax = hud_speedometer_optimalangle_max.GetFloat();
-float flOptimalAngleScreenwidth = hud_speedometer_optimalangle_screenwidth.GetFloat();
-bool bOptimalAngleExponential = hud_speedometer_optimalangle_exponential.GetBool();
+//float flOptimalAngleMax = hud_speedometer_optimalangle_max.GetFloat();
+//float flOptimalAngleScreenwidth = hud_speedometer_optimalangle_screenwidth.GetFloat();
+//bool bOptimalAngleExponential = hud_speedometer_optimalangle_exponential.GetBool();
 
 // Used to colour certain parts of the UI in code, while still giving users control over it (Not ideal, ought to be in .res)
 extern ConVar of_color_r;
@@ -171,9 +166,9 @@ void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldVa
 	
 	bKeepLevel = hud_speedometer_keeplevel.GetBool();
 	bOptimalAngle = hud_speedometer_optimalangle.GetBool();
-	flOptimalAngleMax = hud_speedometer_optimalangle_max.GetFloat();
-	flOptimalAngleScreenwidth = hud_speedometer_optimalangle_screenwidth.GetFloat();
-	bOptimalAngleExponential = hud_speedometer_optimalangle_exponential.GetBool();
+	//flOptimalAngleMax = hud_speedometer_optimalangle_max.GetFloat();
+	//flOptimalAngleScreenwidth = hud_speedometer_optimalangle_screenwidth.GetFloat();
+	//bOptimalAngleExponential = hud_speedometer_optimalangle_exponential.GetBool();
 	
 	// Attempt to automatically reload the HUD and scheme each time
 	// Ought to add a ConVar to prevent this optionally
@@ -187,12 +182,6 @@ CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElemen
 	Panel *pParent = g_pClientMode->GetViewport();
 	SetParent(pParent);
 
-	// This sets up the callbacks for updating some of the ConVars, as it is poor performance practice to access their values through the convar each update.
-	/*hud_speedometer.InstallChangeCallback(SpeedometerConvarChanged);
-	hud_speedometer_delta.InstallChangeCallback(SpeedometerConvarChanged);
-	hud_speedometer_vectors.InstallChangeCallback(SpeedometerConvarChanged);
-	hud_speedometer_vectors_length.InstallChangeCallback(SpeedometerConvarChanged);*/
-
 	m_pSpeedPercentageMeter = new ContinuousProgressBar(this, "HudSpeedometerBar");
 
 	// text with change in speed on it is HudSpeedometerDelta - Text gets overwritten. You'll know if it fails lol.
@@ -203,40 +192,7 @@ CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElemen
 	m_pSpeedTextLabel = new Label(this, "HudSpeedometerText", "CYMRUAMBYTH");
 	m_pSpeedTextLabelDropshadow = new Label(this, "HudSpeedometerTextDropshadow", "CYMRUAMBYTH");	
 
-	//playerColourBase = Color(of_color_r.GetFloat(), of_color_g.GetFloat(), of_color_b.GetFloat(), hud_speedometer_opacity.GetFloat());
-	//playerColourNormalised = NormaliseColour(playerColourBase);
-
-	/*if (hud_speedometer_normaliseplayercolour.GetInt() > 0) {
-		// Colour to use is now Normlised Colour
-		playerColour = &playerColourNormalised;
-	}*/
-	/*
-	if (hud_speedometer_vectors_useplayercolour.GetInt() > 0) {
-		playerColourComplementary = GetComplimentaryColour(playerColourBase);
-
-		vectorColor_input = &playerColourBase;
-		vectorColor_vel = &playerColourComplementary;
-	}
-
-	if (hud_speedometer_useplayercolour.GetInt() > 0) {
-
-		// If 2, use the complimentary!
-		if (hud_speedometer_useplayercolour.GetInt() > 1) {
-			playerColour = &playerColourComplementary;
-		}
-
-		m_pSpeedTextLabel->SetFgColor(*playerColour);
-		m_pDeltaTextLabel->SetFgColor(*playerColour);
-		m_pDeltaTextLabelDropshadow->SetFgColor();
-
-		// Cannot be set in .res? Need to do it here :( sorry HUD Modders
-		// If anyone knows how to have this in the .res file instead, that'd be ideal.
-		m_pSpeedPercentageMeter->SetFgColor(*playerColour);
-	}*/
 	SetDialogVariable("speeddelta", "~0");
-
-	// Calls the ApplySchemeSettings
-	//engine->ExecuteClientCmd("hud_reloadscheme");
 
 	flMaxspeed = sv_maxspeed.GetFloat();
 
@@ -246,12 +202,11 @@ CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElemen
 
 	SetHiddenBits(HIDEHUD_MISCSTATUS);
 
-	vgui::ivgui()->AddTickSignal(GetVPanel());
+	ivgui()->AddTickSignal(GetVPanel());
 }
 
 void CHudSpeedometer::UpdateScreenCentre(void){
 	int width, height;
-	//surface()->GetScreenSize(width, tall);
 	GetSize(width, height);
 	iCentreScreenX = width / 2;
 	iCentreScreenY = height / 2;
@@ -260,9 +215,6 @@ void CHudSpeedometer::UpdateScreenCentre(void){
 	if (!pPlayerBase)
 		return;
 	FOVScale = iCentreScreenX / pPlayerBase->GetFOV();
-
-	//std::string str = "CENTER SCREEN: X:" + std::to_string(iCentreScreenX) + ", Y:" + std::to_string(iCentreScreenY);
-	//Msg(str.c_str());
 }
 
 Color CHudSpeedometer::GetComplimentaryColour(Color colorIn) {
@@ -325,11 +277,6 @@ void CHudSpeedometer::UpdateColours() {
 			playerColour = &playerColourComplementary;
 			playerColourShadow = &playerColourBase;
 		}
-
-		/*Log("Color of Vector Input is %s", *vectorColor_input);
-		Log("Color of Vector Velocity is %s", *vectorColor_vel);
-		Log("Color of Vector Input is %s", *vectorColor_input);
-		Log("Color of Vector Velocity is %s", *vectorColor_vel);*/
 	}
 
 	// If we're colouring the on-screen vectors according to the player, recalculate the complimentary colour
@@ -397,7 +344,6 @@ bool CHudSpeedometer::ShouldDraw(void)
 *
 *    acos(x) = 2.0 * asin(sqrt((1 - x) / 2)).
 */
-// Might fix the stock maths library acos issue
 float acos_zdoom(float x) {
 	if (x < -0.5f) {
 		return M_PI - 2.0f * asin(sqrt((1 + x) / 2));
@@ -410,18 +356,12 @@ float acos_zdoom(float x) {
 	}
 }
 
-// Gives the SIGNED radian difference between Start and Target
-/*float DeltaAngle(float startAngle, float targetAngle) {
-float a = targetAngle - startAngle;
-return mod((a + M_PI), (M_PI * 2)) - M_PI;
-//return atan2(sin(targetAngle - startAngle), cos(targetAngle - startAngle));
-}*/
-
 // Needed over the default % operator
 float mod(float a, float n) {
 	return a - floor(a / n) * n;
 }
 
+// Wraps to -PI to +PI range for a given angle
 float NormalizedPI(float angle) {
 	while (angle > M_PI) {
 		angle -= (M_PI * 2);
@@ -432,9 +372,7 @@ float NormalizedPI(float angle) {
 	return angle;
 }
 
-// Taken from ZDoom's source code @ https://github.com/rheit/zdoom
-// Modified
-// might need to % 360 the return value?
+// Signed difference between two angles in Radians
 float DeltaAngleRad(float a1, float a2) {
 	/*a1 = (int) RAD2DEG(a1) % 360;
 	a2 = (int) RAD2DEG(a2) % 360;
@@ -595,17 +533,17 @@ void CHudSpeedometer::QStrafeJumpHelp() {
 	float forwardMove = g_pMoveData->m_flForwardMove;
 	float sideMove = g_pMoveData->m_flSideMove;
 
+	// Don't try if the player is holding W.
+	/*if (forwardMove) {
+		return;
+	}*/
+
 	Vector wishDir = Vector(forwardMove, -sideMove, 0);
 	float wishSpeed = VectorNormalize(wishDir);
 	float PAngle = DEG2RAD(g_pMoveData->m_vecViewAngles.y) + atan2(wishDir.y, wishDir.x);
 	float velAngle = atan2(vel.y, vel.x);
 
 	if (!g_pMoveData->m_flForwardMove && !g_pMoveData->m_flSideMove) { return; }
-		
-	// Don't try if the player is holding W.
-	if (forwardMove) {
-		return;
-	}
 
 	// CTFGameMovement::AirMove does this clamp so we do it too (But without the pointless "wishvel" line)
 	if (wishSpeed != 0 && (wishSpeed > g_pMoveData->m_flMaxSpeed)) {
@@ -619,13 +557,6 @@ void CHudSpeedometer::QStrafeJumpHelp() {
 	float maxAccel = min(sv_airaccelerate.GetFloat() * wishSpeed * gpGlobals->interval_per_tick, wishSpeed); //often 30
 	float maxCurSpeed = wishSpeed - maxAccel; // often 0
 
-
-	// Now, AirAccelerate would calculate the "veer" amount, which describes how far off from the current velocity the acceleration is.
-	// The more of a veer it is, the influence it has. Same direction = 0 gain, right angles = 1x gain, opposite directions = 2x gain (braking!)
-	// Instead of doing that, and then calculating the angular difference between v and v', we will use atan(a / horizontalSpeed)
-	// (In radians per second, as velocity is in units per second)
-	// atan(30/320) = 0.09348rad = 5.36 degrees
-	//float optimalDeltaAnglePerSecond = atan(wishAccel / speed);
 	float minAngle = acosf(wishSpeed / speed);
 	float optimalAngle = acosf(maxCurSpeed / speed);
 
@@ -635,7 +566,6 @@ void CHudSpeedometer::QStrafeJumpHelp() {
 	}
 
 	minAngle = RAD2DEG(DeltaAngleRad(PAngle, minAngle + velAngle)) * FOVScale;
-
 
 	optimalAngle = RAD2DEG(DeltaAngleRad(PAngle, optimalAngle + velAngle))  * FOVScale;
 
@@ -683,6 +613,6 @@ void CHudSpeedometer::QStrafeJumpHelp() {
 		surface()->DrawFilledRect(xMin, yTop, xOpt, yBottom);
 	}
 
-	DrawTextFromNumber("MIN: ", minAngle / FOVScale, Color(200, 255, 200, 25), 150, -20);
-	DrawTextFromNumber("OPTIMAL: ", optimalAngle / FOVScale, Color(255, 200, 200, 25), 150, -10);
+	//DrawTextFromNumber("MIN: ", minAngle / FOVScale, Color(200, 255, 200, 25), 150, -20);
+	//DrawTextFromNumber("OPTIMAL: ", optimalAngle / FOVScale, Color(255, 200, 200, 25), 150, -10);
 }
