@@ -284,6 +284,21 @@ void CTFPlayerShared::Init( CTFPlayer *pPlayer )
 	m_flNextBurningSound = 0;
 
 	SetJumping( false );
+
+
+	
+	//engine->GetMaxClients
+	player_info_t playerInfo;
+	engine->GetPlayerInfo(1, &playerInfo);
+	//GetEnt
+	//playerInfo.
+	int nMaxClients = engine->GetMaxClients();
+	for (int playerIndex = 1; playerIndex <= nMaxClients; playerIndex++) {
+		C_TFPlayer *pPlayerTF = ToTFPlayer(UTIL_PlayerByIndex(playerIndex));
+		if (!pPlayerTF)
+			return;
+		//pPlayerTF->m_Shared.
+	}
 }
 
 //-----------------------------------------------------------------------------

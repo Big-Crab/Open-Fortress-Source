@@ -63,6 +63,9 @@ class CTFPlayerShared
 {
 public:
 
+	// New! Better ConVars branch
+	float sv_flAirAccelerate; // sv_airaccelerate
+
 // Client specific.
 #ifdef CLIENT_DLL
 
