@@ -136,6 +136,24 @@ public:
 	void SetSpawnEffect( int iEffect ){ m_iRespawnEffect = iEffect; }
 	int GetSpawnEffects( void ){ return m_iRespawnEffect; };
 
+	float tf_flMaxSpeed;
+	float mp_flMaxAirSpeed;
+	bool tf_bAvoidTeammates;
+	bool tf_bSolidObjects;
+	float tf_flClampBackSpeed;
+	float tf_flClampBackSpeedMin;
+	float of_flShieldChargeSpeed;
+	int of_iBunnyHop;
+	bool of_bCrouchJump;
+	float of_flBunnyhopSpeedMax;
+	float of_flJumpVelocity;
+	float of_flZombieLungeSpeed;
+	bool of_bRampJump;
+	float of_flRampMinSpeed;
+	float of_flRampUpMultiplier;
+	float of_flRampUpForward;
+	float of_flRampDownMultiplier;
+
 #ifdef CLIENT_DLL
 	// This class only receives calls for these from C_TFPlayer, not
 	// natively from the networking system
