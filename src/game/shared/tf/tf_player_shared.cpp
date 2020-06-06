@@ -86,6 +86,25 @@ ConVar of_infection_allow_teleporter ( "of_infection_allow_teleporter", "1", FCV
 
 ConVar of_haste_movespeed_multplier("of_haste_movespeed_multplier", "1.5",FCVAR_REPLICATED | FCVAR_NOTIFY, "By how much move speed should be multiplied when in Haste.");
 
+// Only for initial caching!
+extern ConVar 	of_bunnyhop;
+extern ConVar 	of_crouchjump;
+extern ConVar 	of_bunnyhop_max_speed_factor;
+extern ConVar 	of_jump_velocity;
+extern ConVar  of_zombie_lunge_speed;
+extern ConVar  of_ramp_jump;
+extern ConVar  of_ramp_min_speed;
+extern ConVar  of_ramp_up_multiplier;
+extern ConVar  of_ramp_up_forward_multiplier;
+extern ConVar  of_ramp_down_multiplier;
+extern ConVar	tf_maxspeed;
+extern ConVar	mp_maxairspeed;
+extern ConVar	tf_avoidteammates;
+extern ConVar  tf_solidobjects;
+extern ConVar	tf_clamp_back_speed;
+extern ConVar  tf_clamp_back_speed_min;
+extern ConVar	of_shield_charge_speed;
+
 #define TF_SPY_STEALTH_BLINKTIME   0.3f
 #define TF_SPY_STEALTH_BLINKSCALE  0.85f
 
@@ -268,6 +287,25 @@ CTFPlayerShared::CTFPlayerShared()
 	m_flStepSoundDelay = 0.f;
 	
 	m_iDesiredPlayerClass = 0;
+
+	// New! Moved cached convars here.
+	tf_flMaxSpeed = tf_maxspeed.GetFloat();
+	mp_flMaxAirSpeed = mp_maxairspeed.GetFloat();
+	tf_bAvoidTeammates = tf_avoidteammates.GetBool();
+	tf_bSolidObjects = tf_solidobjects.GetBool();
+	tf_flClampBackSpeed = tf_clamp_back_speed.GetFloat();
+	tf_flClampBackSpeedMin = tf_clamp_back_speed_min.GetFloat();
+	of_flShieldChargeSpeed = of_shield_charge_speed.GetFloat();
+	of_iBunnyHop = of_bunnyhop.GetInt();
+	of_bCrouchJump = of_crouchjump.GetBool();
+	of_flBunnyhopSpeedMax = of_bunnyhop_max_speed_factor.GetFloat();
+	of_flJumpVelocity = of_jump_velocity.GetFloat();
+	of_flZombieLungeSpeed = of_zombie_lunge_speed.GetFloat();
+	of_bRampJump = of_ramp_jump.GetBool();
+	of_flRampMinSpeed = of_ramp_min_speed.GetFloat();
+	of_flRampUpMultiplier = of_ramp_up_multiplier.GetFloat();
+	of_flRampUpForward = of_ramp_up_forward_multiplier.GetFloat();
+	of_flRampDownMultiplier = of_ramp_down_multiplier.GetFloat();
 
 #ifdef CLIENT_DLL
 	m_iDisguiseWeaponModelIndex = -1;

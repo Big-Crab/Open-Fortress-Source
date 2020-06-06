@@ -19,41 +19,45 @@
 #include "tf_player_shared.h"
 #include "func_ladder.h"
 
+void TFMovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue);
+ConVar 	of_bunnyhop("of_bunnyhop", "-1", FCVAR_NOTIFY, "Toggle bunnyhoping.\n-1: Mercenary Only\n0: None\n1:All Classes except Zombies\n2:All Classes including Zombies", TFMovementConvarChanged);
+ConVar 	of_crouchjump("of_crouchjump", "0", FCVAR_NOTIFY, "Allows enables/disables crouch jumping.", TFMovementConvarChanged);
+ConVar 	of_bunnyhop_max_speed_factor("of_bunnyhop_max_speed_factor", "1.2", FCVAR_NOTIFY, "Max Speed achievable with bunnyhoping.", TFMovementConvarChanged);
+ConVar 	of_jump_velocity("of_jump_velocity", "268.3281572999747", FCVAR_NOTIFY, "The velocity applied when a player jumps.", TFMovementConvarChanged);
+ConVar  of_zombie_lunge_speed("of_zombie_lunge_speed", "800", FCVAR_ARCHIVE | FCVAR_NOTIFY, "How much velocity, in units, to apply to a zombie lunge.", TFMovementConvarChanged);
+ConVar  of_ramp_jump("of_ramp_jump", "0", FCVAR_NOTIFY, "Enables ramp jump.", TFMovementConvarChanged);
+ConVar  of_ramp_min_speed("of_ramp_min_speed", "50", FCVAR_NOTIFY, "Minimal speed you need to be for ramp jumps to take effect.", TFMovementConvarChanged);
+ConVar  of_ramp_up_multiplier("of_ramp_up_multiplier", "0.8", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar  of_ramp_up_forward_multiplier("of_ramp_up_forward_multiplier", "1.1", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar  of_ramp_down_multiplier("of_ramp_down_multiplier", "1", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar	tf_maxspeed("tf_maxspeed", "720", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar	mp_maxairspeed("mp_maxairspeed", "30", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar	tf_avoidteammates("tf_avoidteammates", "1", FCVAR_CHEAT, "", TFMovementConvarChanged);
+ConVar  tf_solidobjects("tf_solidobjects", "1", FCVAR_CHEAT, "", TFMovementConvarChanged);
+ConVar	tf_clamp_back_speed("tf_clamp_back_speed", "0.9", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar  tf_clamp_back_speed_min("tf_clamp_back_speed_min", "100", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+ConVar	of_shield_charge_speed("of_shield_charge_speed", "720", FCVAR_NOTIFY, "", TFMovementConvarChanged);
+
 #ifdef CLIENT_DLL
 	#include "c_tf_player.h"
 	#include "c_world.h"
 	#include "c_team.h"
-
 	#define CTeam C_Team
+
+void TFMovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue){
+	Msg("Uhhh nothing should happen here");
+}
 #else
 	#include "tf_player.h"
 	#include "team.h"
 	#include "shareddefs.h"
-#endif
-#ifndef CLIENT_DLL
-void TFMovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue);
-ConVar 	of_bunnyhop("of_bunnyhop", "-1", FCVAR_NOTIFY | FCVAR_REPLICATED, "Toggle bunnyhoping.\n-1: Mercenary Only\n0: None\n1:All Classes except Zombies\n2:All Classes including Zombies", TFMovementConvarChanged);
-ConVar 	of_crouchjump("of_crouchjump", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Allows enables/disables crouch jumping.", TFMovementConvarChanged);
-ConVar 	of_bunnyhop_max_speed_factor("of_bunnyhop_max_speed_factor", "1.2", FCVAR_NOTIFY | FCVAR_REPLICATED, "Max Speed achievable with bunnyhoping.", TFMovementConvarChanged);
-ConVar 	of_jump_velocity("of_jump_velocity", "268.3281572999747", FCVAR_NOTIFY | FCVAR_REPLICATED, "The velocity applied when a player jumps.", TFMovementConvarChanged);
-ConVar  of_zombie_lunge_speed("of_zombie_lunge_speed", "800", FCVAR_ARCHIVE | FCVAR_NOTIFY, "How much velocity, in units, to apply to a zombie lunge.", TFMovementConvarChanged);
-ConVar  of_ramp_jump("of_ramp_jump", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Enables ramp jump.", TFMovementConvarChanged);
-ConVar  of_ramp_min_speed("of_ramp_min_speed", "50", FCVAR_REPLICATED | FCVAR_NOTIFY, "Minimal speed you need to be for ramp jumps to take effect.", TFMovementConvarChanged);
-ConVar  of_ramp_up_multiplier("of_ramp_up_multiplier", "0.8", FCVAR_REPLICATED | FCVAR_NOTIFY, "", TFMovementConvarChanged);
-ConVar  of_ramp_up_forward_multiplier("of_ramp_up_forward_multiplier", "1.1", FCVAR_REPLICATED | FCVAR_NOTIFY, "", TFMovementConvarChanged);
-ConVar  of_ramp_down_multiplier("of_ramp_down_multiplier", "1", FCVAR_REPLICATED | FCVAR_NOTIFY, "", TFMovementConvarChanged);
-ConVar	tf_maxspeed("tf_maxspeed", "720", FCVAR_NOTIFY | FCVAR_REPLICATED, "", TFMovementConvarChanged);
-ConVar	mp_maxairspeed("mp_maxairspeed", "30", FCVAR_NOTIFY | FCVAR_REPLICATED, "", TFMovementConvarChanged);
-ConVar	tf_avoidteammates("tf_avoidteammates", "1", FCVAR_REPLICATED | FCVAR_CHEAT, "", TFMovementConvarChanged);
-ConVar  tf_solidobjects("tf_solidobjects", "1", FCVAR_REPLICATED | FCVAR_CHEAT, "", TFMovementConvarChanged);
-ConVar	tf_clamp_back_speed("tf_clamp_back_speed", "0.9", FCVAR_REPLICATED, "", TFMovementConvarChanged);
-ConVar  tf_clamp_back_speed_min("tf_clamp_back_speed_min", "100", FCVAR_REPLICATED, "", TFMovementConvarChanged);
-ConVar	of_shield_charge_speed("of_shield_charge_speed", "720", FCVAR_REPLICATED, "", TFMovementConvarChanged);
+	#include <string>
+//	#include "cdll_int.h"
 // Updates the cached ConVars across all clients. 
 void TFMovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
-	int nMaxClients = engine->GetMaxClients();
+	int nMaxClients =  gpGlobals->maxClients;
 	for (int playerIndex = 1; playerIndex <= nMaxClients; playerIndex++) {
-		C_TFPlayer *pPlayerTF = ToTFPlayer(UTIL_PlayerByIndex(playerIndex));
+		CTFPlayer *pPlayerTF = ToTFPlayer(UTIL_PlayerByIndex(playerIndex));
 		if (!pPlayerTF)
 			return;
 		pPlayerTF->m_Shared.tf_flMaxSpeed = tf_maxspeed.GetFloat();
@@ -74,6 +78,9 @@ void TFMovementConvarChanged(IConVar *var, const char *pOldValue, float flOldVal
 		pPlayerTF->m_Shared.of_flRampUpForward = of_ramp_up_forward_multiplier.GetFloat();
 		pPlayerTF->m_Shared.of_flRampDownMultiplier = of_ramp_down_multiplier.GetFloat();
 	}
+	std::string str = "Updated a TFMovement ConVar! " + std::string( var->GetName() );
+	//Msg( str.c_str() );
+	ConMsg( str.c_str() );
 }
 #endif
 
