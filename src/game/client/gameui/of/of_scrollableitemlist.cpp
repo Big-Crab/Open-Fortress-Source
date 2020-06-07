@@ -146,6 +146,7 @@ void CTFScrollableItemList::AddItem( int iID, bool bSelected )
 	ItemListItem_t pNewItem;
 
 	pNewItem.pItemPanel = new CTFItemSelection(this, VarArgs("%d", iID), iID);
+	pNewItem.pItemPanel->AddActionSignalTarget(this);
 	
 	KeyValues *kvItemTemplate = new KeyValues("Template");
 	

@@ -43,6 +43,8 @@
 #include "tier0/icommandline.h"
 #include "fmtstr.h"
 
+#include "of/of_dmmodelpanel.h"
+
 #include <IVGuiModuleLoader.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -517,6 +519,12 @@ void MainMenu::OnOpen()
 	}
 
 	BaseClass::OnOpen();
+
+	// Update Merc model panel on open
+	if (vgui::DMModelPanel* pClassModel = dynamic_cast<vgui::DMModelPanel*>(FindChildByName("classmodelpanel")))
+	{
+		pClassModel->SetLoadoutCosmetics();
+	}
 
 	SetFooterState();
 	/*

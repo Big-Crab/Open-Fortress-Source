@@ -131,7 +131,7 @@ public:
 	virtual unsigned int PlayerSolidMask(bool brushOnly = false);
 	virtual void ProcessMovement(CBasePlayer *pBasePlayer, CMoveData *pMove);
 	virtual bool CanAccelerate();
-	virtual bool CheckJumpButton();
+	virtual bool CheckJumpButton(bool CSliding = false);
 	bool CheckLunge();
 	virtual bool CheckWater(void);
 	virtual void WaterMove(void);
@@ -141,7 +141,6 @@ public:
 	virtual float GetAirSpeedCap(void);
 	virtual void FullTossMove(void);
 	virtual void CategorizePosition(void);
-	virtual void CheckFalling(bool CSliding = false);
 	virtual void Duck(void);
 
 	virtual Vector GetPlayerViewOffset(bool ducked) const;
@@ -473,7 +472,7 @@ void CTFGameMovement::PreventBunnyJumping()
 	}
 }
 
-bool CTFGameMovement::CheckJumpButton()
+bool CTFGameMovement::CheckJumpButton(bool CSliding)
 {
 	// Are we dead?  Then we cannot jump.
 	if (player->pl.deadflag)
@@ -492,17 +491,21 @@ bool CTFGameMovement::CheckJumpButton()
 	bool bAirDash = false;
 	bool bOnGround = player->GetGroundEntity() != NULL;
 
+	//jumping cvars
+	bool CrouchJump = of_crouchjump.GetBool() && !CSliding;
+
 	// Cannot jump while ducked.
 	if (player->GetFlags() & FL_DUCKING)
 	{
 		// Let a scout do it.
-		bool bAllow = (bCanAirDash && !bOnGround) || (m_pTFPlayer->m_Shared.of_bCrouchJump && bOnGround);
+		bool bAllow = (bCanAirDash && !bOnGround) || (CrouchJump && bOnGround);
 		if (!bAllow)
 			return false;
 	}
 
 	// Cannot jump while in the unduck transition.
-	if ((!m_pTFPlayer->m_Shared.of_bCrouchJump && player->m_Local.m_bDucking && player->GetFlags() & FL_DUCKING) ||
+
+	if ((!CrouchJump && player->m_Local.m_bDucking && player->GetFlags() & FL_DUCKING) ||
 		player->m_Local.m_flDuckJumpTime > 0.0f)
 		return false;
 
@@ -518,7 +521,7 @@ bool CTFGameMovement::CheckJumpButton()
 		}
 		else
 		{
-			if (mv->m_nOldButtons & IN_JUMP)																//people without buffer get to jump like when bunyhop is off
+			if (mv->m_nOldButtons & IN_JUMP)																//people without buffer get to jump like when bunnyhop is off
 				return false;
 		}
 	}
@@ -559,8 +562,6 @@ bool CTFGameMovement::CheckJumpButton()
 
 	// Start jump animation and player sound (specific TF animation and flags).
 	m_pTFPlayer->DoAnimationEvent(PLAYERANIMEVENT_JUMP);
-	if (gpGlobals->curtime >= m_pTFPlayer->m_Shared.m_flStepSoundDelay)
-		player->PlayStepSound((Vector &)mv->GetAbsOrigin(), player->m_pSurfaceData, 1.0, true);
 	m_pTFPlayer->m_Shared.SetJumping(true);
 
 	if (gpGlobals->curtime >= m_pTFPlayer->m_Shared.m_flStepSoundDelay)
@@ -573,11 +574,8 @@ bool CTFGameMovement::CheckJumpButton()
 	// Check the surface the player is standing on to see if it impacts jumping.
 	float flGroundFactor = 1.0f;
 	if (player->m_pSurfaceData)
-	{
 		flGroundFactor = player->m_pSurfaceData->game.jumpFactor;
-	}
 
-	// fMul = sqrt( 2.0 * gravity * jump_height (21.0units) ) * GroundFactor
 	Assert(sv_gravity.GetFloat() == 800.0f);
 	float flMul = m_pTFPlayer->m_Shared.of_flJumpVelocity * flGroundFactor;
 
@@ -1517,8 +1515,7 @@ void CTFGameMovement::CheckWaterJump(void)
 void CTFGameMovement::Duck(void)
 {
 	// Don't allowing ducking in water.
-	if (((player->GetWaterLevel() >= WL_Feet) && (player->GetGroundEntity() == NULL)) ||
-		player->GetWaterLevel() >= WL_Eyes)
+	if ((player->GetWaterLevel() >= WL_Feet && player->GetGroundEntity() == NULL) || player->GetWaterLevel() >= WL_Eyes)
 	{
 		mv->m_nButtons &= ~IN_DUCK;
 	}
@@ -1528,9 +1525,7 @@ void CTFGameMovement::Duck(void)
 void CTFGameMovement::FullWalkMoveUnderwater()
 {
 	if (player->GetWaterLevel() == WL_Waist)
-	{
 		CheckWaterJump();
-	}
 
 	// If we are falling again, then we must not trying to jump out of water any more.
 	if ((mv->m_vecVelocity.z < 0.0f) && player->m_flWaterJumpTime)
@@ -1540,13 +1535,9 @@ void CTFGameMovement::FullWalkMoveUnderwater()
 
 	// Was jump button pressed?
 	if (mv->m_nButtons & IN_JUMP)
-	{
 		CheckJumpButton();
-	}
 	else
-	{
 		mv->m_nOldButtons &= ~IN_JUMP;
-	}
 
 	// Perform regular water movement
 	WaterMove();
@@ -1556,9 +1547,7 @@ void CTFGameMovement::FullWalkMoveUnderwater()
 
 	// If we are on ground, no downward velocity.
 	if (player->GetGroundEntity() != NULL)
-	{
 		mv->m_vecVelocity[2] = 0;
-	}
 }
 
 void CTFGameMovement::HandleDuckingSpeedCrop(void)
@@ -1656,10 +1645,22 @@ void CTFGameMovement::FullWalkMove()
 		return;
 	}
 
+	//Ivory: Check if player is CSliding, ideally I would place it right before Friction but
+	//there are some complications when crouch jump is on that are evaluated in CheckJumpButton()
+	//so this has to happen every frame
+	bool CSliding = (player->GetGroundEntity() != NULL &&								//player is on the ground
+					 of_bCSlide &&												//crouch sliding is enabled
+					 mv->m_flMaxSpeed > 5 &&											//player is allowed to move
+					 !m_pTFPlayer->GetWaterLevel() &&		 							//player is not in water
+					 (player->m_Local.m_bDucking || player->m_Local.m_bDucked) &&		//player is ducked/ducking
+					 (mv->m_flForwardMove || mv->m_flSideMove) &&						//player is moving
+					 gpGlobals->curtime <= m_pTFPlayer->m_Shared.GetCSlideDuration());	//there is crouch slide charge to spend
+
+	//Jumping stuff
 	if (mv->m_nButtons & IN_JUMP)
 	{
 		if (!m_pTFPlayer->m_Shared.GetJumpBuffer())
-			CheckJumpButton();
+			CheckJumpButton(CSliding);
 	}
 	else
 	{
@@ -1667,22 +1668,16 @@ void CTFGameMovement::FullWalkMove()
 		m_pTFPlayer->m_Shared.SetJumpBuffer(false);
 	}
 
+	//Zombie lunge
 	if (m_pTFPlayer->m_Shared.DoLungeCheck())
 		CheckLunge();
 
 	// Make sure velocity is valid.
 	CheckVelocity();
 
-	bool CSliding = false;
+	//Ground and air movement
 	if (player->GetGroundEntity() != NULL)
 	{
-		CSliding = (of_bCSlide &&												//crouch sliding is enabled
-					mv->m_flMaxSpeed > 5 &&												//player is allowed to move
-					!m_pTFPlayer->GetWaterLevel() &&		 							//player is not in water
-					(player->m_Local.m_bDucking || player->m_Local.m_bDucked) &&		//player is ducked/ducking
-					(mv->m_flForwardMove || mv->m_flSideMove) &&						//player is moving
-					gpGlobals->curtime <= m_pTFPlayer->m_Shared.GetCSlideDuration());	//there has crouch slide to spend
-
 		Friction(CSliding);
 		WalkMove(CSliding);
 
@@ -1693,6 +1688,7 @@ void CTFGameMovement::FullWalkMove()
 	else
 	{
 		AirMove();
+		CSliding = false;
 	}
 
 	// Set final flags.
@@ -1702,17 +1698,26 @@ void CTFGameMovement::FullWalkMove()
 	if (!InWater())
 		FinishGravity();
 
+	//Post gravity settings
 	if (player->GetGroundEntity() != NULL)
+	{
 		mv->m_vecVelocity[2] = 0;
+
+		if (!IsDead() && m_pTFPlayer->m_Shared.IsJumping())
+			m_pTFPlayer->m_Shared.SetJumping(false);
+	}
 	else
+	{
 		m_pTFPlayer->m_Shared.SetCSlideDuration(gpGlobals->curtime - mv->m_vecVelocity[2] / 200.f); //gravity has been fully applied, use VelZ to determine cslide duration
+	}
 
 	// Handling falling.
-	CheckFalling(CSliding);
+	CheckFalling();
 
 	// Make sure velocity is valid.
 	CheckVelocity();
 
+	//Cslide sound turn on/off
 	CheckCSlideSound(CSliding);
 }
 
@@ -1733,19 +1738,6 @@ void CTFGameMovement::CheckCSlideSound(bool CSliding)
 	}
 }
 
-void CTFGameMovement::CheckFalling(bool CSliding)
-{
-	// if we landed on the ground
-	if (player->GetGroundEntity() != NULL && !IsDead())
-	{
-		// turn off the jumping flag if we're on ground after a jump
-		if (m_pTFPlayer->m_Shared.IsJumping())
-			m_pTFPlayer->m_Shared.SetJumping(false);
-	}
-
-	BaseClass::CheckFalling();
-}
-
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -1759,9 +1751,8 @@ void CTFGameMovement::FullTossMove(void)
 	{
 		Vector forward, right, up;
 		float fmove, smove;
-		Vector wishdir, wishvel;
+		Vector wishdir;
 		float wishspeed;
-		int i;
 
 		AngleVectors(mv->m_vecViewAngles, &forward, &right, &up);  // Determine movement angles
 
@@ -1772,31 +1763,21 @@ void CTFGameMovement::FullTossMove(void)
 		VectorNormalize(forward);  // Normalize remainder of vectors.
 		VectorNormalize(right);    // 
 
-		for (i = 0; i<3; i++)       // Determine x and y parts of velocity
-			wishvel[i] = forward[i] * fmove + right[i] * smove;
+		for (int i = 0; i < 3; i++)       // Determine x and y parts of velocity
+			wishdir[i] = forward[i] * fmove + right[i] * smove;
 
-		wishvel[2] += mv->m_flUpMove;
+		wishdir[2] += mv->m_flUpMove;
 
-		VectorCopy(wishvel, wishdir);   // Determine maginitude of speed of move
+		// Determine maginitude of speed of move
 		wishspeed = VectorNormalize(wishdir);
-
-		//
-		// Clamp to server defined max speed
-		//
-		if (wishspeed > mv->m_flMaxSpeed)
-		{
-			VectorScale(wishvel, mv->m_flMaxSpeed / wishspeed, wishvel);
-			wishspeed = mv->m_flMaxSpeed;
-		}
+		wishspeed = min(wishspeed, mv->m_flMaxSpeed);
 
 		// Set pmove velocity
 		Accelerate(wishdir, wishspeed, sv_accelerate.GetFloat());
 	}
 
 	if (mv->m_vecVelocity[2] > 0)
-	{
 		SetGroundEntity(NULL);
-	}
 
 	// If on ground and not moving, return.
 	if (player->GetGroundEntity() != NULL)
@@ -1810,9 +1791,7 @@ void CTFGameMovement::FullTossMove(void)
 
 	// add gravity
 	if (player->GetMoveType() == MOVETYPE_FLYGRAVITY)
-	{
 		AddGravity();
-	}
 
 	// move origin
 	// Base velocity is not properly accounted for since this entity will move again after the bounce without

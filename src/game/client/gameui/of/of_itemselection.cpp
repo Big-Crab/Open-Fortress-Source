@@ -126,15 +126,6 @@ void CTFItemSelection::SetSelected( bool bSelected )
 	else
 		Q_strncpy(szCommand, VarArgs("loadout_unequip cosmetics mercenary %d", iItemID), sizeof(szCommand));
 
-	// THIS IS A DIRTY HACK AND BREAKS ALL OOP RULES:
-	if (BaseModUI::DMLoadout* loadout = static_cast<BaseModUI::DMLoadout*>(BaseModUI::CBaseModPanel::GetSingleton().GetWindow(BaseModUI::WT_DM_LOADOUT)))
-	{
-		if (vgui::DMModelPanel* model = loadout->GetClassModel())
-		{
-			model->SetCosmetic(iItemID, bSelected);
-		}
-	}
-
 	CTFScrollableItemList *pItemList = dynamic_cast<CTFScrollableItemList*>( GetParent() );
 
 	if( pItemList )

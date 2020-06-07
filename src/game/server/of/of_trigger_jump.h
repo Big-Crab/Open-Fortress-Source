@@ -32,6 +32,7 @@ public:
 
 protected:
 	string_t m_szTarget;
+	string_t m_szLaunchTarget; // TEMP: for trigger_catapult
 	EHANDLE m_pTarget;
 	bool m_iSoftLanding;
 
