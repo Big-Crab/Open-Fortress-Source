@@ -70,9 +70,10 @@ ConVar	sv_maxspeed		( "sv_maxspeed", "320", FCVAR_NOTIFY | FCVAR_REPLICATED );
 void MovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue);
 ConVar	of_movementmode("of_movementmode", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Change movement mode\n0: Default OF\n1: Quake 3\n2: CPMA", MovementConvarChanged);
 ConVar	of_q3airaccelerate("of_q3airaccelerate", "1.5", FCVAR_NOTIFY | FCVAR_REPLICATED, "Air acceleration when of_movementmode = 1", MovementConvarChanged);
-ConVar	of_cslide("of_cslide", "0", FCVAR_NOTIFY | FCVAR_REPLICATED);
-ConVar	of_cslideaccelerate("of_cslideaccelerate", "4", FCVAR_NOTIFY | FCVAR_REPLICATED);
-ConVar	of_cslidefriction("of_cslidefriction", "0.08", FCVAR_NOTIFY | FCVAR_REPLICATED);
+ConVar	of_cslide("of_cslide", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Enables crouch sliding.", MovementConvarChanged);
+ConVar	of_cslideaccelerate("of_cslideaccelerate", "4", FCVAR_NOTIFY | FCVAR_REPLICATED, "Crouch slide acceleration.", MovementConvarChanged);
+ConVar	of_cslidefriction("of_cslidefriction", "1", FCVAR_NOTIFY | FCVAR_REPLICATED, "Crouch slide friction.", MovementConvarChanged);
+
 ConVar	sv_airaccelerate("sv_airaccelerate", "10", FCVAR_NOTIFY | FCVAR_REPLICATED, "Maximum acceleration while airborne.", MovementConvarChanged);
 ConVar	sv_wateraccelerate("sv_wateraccelerate", "10", FCVAR_NOTIFY | FCVAR_REPLICATED, "Maximum acceleration in water.", MovementConvarChanged);
 ConVar	sv_waterfriction("sv_waterfriction", "1", FCVAR_NOTIFY | FCVAR_REPLICATED, "", MovementConvarChanged);
@@ -81,19 +82,25 @@ ConVar	sv_rollspeed("sv_rollspeed", "200", FCVAR_NOTIFY | FCVAR_REPLICATED, "", 
 ConVar	sv_rollangle("sv_rollangle", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Max view roll angle", MovementConvarChanged);
 
 // Cache-vars
-int of_iMovementMode = of_movementmode.GetInt();
-float of_flQ3AirAccelerate = of_q3airaccelerate.GetFloat();
 float sv_flAirAccelerate = sv_airaccelerate.GetFloat();
 float sv_flWaterAccelerate = sv_wateraccelerate.GetFloat();
 float sv_flWaterFriction = sv_waterfriction.GetFloat();
 bool sv_bFootsteps = sv_footsteps.GetBool();
 float sv_flRollSpeed = sv_rollspeed.GetFloat();
 float sv_flRollAngle = sv_rollangle.GetFloat();
+int of_iMovementMode = of_movementmode.GetInt();
+float of_flQ3AirAccelerate = of_q3airaccelerate.GetFloat();
+bool of_bCSlide = of_cslide.GetBool();
+float of_flCSlideAccelerate = of_cslideaccelerate.GetFloat();
+float of_flCSlideFriction = of_cslidefriction.GetFloat();
 
 // Callback function for updating movement vars - called whenever any movement var with a cache-variable is changed.
 void MovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
 	of_iMovementMode = of_movementmode.GetInt();
 	of_flQ3AirAccelerate = of_q3airaccelerate.GetFloat();
+	of_bCSlide = of_cslide.GetBool();
+	of_flCSlideAccelerate = of_cslideaccelerate.GetFloat();
+	of_flCSlideFriction = of_cslidefriction.GetFloat();
 
 	sv_flAirAccelerate = sv_airaccelerate.GetFloat();
 	sv_flWaterAccelerate = sv_wateraccelerate.GetFloat();
@@ -102,7 +109,6 @@ void MovementConvarChanged(IConVar *var, const char *pOldValue, float flOldValue
 	sv_flRollSpeed = sv_rollspeed.GetFloat();
 	sv_flRollAngle = sv_rollangle.GetFloat();
 }
-
 #elif defined( CSTRIKE_DLL ) || defined( HL1MP_DLL )
 ConVar	sv_airaccelerate("sv_airaccelerate", "10", FCVAR_NOTIFY | FCVAR_REPLICATED);
 ConVar	sv_wateraccelerate("sv_wateraccelerate", "10", FCVAR_NOTIFY | FCVAR_REPLICATED);     

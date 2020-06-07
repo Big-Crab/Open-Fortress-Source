@@ -122,7 +122,8 @@
 #include "fmod_manager.h"
 #include "c_of_music_player.h"
 #include "of_shared_schemas.h"
-#include "of_loadout.h"
+#include "gameui/BaseModPanel.h"
+#include <GameUI/IGameUI.h>
 #endif
 #include "clientsteamcontext.h"
 #include "renamed_recvtable_compat.h"
@@ -1153,10 +1154,24 @@ int CHLClient::Init(CreateInterfaceFn appSystemFactory, CreateInterfaceFn physic
 	ParseSoundManifest();
 	FMODManager()->InitFMOD();
 
+	BaseModUI::CBaseModPanel* pBaseModPanel = new BaseModUI::CBaseModPanel();
+
+	pBaseModPanel->SetBounds(0, 0, 640, 480);
+	pBaseModPanel->SetPaintBorderEnabled(false);
+	pBaseModPanel->SetPaintBackgroundEnabled(true);
+	pBaseModPanel->SetPaintEnabled(true);
+	pBaseModPanel->SetVisible(true);
+	
+	pBaseModPanel->SetMouseInputEnabled(IsPC());
+	// pBaseModPanel->SetKeyBoardInputEnabled( IsPC() );
+	pBaseModPanel->SetKeyBoardInputEnabled(true);
+
+	/*
 	CTFLoadoutPanel *pLoadoutPanel = GLoadoutPanel();
 	pLoadoutPanel->InvalidateLayout( false, true );
 	pLoadoutPanel->SetVisible( false );
 	pLoadoutPanel->MakePopup( false );
+	*/
 #endif
 
 	if (!view)
