@@ -730,7 +730,7 @@ bool CTFGameMovement::CheckLunge()
 	FinishGravity();
 
 	player->EmitSound("Player.ZombieLunge");
-	m_pTFPlayer->m_Shared.SetNextLungeTime(gpGlobals->curtime + of_zombie_lunge_delay.GetFloat());
+	m_pTFPlayer->m_Shared.SetNextLungeTime(gpGlobals->curtime + m_pTFPlayer->m_Shared.of_flZombieLungeSpeed);
 
 	// Save the output data for the physics system to react to if need be.
 	mv->m_outJumpVel += mv->m_vecVelocity - vecTmpStart;
@@ -1020,7 +1020,7 @@ void CTFGameMovement::WalkMove(bool CSliding)
 		VectorNormalize(vecWishDirection);
 		flWishSpeed = min(mv->m_vecVelocity.Length(), 320.f);
 		mv->m_vecVelocity.z = 0;
-		AirAccelerate(vecWishDirection, flWishSpeed, of_cslideaccelerate.GetFloat(), false);
+		AirAccelerate(vecWishDirection, flWishSpeed, of_flCSlideAccelerate, false);
 	}
 	else
 	{
@@ -1191,7 +1191,6 @@ void CTFGameMovement::AirAccelerate(Vector& wishdir, float wishspeed, float acce
 //-----------------------------------------------------------------------------
 void CTFGameMovement::AirMove(void)
 {
-	int			movementmode;
 	float		fmove, smove;
 	Vector		wishdir;
 	float		wishspeed;
@@ -1214,20 +1213,19 @@ void CTFGameMovement::AirMove(void)
 	wishspeed = min(wishspeed, mv->m_flMaxSpeed);
 
 	//Accelerate
-	movementmode = of_movementmode.GetInt();	//get the value only once
 
-	if (!movementmode) //default OF
+	if (!of_iMovementMode) //default OF
 	{
-		AirAccelerate(wishdir, wishspeed, sv_airaccelerate.GetFloat());
+		AirAccelerate(wishdir, wishspeed, sv_flAirAccelerate);
 	}
-	else if (movementmode == 1) //Q3
+	else if (of_iMovementMode == 1) //Q3
 	{
-		AirAccelerate(wishdir, wishspeed, of_q3airaccelerate.GetFloat(), false);
+		AirAccelerate(wishdir, wishspeed, of_flQ3AirAccelerate, false);
 	}
 	else //CPMA
 	{
 		bool CPMA = !fmove && smove;
-		float airaccel = CPMA ? sv_airaccelerate.GetFloat() : of_q3airaccelerate.GetFloat();
+		float airaccel = CPMA ? sv_flAirAccelerate : of_flQ3AirAccelerate;
 		AirAccelerate(wishdir, wishspeed, airaccel, CPMA);
 	}
 
@@ -1599,7 +1597,7 @@ void CTFGameMovement::Friction(bool CSliding)
 		return;
 
 	// apply ground friction
-	friction = (CSliding ? of_cslidefriction.GetFloat() : sv_friction.GetFloat()) * player->m_surfaceFriction;
+	friction = (CSliding ? of_bCSlide : sv_friction.GetFloat()) * player->m_surfaceFriction;
 
 	// Bleed off some speed, but if we have less than the bleed
 	// threshold, bleed the threshold amount.
@@ -1678,7 +1676,7 @@ void CTFGameMovement::FullWalkMove()
 	bool CSliding = false;
 	if (player->GetGroundEntity() != NULL)
 	{
-		CSliding = (of_cslide.GetBool() &&												//crouch sliding is enabled
+		CSliding = (of_bCSlide &&												//crouch sliding is enabled
 					mv->m_flMaxSpeed > 5 &&												//player is allowed to move
 					!m_pTFPlayer->GetWaterLevel() &&		 							//player is not in water
 					(player->m_Local.m_bDucking || player->m_Local.m_bDucked) &&		//player is ducked/ducking

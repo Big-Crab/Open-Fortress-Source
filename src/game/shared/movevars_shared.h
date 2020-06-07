@@ -20,8 +20,13 @@ extern ConVar of_q3airaccelerate;
 extern ConVar of_cslide;
 extern ConVar of_cslideaccelerate;
 extern ConVar of_cslidefriction;
+
 extern int of_iMovementMode;
 extern float of_flQ3AirAccelerate;
+extern bool of_bCSlide;
+extern float of_flCSlideAccelerate;
+extern float of_flCSlideFriction;
+
 extern float sv_flAirAccelerate;
 extern float sv_flWaterAccelerate;
 extern float sv_flWaterFriction;
