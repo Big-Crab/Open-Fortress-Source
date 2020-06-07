@@ -59,7 +59,7 @@ CTFItemSelection::CTFItemSelection(Panel *parent, const char *panelName, const i
 	SetItemID( iID );
 	
 	for( int i = 1; i <= 5; i++ )
-		AddOnPressSound( VarArgs( "Mercenary.PositiveVocalization0%d", i ) );
+		AddOnPressSound(VarArgs("Mercenary.PositiveVocalization0%d", i));
 }
 
 void CTFItemSelection::ApplySettings(KeyValues *inResourceData)

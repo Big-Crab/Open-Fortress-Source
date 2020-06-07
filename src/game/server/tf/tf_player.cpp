@@ -71,9 +71,8 @@
 #include "entity_ammopack.h"
 #include "entity_healthkit.h"
 #include "of_dropped_powerup.h"
-
+#include <string>
 #include "dt_utlvector_send.h"
-
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -9235,6 +9234,11 @@ IResponseSystem *CTFPlayer::GetResponseSystem()
 	{
 		iClass = m_Shared.GetDisguiseClass();
 	}
+	else if (m_bSpeakingConceptAsDisguisedSpy && V_atoi( engine->GetClientConVarValue(entindex(), "of_snipervoice") )) {
+		if (!IsFakeClient()){
+			iClass = TF_CLASS_SNIPER;
+		}
+	}
 
 	bool bValidClass = ( iClass >= TF_CLASS_SCOUT && iClass < TF_CLASS_COUNT_ALL );
 	bool bValidConcept = ( m_iCurrentConcept >= 0 && m_iCurrentConcept < MP_TF_CONCEPT_COUNT );
@@ -9270,7 +9274,7 @@ bool CTFPlayer::SpeakConceptIfAllowed( int iConcept, const char *modifiers, char
 	// Save the current concept.
 	m_iCurrentConcept = iConcept;
 
-	if ( m_Shared.InCond( TF_COND_DISGUISED ) && !filter )
+	if ( (m_Shared.InCond( TF_COND_DISGUISED ) && !filter))
 	{
 		CSingleUserRecipientFilter filter(this);
 
@@ -9315,8 +9319,31 @@ bool CTFPlayer::SpeakConceptIfAllowed( int iConcept, const char *modifiers, char
 	}
 	else
 	{
-		// play normally
-		bReturn = SpeakIfAllowed( g_pszMPConcepts[iConcept], modifiers, pszOutResponseChosen, bufsize, filter );
+		// of_snipervoice
+		if (V_atoi(engine->GetClientConVarValue(entindex(), "of_snipervoice")) && !IsFakeClient()) {
+			CSingleUserRecipientFilter filter(this);
+			CMultiplayer_Expresser *pExpresser = GetMultiplayerExpresser();
+			Assert(pExpresser);
+			pExpresser->AllowMultipleScenes();
+			// Convert to Sniper
+			char buf[128];
+			Q_snprintf(buf, sizeof(buf), "disguiseclass:%s", g_aPlayerClassNames_NonLocalized[TF_CLASS_SNIPER]);
+			if (modifiers)
+			{
+				Q_strncat(buf, ",", sizeof(buf), 1);
+				Q_strncat(buf, modifiers, sizeof(buf), COPY_ALL_CHARACTERS);
+			}
+			CBroadcastRecipientFilter everyoneFilter;
+			m_bSpeakingConceptAsDisguisedSpy = true;
+			bool bPlayOverride = SpeakIfAllowed(g_pszMPConcepts[iConcept], buf, pszOutResponseChosen, bufsize, &everyoneFilter);
+			m_bSpeakingConceptAsDisguisedSpy = false;
+			pExpresser->DisallowMultipleScenes();
+		}
+		else {
+
+			// play normally
+			bReturn = SpeakIfAllowed( g_pszMPConcepts[iConcept], modifiers, pszOutResponseChosen, bufsize, filter );
+		}
 	}
 
 	//Add bubble on top of a player calling for medic.

@@ -59,6 +59,7 @@
 #include "tf_viewmodel.h"
 #include "cdll_int.h"
 #include "filesystem.h"
+#include <string>
 
 #include "dt_utlvector_recv.h"
 
@@ -123,6 +124,8 @@ ConVar cl_quickzoom( "cl_quickzoom", "1", FCVAR_ARCHIVE | FCVAR_USERINFO, "Softz
 ConVar tf_always_deathanim( "tf_always_deathanim", "0", FCVAR_CHEAT, "Forces death animation." );
 
 ConVar of_first_person_respawn_particles( "of_first_person_respawn_particles", "0", FCVAR_ARCHIVE | FCVAR_USERINFO, "Show respawn particles in first person." );
+
+ConVar of_snipervoice("of_snipervoice", "0", FCVAR_CLIENTDLL | FCVAR_ARCHIVE | FCVAR_HIDDEN | FCVAR_USERINFO, "???");
 
 ConVar of_respawn_particles( "of_respawn_particles", "1", FCVAR_ARCHIVE | FCVAR_USERINFO, "Draw respawn particles of players?" );
 

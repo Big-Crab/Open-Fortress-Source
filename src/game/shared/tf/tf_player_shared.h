@@ -41,7 +41,6 @@ class CTFPlayer;
 
 
 //=============================================================================
-
 #define PERMANENT_CONDITION		-1
 
 // Damage storage for crit multiplier calculation
@@ -185,7 +184,6 @@ public:
 	}
 	int		GetDisguiseHealth( void )			{ return m_iDisguiseHealth; }
 	void	SetDisguiseHealth( int iDisguiseHealth );
-
 #ifdef CLIENT_DLL
 	void	OnDisguiseChanged( void );
 	void 	UpdateCritParticle( void );

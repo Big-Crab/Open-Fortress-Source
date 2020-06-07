@@ -17,7 +17,7 @@
 #include "in_buttons.h"
 #include "fmtstr.h"
 #include "tf_viewmodel.h"
-
+#include <string>
 // Client specific.
 #ifdef CLIENT_DLL
 #include "c_tf_player.h"
@@ -309,7 +309,6 @@ CTFPlayerShared::CTFPlayerShared()
 	of_flRampUpForward = of_ramp_up_forward_multiplier.GetFloat();
 	of_flRampDownMultiplier = of_ramp_down_multiplier.GetFloat();
 	of_iJumpBuffer = of_jumpbuffer.GetInt();
-
 #ifdef CLIENT_DLL
 	m_iDisguiseWeaponModelIndex = -1;
 	m_pDisguiseWeaponInfo = NULL;
