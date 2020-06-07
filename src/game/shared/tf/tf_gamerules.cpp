@@ -154,6 +154,7 @@ ConVar of_mutator			( "of_mutator", "0", FCVAR_NOTIFY | FCVAR_REPLICATED,
 							"Defines the gamemode mutators to be used.\n List of mutators:\n 0 : Disabled\n 1 : Instagib(Railgun + Crowbar)\n 2 : Instagib(Railgun)\n 3 : Clan Arena\n 4 : Unholy Trinity\n 5 : Rocket Arena\n 6 : Gun Game\n 7 : Arsenal",
 							true, 0, true, 7 );
 
+
 /*	List of mutators:
 	0: Disabled
 	1: Instagib (Railgun + Crowbar)
@@ -162,6 +163,7 @@ ConVar of_mutator			( "of_mutator", "0", FCVAR_NOTIFY | FCVAR_REPLICATED,
 	4: Unholy Trinity
 	5: Rocket Arena
 	6: Gun Game
+	7: Arsenal
 */
 
 ConVar of_usehl2hull		( "of_usehl2hull", "-1", FCVAR_NOTIFY | FCVAR_REPLICATED, "Use HL2 collision hull." );

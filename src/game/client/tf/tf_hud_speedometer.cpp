@@ -120,6 +120,13 @@ ConVar hud_speedometer_optimalangle("hud_speedometer_optimalangle", "0", FCVAR_A
 //ConVar hud_speedometer_optimalangle_exponential("hud_speedometer_optimalangle_exponential", "0", FCVAR_ARCHIVE, "Enables exponential scaling on the optimal angle indicator.", SpeedometerConvarChanged);
 
 
+void SuperHotConVarChanged(IConVar *var, const char *pOldValue, float flOldValue);
+ConVar of_timeking("of_timeking", "0", FCVAR_HIDDEN | FCVAR_CHEAT | FCVAR_REPLICATED | FCVAR_CLIENTCMD_CAN_EXECUTE, "Super. Hot.", SuperHotConVarChanged);
+bool of_bTimeKing;
+void SuperHotConVarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
+	of_bTimeKing = of_timeking.GetBool();
+}
+
 // Cached versions of the ConVars that get used every frame/draw update (More efficient).
 // These shouldn't be members, as their ConVar counterparts are static and global anyway
 int iSpeedometer = hud_speedometer.GetInt();
@@ -386,6 +393,8 @@ float DeltaAngleRad(float a1, float a2) {
 	// ^ wraps to -180 to 180
 }
 
+
+QAngle lastPlayerAngles;
 //-----------------------------------------------------------------------------
 // Purpose: Every think/update tick that the GUI uses
 //-----------------------------------------------------------------------------
@@ -396,7 +405,7 @@ void CHudSpeedometer::OnTick(void) {
 	if (!(pPlayer && pPlayerBase))
 		return;
 
-	float maxSpeed = pPlayer->MaxSpeed(); // Should get the maximum player move speed respective of class
+	//float maxSpeed = pPlayer->MaxSpeed(); // Should get the maximum player move speed respective of class
 	Vector velHor(0, 0, 0);
 	velHor = pPlayerBase->GetLocalVelocity() * Vector(1, 1, 0); // Player's horizontal velocity.
 	float horSpeed = velHor.Length();
@@ -439,6 +448,45 @@ void CHudSpeedometer::OnTick(void) {
 			} else {
 				groundedInPreviousFrame = isGrounded;
 			}
+		}
+	}
+
+
+	ConVar* host_timescale = g_pCVar->FindVar("host_timescale");
+	// SUPER_HOT_
+	if (of_bTimeKing) {
+		float timeScale = 1.0f;
+
+		if (!pPlayerBase->IsPlayerDead()){
+
+			float degreeDifference = 0.0f;
+			degreeDifference += abs(lastPlayerAngles.x - g_pMoveData->m_vecAngles.x);
+			degreeDifference += abs(lastPlayerAngles.y - g_pMoveData->m_vecAngles.y);
+			degreeDifference += abs(lastPlayerAngles.z - g_pMoveData->m_vecAngles.z);
+
+			const float timeScaleMin = 0.05f; //max 1
+			const float timeScale_additionInputting = 0.05f;
+			const float degreeMax = 90; //degrees per frame
+			const float time_degreeMax = 0.5f; //at degreeMax degrees per second, this is the most that can be added to timescale
+
+			timeScale = timeScaleMin;
+			const float speedMax = 320.0f; // min = 0
+
+			float speed = pPlayerBase->GetLocalVelocity().Length();
+
+			// Remap speed from 0 to 3320
+			timeScale = timeScaleMin + (speed)* (1.0f - timeScaleMin) / (speedMax);
+			timeScale += (g_pMoveData->m_flForwardMove || g_pMoveData->m_flSideMove) ? timeScale_additionInputting : 0.0f;
+			timeScale += (degreeDifference)* (time_degreeMax) / (degreeMax);
+			// add shooting
+
+			timeScale = clamp(timeScale, timeScaleMin, 1.0f);
+		}
+		host_timescale->SetValue(timeScale);
+	}
+	else {
+		if (host_timescale->GetFloat() != 1.0f) {
+			host_timescale->SetValue(1.0f);
 		}
 	}
 }
@@ -590,7 +638,7 @@ void CHudSpeedometer::QStrafeJumpHelp() {
 	if (bKeepLevel) {
 		int iX, iY;
 		Vector vecTarget = MainViewOrigin() + Vector(MainViewForward().x, MainViewForward().y, 0.0f);
-		bool bOnscreen = GetVectorInScreenSpace(vecTarget, iX, iY);
+		GetVectorInScreenSpace(vecTarget, iX, iY);
 		yHorizon = iY;
 	}
 

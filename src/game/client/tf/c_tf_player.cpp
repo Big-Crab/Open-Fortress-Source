@@ -60,6 +60,7 @@
 #include "cdll_int.h"
 #include "filesystem.h"
 #include <string>
+#include "igamemovement.h"
 
 #include "dt_utlvector_recv.h"
 
