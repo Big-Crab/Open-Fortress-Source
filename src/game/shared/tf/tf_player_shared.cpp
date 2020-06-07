@@ -91,19 +91,20 @@ extern ConVar 	of_bunnyhop;
 extern ConVar 	of_crouchjump;
 extern ConVar 	of_bunnyhop_max_speed_factor;
 extern ConVar 	of_jump_velocity;
-extern ConVar  of_zombie_lunge_speed;
-extern ConVar  of_ramp_jump;
-extern ConVar  of_ramp_min_speed;
-extern ConVar  of_ramp_up_multiplier;
-extern ConVar  of_ramp_up_forward_multiplier;
-extern ConVar  of_ramp_down_multiplier;
+extern ConVar	of_zombie_lunge_speed;
+extern ConVar	of_ramp_jump;
+extern ConVar	of_ramp_min_speed;
+extern ConVar	of_ramp_up_multiplier;
+extern ConVar	of_ramp_up_forward_multiplier;
+extern ConVar	of_ramp_down_multiplier;
 extern ConVar	tf_maxspeed;
 extern ConVar	mp_maxairspeed;
 extern ConVar	tf_avoidteammates;
-extern ConVar  tf_solidobjects;
+extern ConVar	tf_solidobjects;
 extern ConVar	tf_clamp_back_speed;
-extern ConVar  tf_clamp_back_speed_min;
+extern ConVar	tf_clamp_back_speed_min;
 extern ConVar	of_shield_charge_speed;
+extern ConVar	of_jumpbuffer;
 
 #define TF_SPY_STEALTH_BLINKTIME   0.3f
 #define TF_SPY_STEALTH_BLINKSCALE  0.85f
@@ -307,6 +308,7 @@ CTFPlayerShared::CTFPlayerShared()
 	of_flRampUpMultiplier = of_ramp_up_multiplier.GetFloat();
 	of_flRampUpForward = of_ramp_up_forward_multiplier.GetFloat();
 	of_flRampDownMultiplier = of_ramp_down_multiplier.GetFloat();
+	of_iJumpBuffer = of_jumpbuffer.GetInt();
 
 #ifdef CLIENT_DLL
 	m_iDisguiseWeaponModelIndex = -1;

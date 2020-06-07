@@ -153,6 +153,7 @@ public:
 	float of_flRampUpMultiplier;
 	float of_flRampUpForward;
 	float of_flRampDownMultiplier;
+	int of_iJumpBuffer;
 
 #ifdef CLIENT_DLL
 	// This class only receives calls for these from C_TFPlayer, not
