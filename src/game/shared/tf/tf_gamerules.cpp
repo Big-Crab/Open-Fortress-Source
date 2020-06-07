@@ -109,11 +109,11 @@ static int g_TauntCamAchievements[] =
 	0,		// TF_CLASS_COUNT_ALL,
 };
 
-extern ConVar of_movementmode;
+/*extern ConVar of_movementmode;
 extern ConVar of_q3airaccelerate;
 extern ConVar of_cslide;
 extern ConVar of_cslideaccelerate;
-extern ConVar of_cslidefriction;
+extern ConVar of_cslidefriction;*/
 
 extern ConVar mp_capstyle;
 extern ConVar sv_turbophysics;
