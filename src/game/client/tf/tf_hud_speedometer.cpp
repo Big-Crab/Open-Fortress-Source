@@ -157,6 +157,8 @@ extern ConVar sv_maxspeed;
 extern ConVar sv_airaccelerate;
 extern ConVar sv_stopspeed;
 
+#define IN_ATTACK (1 << 0)
+
 // This has to be a non-member/static type of thing otherwise it doesn't work
 void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldValue) {
 	// I know this might look like YandereDev levels of if-else, but switching ain't possible on strings
@@ -393,6 +395,16 @@ float DeltaAngleRad(float a1, float a2) {
 	// ^ wraps to -180 to 180
 }
 
+const float timeScaleMin = 0.03f; //max 1
+const float timeScale_additionInputting = 0.05f; // amount added when WASDing
+const float time_additionShooting = 0.05f; // amount added when shooting
+const float degreeMax = 45; //degrees per frame
+const float time_degreeMax = 0.05f; //at degreeMax degrees per second, this is the most that can be added to timescale
+const float speedMax = 500.0f; // min = 0, the range for 1 - 0 addition of speed
+
+const float time_rate = 0.5f; // per second change
+float timescale_target = 1.0f; // sets the time target
+float timescale_current = 1.0f;
 
 QAngle lastPlayerAngles;
 //-----------------------------------------------------------------------------
@@ -455,36 +467,40 @@ void CHudSpeedometer::OnTick(void) {
 	ConVar* host_timescale = g_pCVar->FindVar("host_timescale");
 	// SUPER_HOT_
 	if (of_bTimeKing) {
-		float timeScale = 1.0f;
+		float timescale_target = 1.0f;
 
 		if (!pPlayerBase->IsPlayerDead()){
 
 			float degreeDifference = 0.0f;
 			degreeDifference += abs(lastPlayerAngles.x - g_pMoveData->m_vecAngles.x);
 			degreeDifference += abs(lastPlayerAngles.y - g_pMoveData->m_vecAngles.y);
-			degreeDifference += abs(lastPlayerAngles.z - g_pMoveData->m_vecAngles.z);
-
-			const float timeScaleMin = 0.05f; //max 1
-			const float timeScale_additionInputting = 0.05f;
-			const float degreeMax = 90; //degrees per frame
-			const float time_degreeMax = 0.5f; //at degreeMax degrees per second, this is the most that can be added to timescale
-
-			timeScale = timeScaleMin;
-			const float speedMax = 320.0f; // min = 0
+			degreeDifference += abs(lastPlayerAngles.z - g_pMoveData->m_vecAngles.z);	
 
 			float speed = pPlayerBase->GetLocalVelocity().Length();
 
 			// Remap speed from 0 to 3320
-			timeScale = timeScaleMin + (speed)* (1.0f - timeScaleMin) / (speedMax);
-			timeScale += (g_pMoveData->m_flForwardMove || g_pMoveData->m_flSideMove) ? timeScale_additionInputting : 0.0f;
-			timeScale += (degreeDifference)* (time_degreeMax) / (degreeMax);
+			timescale_target = timeScaleMin + (speed)* (1.0f - timeScaleMin) / (speedMax);
+			timescale_target += (g_pMoveData->m_flForwardMove || g_pMoveData->m_flSideMove) ? timeScale_additionInputting : 0.0f;
+			timescale_target += (degreeDifference)* (time_degreeMax) / (degreeMax);
+			timescale_target += (pPlayerBase->m_nButtons && IN_ATTACK) ? time_additionShooting : 0;
+			
+			// if airborne, -0.25
+			timescale_target -= pPlayerBase->GetGroundEntity() ? 0 : 0.25;
 			// add shooting
 
-			timeScale = clamp(timeScale, timeScaleMin, 1.0f);
+			timescale_target = clamp(timescale_target, timeScaleMin, 1.0f);
+
+			timescale_current += (timescale_current < timescale_target ? time_rate : -time_rate) * gpGlobals->frametime;
+			
+			timescale_current = clamp(timescale_current, timeScaleMin, 1.0f);
+
+			host_timescale->SetValue(timescale_current);
 		}
-		host_timescale->SetValue(timeScale);
-	}
-	else {
+		else {
+			host_timescale->SetValue(1.0f);
+		}
+		
+	} else {
 		if (host_timescale->GetFloat() != 1.0f) {
 			host_timescale->SetValue(1.0f);
 		}
