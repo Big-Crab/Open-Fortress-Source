@@ -370,7 +370,10 @@ void CHudWeaponWheel::Paint(void)
 		surface()->DrawSetColor(Color(255, 255, 255, 255));
 		for (int i = 0; i < numberOfSegments; i++) {
 			surface()->DrawSetTexture(-1);
+<<<<<<< HEAD
 			surface()->DrawPolyLine(segments[i].outLinesX, segments[i].outLinesY, NUM_VERTS_SPOKE);
+=======
+>>>>>>> 560caf4df5cc4a4a20b39e611d91fdd2dc39e206
 		}
 	}
 }

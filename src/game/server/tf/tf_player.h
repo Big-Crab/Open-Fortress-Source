@@ -544,12 +544,12 @@ public:
 
 	//medals
 	bool				m_bHadPowerup;
-	float				m_fEXTime;
-	float				m_fAirStartTime;
 	int					m_iPowerupKills;
 	int					m_iEXKills;
+	float				m_fEXTime;
 	int					m_iSpreeKills;
 	int					m_iImpressiveCount;
+	CBaseEntity			*m_SuicideEntity;
 
 private:
 

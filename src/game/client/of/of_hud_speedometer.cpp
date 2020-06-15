@@ -23,15 +23,6 @@
 #include "view.h"
 #include <../shared/gamemovement.h>
 
-#include "tf_gamerules.h"
-#include <../shared/util_shared.h>
-#include <../server/util.h>
-#include <../shared/gamestringpool.h>
-#include "of_dynsbwriel.h"
-#include "of_shared_schemas.h"
-#include "c_tf_playerresource.h"
-#include "glow_outline_effect.h"
-
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -46,9 +37,9 @@ using namespace vgui;
 class CHudSpeedometer : public CHudElement, public EditablePanel
 {
 	DECLARE_CLASS_SIMPLE(CHudSpeedometer, EditablePanel);
+
 public:
 	CHudSpeedometer(const char *pElementName);
-	~CHudSpeedometer();
 
 	virtual void	ApplySchemeSettings(IScheme *scheme);
 	virtual bool	ShouldDraw(void);
@@ -92,12 +83,6 @@ private:
 	void UpdateScreenCentre(void);
 
 	void QStrafeJumpHelp(void);
-
-	static void Dadansoddi();
-
-	void ZapPaint();
-	void ZapCalcNearest();
-	// list 
 };
 
 DECLARE_HUDELEMENT(CHudSpeedometer);
@@ -121,42 +106,6 @@ ConVar hud_speedometer_vectors_useplayercolour("hud_speedometer_vectors_useplaye
 //ConVar hud_speedometer_keeplevel("hud_speedometer_keeplevel", "1", FCVAR_ARCHIVE, "0: Speedometer is centred on screen. 1: Speedometer shifts up and down to keep level with the horizon.", SpeedometerConvarChanged);
 ConVar hud_speedometer_optimalangle("hud_speedometer_optimalangle", "0", FCVAR_ARCHIVE, "Enables the optimal angle indicator for airstrafing.", SpeedometerConvarChanged);
 
-void IN_ZapDown();
-void IN_ZapUp();
-ConCommand plus_zap("+zap", IN_ZapDown);
-ConCommand minus_zap("-zap", IN_ZapUp);
-bool bZapEnabled = false;
-void (*functionHook)(void);
-void IN_ZapDown() {
-	if (!bZapEnabled) {
-		bZapEnabled = true;
-		if (functionHook) {
-			functionHook();
-		}
-		else {
-			Msg("ZapDown: Function hook not set!");
-		}
-	}
-}
-void IN_ZapUp() {
-	bZapEnabled = false;
-	Msg("bZapEnabled set -> false");
-}
-void AssignFuncHook(void(*f)(void)) {
-	functionHook = f;
-}
-
-bool isSnapping = false;
-void ZapSnap();
-
-CUtlVector<C_TFPlayer*> playerEnts;
-CUtlVector<Vector> headPositions;
-#define CIRCLE_SIDES 8
-Vertex_t circleBaseVerts[CIRCLE_SIDES];
-#define VISIBLE_OPACITY 25
-#define OCCLUDED_OPACITY 10
-
-//C_TFPlayer* playerEnts[32];
 
 // Cached versions of the ConVars that get used every frame/draw update (More efficient).
 // These shouldn't be members, as their ConVar counterparts are static and global anyway
@@ -192,10 +141,10 @@ void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldVa
 	// Only draw vectors only if we're also drawing the speedometer - this isn't entirely necessary - if users want it to be separate it's easy enough to change.
 	bVectors = (hud_speedometer_vectors.GetInt() > 0) && (iSpeedometer > 0);
 	
-	bOptimalAngle = hud_speedometer_optimalangle.GetBool();
-
 	// Attempt to automatically reload the HUD and scheme each time
 	engine->ExecuteClientCmd("hud_reloadscheme");
+
+	bOptimalAngle = hud_speedometer_optimalangle.GetBool();
 }
 
 //-----------------------------------------------------------------------------
@@ -203,9 +152,6 @@ void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldVa
 //-----------------------------------------------------------------------------
 CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElementName), BaseClass(NULL, "HudSpeedometer")
 {
-
-	//hud_zap = ConVar("hud_zap", "0", FCVAR_ARCHIVE, "ZAP!", ZapConVarChanged);
-
 	Panel *pParent = g_pClientMode->GetViewport();
 	SetParent(pParent);
 
@@ -224,8 +170,6 @@ CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElemen
 	UpdateColours();
 
 	UpdateScreenCentre();
-
-	AssignFuncHook(CHudSpeedometer::Dadansoddi);
 
 	SetHiddenBits(HIDEHUD_MISCSTATUS);
 
@@ -269,10 +213,6 @@ Color CHudSpeedometer::GetComplimentaryColour(Color colorIn)
 //-----------------------------------------------------------------------------
 void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme)
 {
-
-	
-	//playerEnts.RemoveAll();
-
 	// load control settings...
 	LoadControlSettings("resource/UI/HudSpeedometer.res");
 	SetDialogVariable("speeddelta", "~0");
@@ -281,11 +221,6 @@ void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme)
 	
 	UpdateColours();
 	UpdateScreenCentre();
-
-	//bZapEnabled = false;
-	//playerEnts.RemoveAll();
-	//headPositions.RemoveAll();
-	//playerEnts.PurgeAndDeleteElements();
 }
 
 void CHudSpeedometer::UpdateColours()
@@ -426,8 +361,6 @@ float DeltaAngleRad(float a1, float a2)
 	// ^ wraps to -180 to 180
 }
 
-
-float myFOV = 120.0f;
 //-----------------------------------------------------------------------------
 // Purpose: Every think/update tick that the GUI uses
 //-----------------------------------------------------------------------------
@@ -438,12 +371,6 @@ void CHudSpeedometer::OnTick(void)
 	
 	if (!(pPlayer && pPlayerBase))
 		return;
-
-	myFOV = pPlayer->GetFOV();
-
-	if (isSnapping) {
-		ZapSnap();
-	}
 
 	Vector velHor(0, 0, 0);
 	velHor = pPlayerBase->GetLocalVelocity() * Vector(1, 1, 0); // Player's horizontal velocity.
@@ -482,9 +409,6 @@ void CHudSpeedometer::OnTick(void)
 				Q_snprintf(s, sizeof(s), "%+d", difference);
 
 				SetDialogVariable("speeddelta", s);
-				pPlayer->m_Shared.Burn(pPlayer, 5.0f);
-
-				//void	Heal(CTFPlayer *pPlayer, float flAmount, bool bDispenserHeal = false);
 
 				groundedInPreviousFrame = false;
 			}
@@ -502,9 +426,6 @@ void CHudSpeedometer::Paint(void)
 
 	if (bOptimalAngle)
 		QStrafeJumpHelp();
-
-	if (bZapEnabled)
-		ZapPaint();
 
 	if (bVectors)
 	{
@@ -655,292 +576,3 @@ void CHudSpeedometer::QStrafeJumpHelp()
 	//DrawTextFromNumber("MIN: ", minAngle / FOVScale, Color(200, 255, 200, 25), 150, -20);
 	//DrawTextFromNumber("OPTIMAL: ", optimalAngle / FOVScale, Color(255, 200, 200, 25), 150, -10);
 }
-
-void CHudSpeedometer::Dadansoddi() {
-	
-	const float anglePerSide = 2 * M_PI / CIRCLE_SIDES;
-	float currentAngle = 0;
-	for (int i = 0; i < CIRCLE_SIDES; i++) {
-		circleBaseVerts[i].Init(Vector2D(sinf(currentAngle), cosf(currentAngle)));
-		currentAngle += anglePerSide;
-	}
-
-	Msg("Dadansoddi called successfully. Deleting Vectors. ");
-	Msg(bZapEnabled ? "bZapEnabled was true.\n" : "bZapEnabled was false\n");
-
-	headPositions.RemoveAll();
-	playerEnts.RemoveAll();
-	//playerEnts.PurgeAndDeleteElements();
-	//playerEnts.EnsureCapacity(32);
-
-//	Error("Purge was passed!");
-
-	if (bZapEnabled) {
-
-		C_TFPlayer *pPlayer= C_TFPlayer::GetLocalTFPlayer();
-		if (!pPlayer)
-			return;
-
-		int maxClients = engine->GetMaxClients();
-		int clientsConnected = 0;
-		for (int i = 0; i < maxClients; i++) {
-			player_info_t playerInfo;
-			if (engine->GetPlayerInfo(i, &playerInfo))
-			{
-				clientsConnected++;
-			}
-		}
-
-		int currentPlayer = 0;
-
-		for (int playerIndex = 0; playerIndex < maxClients; playerIndex++)
-		{
-			if (playerIndex == engine->GetLocalPlayer()) {
-				Msg("Skipping local player... \n");
-				continue;
-			}
-
-
-			player_info_t playerInfo;
-			if (engine->GetPlayerInfo(playerIndex, &playerInfo))
-			{
-				C_BaseEntity *ent;
-				ent = cl_entitylist->GetEnt(playerIndex);
-				C_TFPlayer *pPlayer = ToTFPlayer(ent);
-				if (pPlayer != null)
-				{
-					// Ignore teammates
-					if (TFGameRules()->IsTeamplay() && pPlayer->GetTeamNumber() == CTFPlayer::GetLocalTFPlayer()->GetTeamNumber())
-						continue;
-
-					playerEnts.AddToTail(pPlayer);
-					Msg("playerEnts: Count: %d, index of new tail: &d", playerEnts.Count(), playerEnts.Find( playerEnts.Tail() ));
-					currentPlayer++;
-				}
-			}
-		}
-	}
-	/*else {
-		playerEnts.EnsureCapacity(32);
-	}*/
-}
-
-ConVar zap_maxpixeldifference("zap_maxpixeldifference", "25", FCVAR_CLIENTDLL, "Max difference between head centre and crosshair to allow a zapsnap.");
-bool hasHeadOnScreen = true;
-Vector headClosest = Vector(0, 0, 0);
-QAngle viewBeforeSnap = QAngle(0, 0, 0);
-float minDistToCentreScreen = 0.0f;
-int closestHeadIndex = -1;
-
-//Vector headPositions[32];
-
-#define ZAP_OFFSET 3.0f
-
-void CHudSpeedometer::ZapCalcNearest() {
-	if (playerEnts.Count() == 0)
-		return;
-
-	int max = playerEnts.Count();
-	bool bHasMinimum = false;
-	minDistToCentreScreen = 0.0f;
-	closestHeadIndex = -1;
-
-	for (int i = 0; i < max; i++) {
-		
-		C_TFPlayer *player;
-		if (playerEnts.IsValidIndex(i)) {
-			// make sure it exists
-			if (playerEnts.Element(i)) {
-				player = playerEnts.Element(i);
-			} 
-			else {
-				Msg("PLAYER ENT POINTED TO NULL WHEN FINDING CLOSEST!!\n");
-				continue;
-			}
-		}
-		else {
-			Msg("INVALID PLAYER INDEX WHEN FINDING CLOSEST PLAYER ENT!!\n");
-			continue;
-		}
-		//C_TFPlayer *player = playerEnts[i];
-
-
-		if (player->IsPlayerDead()) {
-			continue;
-		}
-		if (!player->IsEnemyPlayer())
-			continue;
-
-		// Reposition the callout based on our target's position
-		Vector vecHeadPos;
-		QAngle qaHeadRot;
-		Vector headForward, headRight, headUp;
-		player->GetBonePosition(player->LookupBone("bip_head"), vecHeadPos, qaHeadRot);
-		AngleVectors(qaHeadRot, &headForward, &headRight, &headUp);
-		vecHeadPos += headRight * ZAP_OFFSET;
-
-		//Include their absolute velocity?
-		Vector velocity; player->EstimateAbsVelocity(velocity);
-		vecHeadPos += velocity * gpGlobals->frametime;
-
-		// gotta found out what the client can exec / force the server to do...
-		int iHeadX, iHeadY;
-		int iCentreX, iCentreY;
-
-		Vector vecTargetFeet = (player->GetAbsOrigin());
-		Vector vecDelta = vecHeadPos - MainViewOrigin();
-		//float distance = vecDelta.Length();
-		bool bOnScreen_Feet = GetVectorInScreenSpace(vecTargetFeet, iCentreX, iCentreY);
-		bool bOnScreen_Head = GetVectorInScreenSpace(vecHeadPos, iHeadX, iHeadY);
-		if (bOnScreen_Head || bOnScreen_Feet) {
-
-			// Default draw Colour
-			surface()->DrawSetColor(Color(255, 0, 0, 80));
-
-			Vector2D delta = Vector2D(iCentreScreenX - iHeadX, iCentreScreenY - iHeadY);
-			float distanceToCentreScreen = delta.Length();
-
-			// First will be !bHasMinumum anyway
-			if (distanceToCentreScreen < minDistToCentreScreen || !bHasMinimum) {
-				minDistToCentreScreen = distanceToCentreScreen;
-				headClosest = vecHeadPos;
-				hasHeadOnScreen = true;
-				bHasMinimum = true;
-				closestHeadIndex = i;
-			}
-		}
-
-		//headPositions[i] = vecHeadPos;
-		if (headPositions.IsValidIndex(i)) {
-			headPositions[i] = vecHeadPos;
-		}
-		else {
-			headPositions.AddToTail(vecHeadPos);
-		}
-	}
-}
-
-void CHudSpeedometer::ZapPaint() {
-
-	if (bZapEnabled) {
-		ZapCalcNearest();
-
-		int max = playerEnts.Count();
-
-		for (int i = 0; i < max; i++) {
-			C_TFPlayer *player = playerEnts[i];
-			// No need to highlight the dead.
-			if (player->IsPlayerDead()) {
-				continue;
-			}
-
-			// gotta found out what the client can exec / force the server to do...
-			int iHeadX, iHeadY;
-			int iCentreX, iCentreY;
-
-			if (playerEnts.Count() == 0 || headPositions.Count() == 0)
-				return;
-
-			Vector vecTargetFeet = (player->GetAbsOrigin());
-			Vector vecDelta = headPositions.Element(i) - MainViewOrigin();
-			//float distance = vecDelta.Length();
-			bool bOnScreen_Feet = GetVectorInScreenSpace(vecTargetFeet, iCentreX, iCentreY);
-			bool bOnScreen_Head = GetVectorInScreenSpace(headPositions.Element(i), iHeadX, iHeadY);
-			if (bOnScreen_Head || bOnScreen_Feet) {
-
-				if (i == closestHeadIndex) {
-					// Nearest-to-centre colour
-					surface()->DrawSetColor(Color(255, 255, 0, OCCLUDED_OPACITY));
-				}
-				else {
-					// Default draw Colour
-					surface()->DrawSetColor(Color(255, 0, 0, VISIBLE_OPACITY));
-				}
-
-				Vertex_t headVerts[CIRCLE_SIDES];
-				for (int j = 0; j < CIRCLE_SIDES; j++) {
-
-					// Copy vert
-					headVerts[j] = Vertex_t(circleBaseVerts[j]);
-					
-					// Scale to the max size
-					headVerts[j].m_Position *= zap_maxpixeldifference.GetFloat();
-
-					// Translate
-					headVerts[j].m_Position += Vector2D(iHeadX, iHeadY);
-				}
-
-				// Draw the circle
-				surface()->DrawSetTexture(-1);
-				surface()->DrawTexturedPolygon(CIRCLE_SIDES, headVerts);
-				
-				if (i == closestHeadIndex) {
-					surface()->DrawSetColor(Color(255, 255, 255, 255));
-					surface()->DrawOutlinedCircle(iHeadX, iHeadY, zap_maxpixeldifference.GetFloat(), CIRCLE_SIDES);
-				}
-			}
-		}
-	}
-}
-
-void ZapSnap() {
-	
-	if (bZapEnabled) {
-		// Save the before angles
-		engine->GetViewAngles(viewBeforeSnap);
-
-		if (hasHeadOnScreen) {
-			if (minDistToCentreScreen > zap_maxpixeldifference.GetFloat()) {
-				return;
-			}
-			C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-			if (!pPlayer)
-				return;
-
-			Vector target = {headClosest.y, headClosest.x, headClosest.z};
-			//The camera is 64 units higher than the player:
-			Vector campos = pPlayer->GetAbsOrigin() + pPlayer->GetViewOffset();
-			campos = { campos.y, campos.x, campos.z };
-
-			// Axis in the game, need to know it to fix up:
-			//              : L - R  ; F - B ;  U - D
-			// Rotation Axis:   x        z        y
-			// Translation  :   y        x        z
-
-			float xdis = target.x - campos.x;
-			float ydis = target.z - campos.z;
-			float zdis = target.y - campos.y;
-			float xzdis = sqrtf(xdis * xdis + zdis * zdis);
-
-			QAngle angles = { RAD2DEG(-atan2f(ydis, xzdis)), RAD2DEG(-(atan2f(-xdis, zdis))), 0 };
-
-			// Apply the snap
-			engine->SetViewAngles( angles );
-		}
-		else {
-			Msg("No head on screen!");
-		}
-	}
-}
-
-void ActivateZapSnap() {
-	if (bZapEnabled) {
-		isSnapping = true;
-		ZapSnap();
-	}
-}
-void ZapSnapReset() {
-	/*if (hasSnapped) {
-		engine->SetViewAngles(viewBeforeSnap);
-		hasSnapped = false;
-	}*/
-	isSnapping = false;
-}
-
-
-CHudSpeedometer::~CHudSpeedometer() {
-	playerEnts.PurgeAndDeleteElements();
-}
-
-ConCommand cychwynDullDuw("+whoopsie", ActivateZapSnap);
-ConCommand cychwynDullDyn("-whoopsie", ZapSnapReset);

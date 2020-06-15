@@ -173,14 +173,14 @@ void CTFHudMedals::FireGameEvent(IGameEvent *event)
 	{
 		if (event->GetInt("userid") == pIndex) //you dead, funny
 		{
+			//Kamikaze
+			if (event->GetBool("kamikaze"))
+				AddMedal(KAMIKAZE);
+
 			died = true;
 		}
 		else if (event->GetInt("attacker") == pIndex) //you killed
 		{
-			//Kamikaze
-			if (event->GetBool("kamikaze"))
-				AddMedal(KAMIKAZE);
-			
 			//Midair
 			if (event->GetBool("midair"))
 				AddMedal(MIDAIR);

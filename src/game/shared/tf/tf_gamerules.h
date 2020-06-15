@@ -496,12 +496,10 @@ public:
 
 	int		GetPreviousRoundWinners( void ) { return m_iPreviousRoundWinners; }
 
-	void	PushAllPlayersAway( Vector const &vecPos, float flRange, float flForce, int iTeamNum, CUtlVector<CTFPlayer *> *outVector );
+	void			PushAllPlayersAway( Vector const &vecPos, float flRange, float flForce, int iTeamNum, CUtlVector<CTFPlayer *> *outVector );
 
 	void	SendHudNotification( IRecipientFilter &filter, HudNotification_t iType );
 	void	SendHudNotification( IRecipientFilter &filter, const char *pszText, const char *pszIcon, int iTeam = TEAM_UNASSIGNED );
-
-	void	ResetDeathInflictor(int index);
 
 private:
 
@@ -514,8 +512,6 @@ private:
 	int				m_nZombiesToSpawn;
 	Vector			m_vecMobSpawnLocation;
 	bool			m_bFirstBlood;
-	CBaseEntity		*m_InflictorsArray[64 + 1];
-
 #endif
 
 private:

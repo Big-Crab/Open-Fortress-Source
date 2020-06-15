@@ -265,11 +265,6 @@ CTFPlayerShared::CTFPlayerShared()
 	m_iCritMult = 0;
 	m_flInvisibility = 0.0f;
 
-	m_bBlockJump = false;
-	m_fRampJumpVel = 0.f;
-	m_bCSlide = false;
-	m_fCSlideDuration = 0.f;
-
 	m_flStepSoundDelay = 0.f;
 	m_flJumpSoundDelay = 0.f;
 	

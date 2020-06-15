@@ -176,7 +176,7 @@ protected:
 	void			CheckVelocity( void );
 
 	// Does not change the entities velocity at all
-	void			PushEntity(Vector& push, trace_t *pTrace);
+	void			PushEntity( Vector& push, trace_t *pTrace );
 
 	// Slide off of the impacting object
 	// returns the blocked flags:

@@ -571,18 +571,6 @@ void CTFPlayer::TFPlayerThink()
 		}
 	}
 */
-
-	//midair medal, record player airtime
-	if (!GetGroundEntity() && GetWaterLevel() <= WL_Feet) //always go here when player is in the air
-	{
-		if (!m_fAirStartTime)
-			m_fAirStartTime = gpGlobals->curtime;
-	}
-	else
-	{
-		m_fAirStartTime = 0.f;
-	}
-
 	SetContextThink( &CTFPlayer::TFPlayerThink, gpGlobals->curtime, "TFPlayerThink" );
 }
 
@@ -1339,10 +1327,9 @@ void CTFPlayer::Spawn()
 	m_iPowerupKills = 0;
 	m_iEXKills = 0;
 	m_fEXTime = 0;
-	m_fAirStartTime = 0.f;
 	m_iSpreeKills = 0;
 	m_iImpressiveCount = 0;
-	TFGameRules()->ResetDeathInflictor(entindex());
+	m_SuicideEntity = NULL;
 }
 
 void CTFPlayer::UpdateCosmetics()
@@ -5678,10 +5665,15 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	{
 		pPlayerAttacker = ToTFPlayer( info.GetAttacker() );
 
-		if (pPlayerAttacker != this)
+		//Kamikaze
+		if (pPlayerAttacker == this)
+		{
+			m_SuicideEntity = pInflictor;
+		}
+		else
 		{
 			//Powerup Massacre
-			pPlayerAttacker->m_iPowerupKills += m_Shared.InPowerupCond() ? 1 : 0; //count kills while holding powerup
+			pPlayerAttacker->m_iPowerupKills = m_Shared.InPowerupCond() ? pPlayerAttacker->m_iPowerupKills + 1 : 0; //count kills while holding powerup
 
 			//Excellent
 			if (pPlayerAttacker->m_iEXKills >= 9) //reset after achieving the highest EX medal

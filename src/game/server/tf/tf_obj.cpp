@@ -1198,8 +1198,9 @@ bool CBaseObject::StartBuilding( CBaseEntity *pBuilder )
 		// if the player has no build PDA, abort the building
 		// if the player is a spy though, allow him to build a sapper but don't allow the building of anything else unless he has a engineer pda too
 		TFPlayerClassData_t *pData = pTFBuilder->GetPlayerClass()->GetData();
+
 		CTFWeaponBase *pWeapon = pTFBuilder->Weapon_OwnsThisID(TF_WEAPON_PDA_ENGINEER_BUILD);
-		
+
 		if ( pWeapon == NULL )
 		{
 			if ( pData->m_aBuildable[0] != OBJ_ATTACHMENT_SAPPER )
