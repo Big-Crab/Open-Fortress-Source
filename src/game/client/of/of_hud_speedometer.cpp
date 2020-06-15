@@ -24,6 +24,7 @@
 #include <../shared/gamemovement.h>
 
 #include "tf_gamerules.h"
+#include <../shared/util_shared.h>
 #include <../server/util.h>
 #include <../shared/gamestringpool.h>
 #include "of_dynsbwriel.h"
@@ -47,7 +48,7 @@ class CHudSpeedometer : public CHudElement, public EditablePanel
 	DECLARE_CLASS_SIMPLE(CHudSpeedometer, EditablePanel);
 public:
 	CHudSpeedometer(const char *pElementName);
-	//~CHudSpeedometer();
+	~CHudSpeedometer();
 
 	virtual void	ApplySchemeSettings(IScheme *scheme);
 	virtual bool	ShouldDraw(void);
@@ -127,22 +128,19 @@ ConCommand minus_zap("-zap", IN_ZapUp);
 bool bZapEnabled = false;
 void (*functionHook)(void);
 void IN_ZapDown() {
-	bZapEnabled = true;
-	if (functionHook) {
-		functionHook();
-	}
-	else {
-		Msg("ZapDown: Function hook not set!");
+	if (!bZapEnabled) {
+		bZapEnabled = true;
+		if (functionHook) {
+			functionHook();
+		}
+		else {
+			Msg("ZapDown: Function hook not set!");
+		}
 	}
 }
 void IN_ZapUp() {
 	bZapEnabled = false;
-	if (functionHook) {
-		functionHook();
-	} 
-	else {
-		Msg("ZapUp: Function hook not set!");
-	}
+	Msg("bZapEnabled set -> false");
 }
 void AssignFuncHook(void(*f)(void)) {
 	functionHook = f;
@@ -151,8 +149,14 @@ void AssignFuncHook(void(*f)(void)) {
 bool isSnapping = false;
 void ZapSnap();
 
-//CUtlVector<C_TFPlayer*> playerEnts;
-C_TFPlayer* playerEnts[32];
+CUtlVector<C_TFPlayer*> playerEnts;
+CUtlVector<Vector> headPositions;
+#define CIRCLE_SIDES 8
+Vertex_t circleBaseVerts[CIRCLE_SIDES];
+#define VISIBLE_OPACITY 25
+#define OCCLUDED_OPACITY 10
+
+//C_TFPlayer* playerEnts[32];
 
 // Cached versions of the ConVars that get used every frame/draw update (More efficient).
 // These shouldn't be members, as their ConVar counterparts are static and global anyway
@@ -266,7 +270,7 @@ Color CHudSpeedometer::GetComplimentaryColour(Color colorIn)
 void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme)
 {
 
-	bZapEnabled = false;
+	
 	//playerEnts.RemoveAll();
 
 	// load control settings...
@@ -278,6 +282,9 @@ void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme)
 	UpdateColours();
 	UpdateScreenCentre();
 
+	bZapEnabled = false;
+	playerEnts.RemoveAll();
+	headPositions.RemoveAll();
 	//playerEnts.PurgeAndDeleteElements();
 }
 
@@ -649,16 +656,8 @@ void CHudSpeedometer::QStrafeJumpHelp()
 	//DrawTextFromNumber("OPTIMAL: ", optimalAngle / FOVScale, Color(255, 200, 200, 25), 150, -10);
 }
 
-#define CIRCLE_SIDES 8
-Vertex_t circleBaseVerts[CIRCLE_SIDES];
-int totalPlayers = -1;
-
-void CHudSpeedometer::Dadansoddi() 
-{
-
-	totalPlayers = -1;
-
-	// Build the circle
+void CHudSpeedometer::Dadansoddi() {
+	
 	const float anglePerSide = 2 * M_PI / CIRCLE_SIDES;
 	float currentAngle = 0;
 	for (int i = 0; i < CIRCLE_SIDES; i++) {
@@ -666,14 +665,15 @@ void CHudSpeedometer::Dadansoddi()
 		currentAngle += anglePerSide;
 	}
 
-	CTFPlayer* player = CTFPlayer::GetLocalTFPlayer();
-	player->SetAbsOrigin(Vector(0,0,0));
-
-	Msg("Dadansoddi called successfully. Deleting GlowObjects. ");
+	Msg("Dadansoddi called successfully. Deleting Vectors. ");
 	Msg(bZapEnabled ? "bZapEnabled was true.\n" : "bZapEnabled was false\n");
 
-	//playerEnts.RemoveAll();
+	headPositions.RemoveAll();
+	playerEnts.RemoveAll();
 	//playerEnts.PurgeAndDeleteElements();
+	//playerEnts.EnsureCapacity(32);
+
+//	Error("Purge was passed!");
 
 	if (bZapEnabled) {
 
@@ -713,14 +713,16 @@ void CHudSpeedometer::Dadansoddi()
 					if (TFGameRules()->IsTeamplay() && pPlayer->GetTeamNumber() == CTFPlayer::GetLocalTFPlayer()->GetTeamNumber())
 						continue;
 
-					//playerEnts.AddToTail(pPlayer);
-					playerEnts[currentPlayer] = pPlayer;
+					playerEnts.AddToTail(pPlayer);
+					Msg("playerEnts: Count: %d, index of new tail: &d", playerEnts.Count(), playerEnts.Find( playerEnts.Tail() ));
 					currentPlayer++;
 				}
 			}
 		}
-		totalPlayers = currentPlayer + 1;
 	}
+	/*else {
+		playerEnts.EnsureCapacity(32);
+	}*/
 }
 
 ConVar zap_maxpixeldifference("zap_maxpixeldifference", "25", FCVAR_CLIENTDLL, "Max difference between head centre and crosshair to allow a zapsnap.");
@@ -730,19 +732,44 @@ QAngle viewBeforeSnap = QAngle(0, 0, 0);
 float minDistToCentreScreen = 0.0f;
 int closestHeadIndex = -1;
 
-Vector headPositions[32];
+//Vector headPositions[32];
+
+#define ZAP_OFFSET 3.0f
 
 void CHudSpeedometer::ZapCalcNearest() {
-	int max = totalPlayers;//playerEnts.Count();
+	if (playerEnts.Count() == 0 || headPositions.Count() == 0)
+		return;
+
+	int max = playerEnts.Count();
 	bool bHasMinimum = false;
 	minDistToCentreScreen = 0.0f;
 	closestHeadIndex = -1;
 
 	for (int i = 0; i < max; i++) {
-		C_TFPlayer *player = playerEnts[i];
+		
+		C_TFPlayer *player;
+		if (playerEnts.IsValidIndex(i)) {
+			// make sure it exists
+			if (playerEnts.Element(i)) {
+				player = playerEnts.Element(i);
+			} 
+			else {
+				Msg("PLAYER ENT POINTED TO NULL WHEN FINDING CLOSEST!!\n");
+				continue;
+			}
+		}
+		else {
+			Msg("INVALID PLAYER INDEX WHEN FINDING CLOSEST PLAYER ENT!!\n");
+			continue;
+		}
+		//C_TFPlayer *player = playerEnts[i];
+
+
 		if (player->IsPlayerDead()) {
 			continue;
 		}
+		if (!player->IsEnemyPlayer())
+			continue;
 
 		// Reposition the callout based on our target's position
 		Vector vecHeadPos;
@@ -750,10 +777,8 @@ void CHudSpeedometer::ZapCalcNearest() {
 		Vector headForward, headRight, headUp;
 		player->GetBonePosition(player->LookupBone("bip_head"), vecHeadPos, qaHeadRot);
 		AngleVectors(qaHeadRot, &headForward, &headRight, &headUp);
-		const float headUpOffset = 5.0f;
-		vecHeadPos += headUp * headUpOffset;
+		vecHeadPos += headRight * ZAP_OFFSET;
 
-		//if (player->GetAttachment(player->LookupAttachment("head"), vecHeadPos))
 		//Include their absolute velocity?
 		Vector velocity; player->EstimateAbsVelocity(velocity);
 		vecHeadPos += velocity * gpGlobals->frametime;
@@ -785,16 +810,24 @@ void CHudSpeedometer::ZapCalcNearest() {
 			}
 		}
 
-		headPositions[i] = vecHeadPos;
+		//headPositions[i] = vecHeadPos;
+		if (headPositions.IsValidIndex(i)) {
+			headPositions[i] = vecHeadPos;
+		}
+		else {
+			headPositions.AddToTail(vecHeadPos);
+		}
 	}
 }
 
 void CHudSpeedometer::ZapPaint() {
 
 	if (bZapEnabled) {
+		CTFPlayer *localPlayer = CTFPlayer::GetLocalTFPlayer();
+
 		ZapCalcNearest();
 
-		int max = totalPlayers;//playerEnts.Count();
+		int max = playerEnts.Count();
 
 		for (int i = 0; i < max; i++) {
 			C_TFPlayer *player = playerEnts[i];
@@ -808,78 +841,123 @@ void CHudSpeedometer::ZapPaint() {
 			int iCentreX, iCentreY;
 
 			Vector vecTargetFeet = (player->GetAbsOrigin());
-			Vector vecDelta = headPositions[i] - MainViewOrigin();
-			float distance = vecDelta.Length();
+			Vector vecDelta = headPositions.Element(i) - MainViewOrigin();
+			//float distance = vecDelta.Length();
 			bool bOnScreen_Feet = GetVectorInScreenSpace(vecTargetFeet, iCentreX, iCentreY);
-			bool bOnScreen_Head = GetVectorInScreenSpace(headPositions[i], iHeadX, iHeadY);
+			bool bOnScreen_Head = GetVectorInScreenSpace(headPositions.Element(i), iHeadX, iHeadY);
 			if (bOnScreen_Head || bOnScreen_Feet) {
 
-				// Default draw Colour
-				surface()->DrawSetColor(Color(255, 0, 0, 80));
-				if (i == closestHeadIndex)
-					surface()->DrawSetColor(Color(255, 255, 0, 50));
+				int alpha = OCCLUDED_OPACITY;
+				//UTIL_TraceLine(GetAbsOrigin(), player->EyePosition(), MASK_OPAQUE, this, COLLISION_GROUP_NONE, &tr);
+				//const Vector& vecAbsStart, const Vector& vecAbsEnd, unsigned int mask, const IHandleEntity *ignore, int collisionGroup, trace_t *ptr)
+				// Check occlusion
+				trace_t tr;
+				Ray_t ray;
+				ray.Init(headPositions.Element(i), localPlayer->EyePosition());
+				CTraceFilterSimple traceFilter(player, COLLISION_GROUP_NONE);
+				enginetrace->TraceRay(ray, MASK_OPAQUE, &traceFilter, &tr);
+				if (tr.fraction == 1.0f)
+				{
+					alpha = VISIBLE_OPACITY;
+				}
+				if (i == closestHeadIndex) {
+					// Nearest-to-centre colour
+					surface()->DrawSetColor(Color(255, 255, 0, 70));
+				}
+				else {
+					// Default draw Colour
+					surface()->DrawSetColor(Color(255, 0, 0, 80));
+				}
 
-				const float baseWidth = 1000;
-				int width = baseWidth;
-				width /= (distance * myFOV);
-				width = min(baseWidth, width);
-				surface()->DrawFilledRect(iCentreX - width, iHeadY, iCentreX + width, iCentreY);
+				//const float baseWidth = 1000;
+				//int width = baseWidth;
+				//width /= (distance * myFOV);
+				//width = min(baseWidth, width);
+				//surface()->DrawFilledRect(iCentreX - width, iHeadY, iCentreX + width, iCentreY);
 
 				Vertex_t headVerts[CIRCLE_SIDES];
-				for (int i = 0; i < CIRCLE_SIDES; i++) {
-					headVerts[i] = Vertex_t(circleBaseVerts[i]);
-					headVerts[i].m_Position *= zap_maxpixeldifference.GetFloat();
-					headVerts[i].m_Position += Vector2D(iHeadX, iHeadY);
+				for (int j = 0; j < CIRCLE_SIDES; j++) {
+
+					// Copy vert
+					headVerts[j] = Vertex_t(circleBaseVerts[j]);
+					
+					// Scale to the max size
+					headVerts[j].m_Position *= zap_maxpixeldifference.GetFloat();
+
+					// Translate
+					headVerts[j].m_Position += Vector2D(iHeadX, iHeadY);
 				}
+
+				// Draw the circle
 				surface()->DrawSetTexture(-1);
 				surface()->DrawTexturedPolygon(CIRCLE_SIDES, headVerts);
+				
+				if (i == closestHeadIndex) {
+					surface()->DrawSetColor(Color(255, 255, 255, 255));
+					surface()->DrawOutlinedCircle(iHeadX, iHeadY, zap_maxpixeldifference.GetFloat(), CIRCLE_SIDES);
+				}
 			}
 		}
 	}
 }
 
 void ZapSnap() {
-	// Save the before angles
-	engine->GetViewAngles(viewBeforeSnap);
+	
+	if (bZapEnabled) {
+		// Save the before angles
+		engine->GetViewAngles(viewBeforeSnap);
 
-	if (hasHeadOnScreen) {
-		if (minDistToCentreScreen > zap_maxpixeldifference.GetFloat()) {
-			/*char c[90];
-			Q_snprintf(c, sizeof(c), "Head was too far away to do the zapsnap(zap_maxpixeldifference): %f\n\n", minDistToCentreScreen);
-			Msg(c);*/
-			return;
+		if (hasHeadOnScreen) {
+			if (minDistToCentreScreen > zap_maxpixeldifference.GetFloat()) {
+				return;
+			}
+			C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+			if (!pPlayer)
+				return;
+
+
+			trace_t tr;
+			Ray_t ray;
+			ray.Init(headClosest, pPlayer->EyePosition());
+			CTraceFilterSimple traceFilter(playerEnts.Element(closestHeadIndex), COLLISION_GROUP_NONE);
+			enginetrace->TraceRay(ray, MASK_OPAQUE, &traceFilter, &tr);
+			if (tr.fraction != 1.0f)
+			{
+				Msg("Cannot shoot an occluded player");
+				return;
+			}
+
+			Vector target = {headClosest.y, headClosest.x, headClosest.z};
+			//The camera is 64 units higher than the player:
+			Vector campos = pPlayer->GetAbsOrigin() + pPlayer->GetViewOffset();
+			campos = { campos.y, campos.x, campos.z };
+
+			// Axis in the game, need to know it to fix up:
+			//              : L - R  ; F - B ;  U - D
+			// Rotation Axis:   x        z        y
+			// Translation  :   y        x        z
+
+			float xdis = target.x - campos.x;
+			float ydis = target.z - campos.z;
+			float zdis = target.y - campos.y;
+			float xzdis = sqrtf(xdis * xdis + zdis * zdis);
+
+			QAngle angles = { RAD2DEG(-atan2f(ydis, xzdis)), RAD2DEG(-(atan2f(-xdis, zdis))), 0 };
+
+			// Apply the snap
+			engine->SetViewAngles( angles );
 		}
-		C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-		if (!pPlayer)
-			return;
-		Vector target = {headClosest.y, headClosest.x, headClosest.z};
-		//The camera is 64 units higher than the player:
-		Vector campos = pPlayer->GetAbsOrigin() + pPlayer->GetViewOffset();
-		campos = { campos.y, campos.x, campos.z };
-
-		// Axis in the game, need to know it to fix up:
-		//              : L - R  ; F - B ;  U - D
-		// Rotation Axis:   x        z        y
-		// Translation  :   y        x        z
-
-		float xdis = target.x - campos.x;
-		float ydis = target.z - campos.z;
-		float zdis = target.y - campos.y;
-		float xzdis = sqrtf(xdis * xdis + zdis * zdis);
-
-		QAngle angles = { RAD2DEG(-atan2f(ydis, xzdis)), RAD2DEG(-(atan2f(-xdis, zdis))), 0 };
-
-		// Apply the snap
-		engine->SetViewAngles( angles );
-	}
-	else {
-		Msg("No head on screen!");
+		else {
+			Msg("No head on screen!");
+		}
 	}
 }
 
 void ActivateZapSnap() {
-	isSnapping = true;
-	ZapSnap();
+	if (bZapEnabled) {
+		isSnapping = true;
+		ZapSnap();
+	}
 }
 void ZapSnapReset() {
 	/*if (hasSnapped) {
@@ -890,9 +968,9 @@ void ZapSnapReset() {
 }
 
 
-/*CHudSpeedometer::~CHudSpeedometer() {
-	//playerEnts.PurgeAndDeleteElements();
-}*/
+CHudSpeedometer::~CHudSpeedometer() {
+	playerEnts.PurgeAndDeleteElements();
+}
 
 ConCommand cychwynDullDuw("+whoopsie", ActivateZapSnap);
 ConCommand cychwynDullDyn("-whoopsie", ZapSnapReset);
