@@ -177,10 +177,12 @@ void RefreshDesiredWeapons( int iClass )
 				szCommand[0] = '\0';
 				for( pWeapon; pWeapon != NULL; pWeapon = pWeapon->GetNextValue() ) // Loop through all the keyvalues
 				{
-					if( szCommand[0] != '\0' )
+					if (szCommand[0] != '\0') {
 						Q_snprintf( szCommand, sizeof( szCommand ), "%s %s %d", szCommand, pWeapon->GetName(), GetItemSchema()->GetWeaponID(pWeapon->GetString()) );
-					else
-						Q_snprintf( szCommand, sizeof( szCommand ), "%s %d", pWeapon->GetName(), GetItemSchema()->GetWeaponID(pWeapon->GetString()) );
+					}
+					else {
+						Q_snprintf(szCommand, sizeof(szCommand), "%s %d", pWeapon->GetName(), GetItemSchema()->GetWeaponID(pWeapon->GetString()));
+					}
 				}
 				ConVarRef var( g_aArsenalConvarNames[iClass] );
 				if ( var.IsValid() )
