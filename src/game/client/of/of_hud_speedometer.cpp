@@ -823,8 +823,6 @@ void CHudSpeedometer::ZapCalcNearest() {
 void CHudSpeedometer::ZapPaint() {
 
 	if (bZapEnabled) {
-		CTFPlayer *localPlayer = CTFPlayer::GetLocalTFPlayer();
-
 		ZapCalcNearest();
 
 		int max = playerEnts.Count();
@@ -847,33 +845,14 @@ void CHudSpeedometer::ZapPaint() {
 			bool bOnScreen_Head = GetVectorInScreenSpace(headPositions.Element(i), iHeadX, iHeadY);
 			if (bOnScreen_Head || bOnScreen_Feet) {
 
-				int alpha = OCCLUDED_OPACITY;
-				//UTIL_TraceLine(GetAbsOrigin(), player->EyePosition(), MASK_OPAQUE, this, COLLISION_GROUP_NONE, &tr);
-				//const Vector& vecAbsStart, const Vector& vecAbsEnd, unsigned int mask, const IHandleEntity *ignore, int collisionGroup, trace_t *ptr)
-				// Check occlusion
-				trace_t tr;
-				Ray_t ray;
-				ray.Init(headPositions.Element(i), localPlayer->EyePosition());
-				CTraceFilterSimple traceFilter(player, COLLISION_GROUP_NONE);
-				enginetrace->TraceRay(ray, MASK_OPAQUE, &traceFilter, &tr);
-				if (tr.fraction == 1.0f)
-				{
-					alpha = VISIBLE_OPACITY;
-				}
 				if (i == closestHeadIndex) {
 					// Nearest-to-centre colour
-					surface()->DrawSetColor(Color(255, 255, 0, 70));
+					surface()->DrawSetColor(Color(255, 255, 0, OCCLUDED_OPACITY));
 				}
 				else {
 					// Default draw Colour
-					surface()->DrawSetColor(Color(255, 0, 0, 80));
+					surface()->DrawSetColor(Color(255, 0, 0, VISIBLE_OPACITY));
 				}
-
-				//const float baseWidth = 1000;
-				//int width = baseWidth;
-				//width /= (distance * myFOV);
-				//width = min(baseWidth, width);
-				//surface()->DrawFilledRect(iCentreX - width, iHeadY, iCentreX + width, iCentreY);
 
 				Vertex_t headVerts[CIRCLE_SIDES];
 				for (int j = 0; j < CIRCLE_SIDES; j++) {
@@ -914,18 +893,6 @@ void ZapSnap() {
 			C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 			if (!pPlayer)
 				return;
-
-
-			trace_t tr;
-			Ray_t ray;
-			ray.Init(headClosest, pPlayer->EyePosition());
-			CTraceFilterSimple traceFilter(playerEnts.Element(closestHeadIndex), COLLISION_GROUP_NONE);
-			enginetrace->TraceRay(ray, MASK_OPAQUE, &traceFilter, &tr);
-			if (tr.fraction != 1.0f)
-			{
-				Msg("Cannot shoot an occluded player");
-				return;
-			}
 
 			Vector target = {headClosest.y, headClosest.x, headClosest.z};
 			//The camera is 64 units higher than the player:
