@@ -282,9 +282,9 @@ void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme)
 	UpdateColours();
 	UpdateScreenCentre();
 
-	bZapEnabled = false;
-	playerEnts.RemoveAll();
-	headPositions.RemoveAll();
+	//bZapEnabled = false;
+	//playerEnts.RemoveAll();
+	//headPositions.RemoveAll();
 	//playerEnts.PurgeAndDeleteElements();
 }
 
@@ -737,7 +737,7 @@ int closestHeadIndex = -1;
 #define ZAP_OFFSET 3.0f
 
 void CHudSpeedometer::ZapCalcNearest() {
-	if (playerEnts.Count() == 0 || headPositions.Count() == 0)
+	if (playerEnts.Count() == 0)
 		return;
 
 	int max = playerEnts.Count();
@@ -837,6 +837,9 @@ void CHudSpeedometer::ZapPaint() {
 			// gotta found out what the client can exec / force the server to do...
 			int iHeadX, iHeadY;
 			int iCentreX, iCentreY;
+
+			if (playerEnts.Count() == 0 || headPositions.Count() == 0)
+				return;
 
 			Vector vecTargetFeet = (player->GetAbsOrigin());
 			Vector vecDelta = headPositions.Element(i) - MainViewOrigin();
