@@ -14,10 +14,9 @@
 #include "vgui_controls/MenuItem.h"
 #include "vgui_controls/MessageDialog.h"
 #include "tier1/utllinkedlist.h"
-#include "customizationdialog.h"
 
-#include <GameUI/gameui_shared.h>
 #include <GameUI/IBasePanel.h>
+#include "vgui/tf_vgui_video.h"
 
 //#include "avi/ibik.h"
 #include "ixboxsystem.h"
@@ -29,6 +28,11 @@ class IMaterial;
 class CMatchmakingBasePanel;
 class CBackgroundMenuButton;
 class CGameMenu;
+
+namespace vgui
+{
+	class CVideoBackground;
+}
 
 enum
 {
@@ -55,6 +59,68 @@ namespace BaseModUI
 		UISOUND_FOCUS,
 		UISOUND_CLICK,
 		UISOUND_DENY,
+	};
+
+	enum WINDOW_TYPE
+	{
+		WT_NONE = 0,
+		WT_ACHIEVEMENTS,
+		WT_AUDIO,
+		WT_AUDIOVIDEO,
+		WT_CLOUD,
+		WT_CONTROLLER,
+		WT_CONTROLLER_STICKS,
+		WT_CONTROLLER_BUTTONS,
+		WT_DOWNLOADS,
+		WT_GAMELOBBY,
+		WT_GAMEOPTIONS,
+		WT_GAMESETTINGS,
+		WT_GENERICCONFIRMATION,
+		WT_INGAMEDIFFICULTYSELECT,
+		WT_INGAMEMAINMENU,
+		WT_INGAMECHAPTERSELECT,
+		WT_INGAMEKICKPLAYERLIST,
+		WT_VOTEOPTIONS,
+		WT_KEYBOARDMOUSE,
+		WT_LOADINGPROGRESSBKGND,
+		WT_LOADINGPROGRESS,
+		WT_MAINMENU,
+		WT_MULTIPLAYER,
+		WT_OPTIONS,
+		WT_SEARCHINGFORLIVEGAMES,
+		WT_SIGNINDIALOG,
+		WT_SINGLEPLAYER,
+		WT_GENERICWAITSCREEN,
+		WT_ATTRACTSCREEN,
+		WT_ALLGAMESEARCHRESULTS,
+		WT_FOUNDPUBLICGAMES,
+		WT_TRANSITIONSCREEN,
+		WT_PASSWORDENTRY,
+		WT_VIDEO,
+		WT_STEAMCLOUDCONFIRM,
+		WT_STEAMGROUPSERVERS,
+		WT_CUSTOMCAMPAIGNS,
+#ifdef ENABLE_ADDONS
+		WT_ADDONS,
+#endif
+		WT_DOWNLOADCAMPAIGN,
+		WT_LEADERBOARD,
+		WT_ADDONASSOCIATION,
+		WT_GETLEGACYDATA,
+		WT_DM_LOADOUT,
+		WT_WINDOW_COUNT // WT_WINDOW_COUNT must be last in the list!
+	};
+
+	enum WINDOW_PRIORITY
+	{
+		WPRI_NONE,
+		WPRI_BKGNDSCREEN,
+		WPRI_NORMAL,
+		WPRI_WAITSCREEN,
+		WPRI_MESSAGE,
+		WPRI_LOADINGPLAQUE,
+		WPRI_TOPMOST,			// must be highest priority, no other windows can obscure
+		WPRI_COUNT				// WPRI_COUNT must be last in the list!
 	};
 
 	class CBaseModFrame;
@@ -150,6 +216,7 @@ namespace BaseModUI
 		void OnEngineLevelLoadingSession( KeyValues *pEvent );
 		bool ActivateBackgroundEffects();
 
+		bool IsInLevel();
 		void PlayGameStartupSound();
 
 		static CBaseModPanel* m_CFactoryBasePanel;
@@ -189,6 +256,8 @@ namespace BaseModUI
 		void ReleaseStartupGraphic();
 		void DrawStartupGraphic( float flNormalizedAlpha );
 		IVTFTexture			*m_pBackgroundTexture;
+
+		vgui::CVideoBackground		*m_pVideo;
 
 	};
 };

@@ -271,9 +271,16 @@ studiohdr_t* CBaseModelPanel::GetStudioHdr( void )
 {
 	MDLCACHE_CRITICAL_SECTION();
 	//Fenteale: using m_RootMDL.m_MDL.GetStudioHdr() doesnt work in linux.  use this instead
-	MDLHandle_t hSelectedMDL = g_pMDLCache->FindMDL(m_BMPResData.m_pszModelName);
-	g_pMDLCache->PreloadModel(hSelectedMDL);
-	return g_pMDLCache->GetStudioHdr( hSelectedMDL );
+	if ( m_BMPResData.m_pszModelName )
+	{
+		MDLHandle_t hSelectedMDL = g_pMDLCache->FindMDL( m_BMPResData.m_pszModelName );
+		g_pMDLCache->PreloadModel( hSelectedMDL );
+		return g_pMDLCache->GetStudioHdr( hSelectedMDL );
+	}
+	else
+	{
+		return NULL;
+	}
 	
 }
 

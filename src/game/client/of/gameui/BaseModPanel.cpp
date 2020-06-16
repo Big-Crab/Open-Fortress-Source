@@ -66,6 +66,8 @@
 #include "vgui/IInput.h"
 #include "vgui/IVGui.h"
 
+#include "vgui/videobackground.h"
+
 #include "../cdll_client_int.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -244,6 +246,9 @@ m_lastActiveUserId(0)
 	//Make it pausable When we reload, the game stops pausing on +esc
 	ConVar *sv_pausable = cvar->FindVar("sv_pausable");
 	sv_pausable->SetValue(1);
+
+	m_pVideo = new CVideoBackground( NULL, "VideoBackground" );
+	m_pVideo->SetParent( enginevgui->GetPanel( PANEL_GAMEUIDLL ) );
 }
 
 //=============================================================================
@@ -837,6 +842,8 @@ void CBaseModPanel::OnGameUIActivated()
 	}
 	else if ( engine->IsConnected() && !m_LevelLoading )
 	{
+		m_pVideo->SetVisible( false );
+
 		CBaseModFrame *pInGameMainMenu = m_Frames[ WT_INGAMEMAINMENU ].Get();
 
 		if ( !pInGameMainMenu || !pInGameMainMenu->IsAutoDeleteSet() )
@@ -929,6 +936,7 @@ void CBaseModPanel::OpenFrontScreen()
 	}
 #else
 	frontWindow = WT_MAINMENU;
+	m_pVideo->SetVisible( true );
 #endif // _X360
 
 	if( frontWindow != WT_NONE )
@@ -1356,14 +1364,23 @@ void CBaseModPanel::ApplySchemeSettings(IScheme *pScheme)
 	m_nProductImageWide = vgui::scheme()->GetProportionalScaledValue( logoW );
 	m_nProductImageTall = vgui::scheme()->GetProportionalScaledValue( logoH );
 
+	char background[MAX_PATH];
+	engine->GetMainMenuBackgroundName(background, MAX_PATH);
+
 	if ( aspectRatio >= 1.6f )
 	{
 		// use the widescreen version
-		Q_snprintf( m_szFadeFilename, sizeof( m_szFadeFilename ), "materials/console/%s_widescreen.vtf", "background01" );
+		Q_snprintf( m_szFadeFilename, sizeof( m_szFadeFilename ), "materials/console/%s_widescreen.vtf", background);
 	}
 	else
 	{
-		Q_snprintf( m_szFadeFilename, sizeof( m_szFadeFilename ), "materials/console/%s_widescreen.vtf", "background01" );
+		Q_snprintf( m_szFadeFilename, sizeof( m_szFadeFilename ), "materials/console/%s.vtf", background );
+	}
+
+	// Active hidden console
+	if ( GameConsole().IsConsoleVisible() )
+	{
+		GameConsole().Activate();
 	}
 }
 
@@ -1455,134 +1472,57 @@ void CBaseModPanel::DrawCopyStats()
 #endif
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: returns true if we're currently playing the game
+//-----------------------------------------------------------------------------
+bool CBaseModPanel::IsInLevel()
+{
+	const char *levelName = engine->GetLevelName();
+	if (levelName && levelName[0])//  && !engine->IsLevelMainMenuBackground())
+	{
+		return true;
+	}
+	return false;
+}
+
 //=============================================================================
 void CBaseModPanel::PaintBackground()
 {
-	if (!m_LevelLoading) // && !GameUI().IsInLevel() && !GameUI().IsInBackgroundLevel() )
+	if (!m_LevelLoading && !IsInLevel())
 	{
 		int wide, tall;
 		GetSize( wide, tall );
 
-#if 0
-		if ( true /*engine->IsTransitioningToLoad()*/ )
+		if ( false /*engine->IsTransitioningToLoad()*/ )
 		{
-			ActivateBackgroundEffects();
-
-			if ( ASWBackgroundMovie() )
-			{
-				ASWBackgroundMovie()->Update();
-				if ( ASWBackgroundMovie()->SetTextureMaterial() != -1 )
-				{
-					surface()->DrawSetColor( 255, 255, 255, 255 );
-					int x, y, w, h;
-					GetBounds( x, y, w, h );
-
-					// center, 16:9 aspect ratio
-					int width_at_ratio = h * (16.0f / 9.0f);
-					x = ( w * 0.5f ) - ( width_at_ratio * 0.5f );
-
-					surface()->DrawTexturedRect( x, y, x + width_at_ratio, y + h );
-
-					if ( !m_flMovieFadeInTime )
-					{
-						// do the fade a little bit after the movie starts (needs to be stable)
-						// the product overlay will fade out
-						m_flMovieFadeInTime	= 0;
-					}
-
-					float flFadeDelta = RemapValClamped( Plat_FloatTime(), m_flMovieFadeInTime, m_flMovieFadeInTime + TRANSITION_TO_MOVIE_FADE_TIME, 1.0f, 0.0f );
-					if ( flFadeDelta > 0.0f )
-					{
-						if ( !m_pBackgroundMaterial )
-						{
-							PrepareStartupGraphic();
-						}
-						DrawStartupGraphic( flFadeDelta );
-					}
-				}
-			}
+			// ensure the background is clear
+			// the loading progress is about to take over in a few frames
+			// this keeps us from flashing a different graphic
+			surface()->DrawSetColor(0, 0, 0, 255);
+			surface()->DrawSetTexture(m_iBackgroundImageID);
+			surface()->DrawTexturedRect(0, 0, wide, tall);
 		}
 		else
 		{
 			ActivateBackgroundEffects();
 
-			if ( ASWBackgroundMovie() )
+			if ( !m_flMovieFadeInTime )
 			{
-				ASWBackgroundMovie()->Update();
+				// do the fade a little bit after the movie starts (needs to be stable)
+				// the product overlay will fade out
+				m_flMovieFadeInTime = Plat_FloatTime() + TRANSITION_TO_MOVIE_DELAY_TIME;
+			}
 
-				if (ASWBackgroundMovie()->GetVideoMaterial())
+			float flFadeDelta = RemapValClamped( Plat_FloatTime(), m_flMovieFadeInTime, m_flMovieFadeInTime + TRANSITION_TO_MOVIE_FADE_TIME, 1.0f, 0.0f );
+			if ( flFadeDelta > 0.0f )
+			{
+				if ( !m_pBackgroundMaterial )
 				{
-					// Draw the polys to draw this out
-					CMatRenderContextPtr pRenderContext( materials );
-	
-					pRenderContext->MatrixMode( MATERIAL_VIEW );
-					pRenderContext->PushMatrix();
-					pRenderContext->LoadIdentity();
-
-					pRenderContext->MatrixMode( MATERIAL_PROJECTION );
-					pRenderContext->PushMatrix();
-					pRenderContext->LoadIdentity();
-
-					pRenderContext->Bind( ASWBackgroundMovie()->GetVideoMaterial()->GetMaterial(), NULL );
-
-					CMeshBuilder meshBuilder;
-					IMesh* pMesh = pRenderContext->GetDynamicMesh( true );
-					meshBuilder.Begin( pMesh, MATERIAL_QUADS, 1 );
-
-					int xpos = 0;
-					int ypos = 0;
-					vgui::ipanel()->GetAbsPos(GetVPanel(), xpos, ypos);
-
-					float flLeftX = xpos;
-					float flRightX = xpos + ( ASWBackgroundMovie()->m_nPlaybackWidth-1 );
-
-					float flTopY = ypos;
-					float flBottomY = ypos + ( ASWBackgroundMovie()->m_nPlaybackHeight-1 );
-
-					// Map our UVs to cut out just the portion of the video we're interested in
-					float flLeftU = 0.0f;
-					float flTopV = 0.0f;
-
-					// We need to subtract off a pixel to make sure we don't bleed
-					float flRightU = ASWBackgroundMovie()->m_flU - ( 1.0f / (float) ASWBackgroundMovie()->m_nPlaybackWidth );
-					float flBottomV = ASWBackgroundMovie()->m_flV - ( 1.0f / (float) ASWBackgroundMovie()->m_nPlaybackHeight );
-
-					// Get the current viewport size
-					int vx, vy, vw, vh;
-					pRenderContext->GetViewport( vx, vy, vw, vh );
-
-					// map from screen pixel coords to -1..1
-					flRightX = FLerp( -1, 1, 0, vw, flRightX );
-					flLeftX = FLerp( -1, 1, 0, vw, flLeftX );
-					flTopY = FLerp( 1, -1, 0, vh ,flTopY );
-					flBottomY = FLerp( 1, -1, 0, vh, flBottomY );
-
-					float alpha = ((float)GetFgColor()[3]/255.0f);
-
-					for ( int corner=0; corner<4; corner++ )
-					{
-						bool bLeft = (corner==0) || (corner==3);
-						meshBuilder.Position3f( (bLeft) ? flLeftX : flRightX, (corner & 2) ? flBottomY : flTopY, 0.0f );
-						meshBuilder.Normal3f( 0.0f, 0.0f, 1.0f );
-						meshBuilder.TexCoord2f( 0, (bLeft) ? flLeftU : flRightU, (corner & 2) ? flBottomV : flTopV );
-						meshBuilder.TangentS3f( 0.0f, 1.0f, 0.0f );
-						meshBuilder.TangentT3f( 1.0f, 0.0f, 0.0f );
-						meshBuilder.Color4f( 1.0f, 1.0f, 1.0f, alpha );
-						meshBuilder.AdvanceVertex();
-					}
-	
-					meshBuilder.End();
-					pMesh->Draw();
-
-					pRenderContext->MatrixMode( MATERIAL_VIEW );
-					pRenderContext->PopMatrix();
-
-					pRenderContext->MatrixMode( MATERIAL_PROJECTION );
-					pRenderContext->PopMatrix();
+					PrepareStartupGraphic();
 				}
+				DrawStartupGraphic( flFadeDelta );
 			}
 		}
-#endif
 	}
 
 #if defined( _X360 )
@@ -1801,11 +1741,8 @@ void CBaseModPanel::DrawStartupGraphic( float flNormalizedAlpha )
 	int h = GetTall();
 	int tw = m_pBackgroundTexture->Width();
 	int th = m_pBackgroundTexture->Height();
-
 	float depth = 0.5f;
-	int width_at_ratio = h * (16.0f / 9.0f);
-	int x = ( w * 0.5f ) - ( width_at_ratio * 0.5f );
-	DrawScreenSpaceRectangleAlpha( m_pBackgroundMaterial, x, 0, width_at_ratio, h, 8, 8, tw-8, th-8, tw, th, NULL,1,1,depth,flNormalizedAlpha );
+	DrawScreenSpaceRectangleAlpha( m_pBackgroundMaterial, 0, 0, w, h, 0, 0, tw, th, tw, th, NULL, 1, 1, depth, flNormalizedAlpha );
 }
 
 void CBaseModPanel::OnCommand(const char *command)

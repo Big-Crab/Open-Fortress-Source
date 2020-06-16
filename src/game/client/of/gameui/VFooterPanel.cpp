@@ -295,7 +295,7 @@ void CBaseModFooterPanel::PaintBackground()
 		}
 	}
 
-	DrawSmearBackground( 0, y, wide, tall, true );
+	// DrawSmearBackground( 0, y, wide, tall, true );
 
 	if ( IsX360() )
 	{

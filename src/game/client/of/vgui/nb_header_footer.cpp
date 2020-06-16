@@ -7,7 +7,7 @@
 #include "VGuiMatSurface/IMatSystemSurface.h"
 #include "igameevents.h"
 // #include "EngineInterface.h"
-#include "BaseModPanel.h"
+#include "gameui/BaseModPanel.h"
 #include "cdll_util.h"
 #include "util_shared.h"
 

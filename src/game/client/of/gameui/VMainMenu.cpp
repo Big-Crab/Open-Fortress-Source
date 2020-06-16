@@ -43,7 +43,7 @@
 #include "tier0/icommandline.h"
 #include "fmtstr.h"
 
-#include "of/of_dmmodelpanel.h"
+#include "vgui/of_dmmodelpanel.h"
 
 #include <IVGuiModuleLoader.h>
 
@@ -84,7 +84,7 @@ MainMenu::MainMenu( Panel *parent, const char *panelName ):
 	SetMoveable( false );
 	SetSizeable( false );
 
-	SetLowerGarnishEnabled( true );
+	SetFooterEnabled( true );
 
 	AddFrameListener( this );
 
@@ -311,10 +311,6 @@ void MainMenu::OnCommand( const char *command )
 		CBaseModPanel::GetSingleton().OpenWindow( WT_ADDONS, this, true );
 	}
 #endif
-	else if( !Q_strcmp( command, "MyUGC" ) )
-	{
-		CBaseModPanel::GetSingleton().OpenWindow( WT_MYUGC, this, true );
-	}
 	else if ( !Q_stricmp( command, "QuitGame_NoConfirm" ) )
 	{
 		if ( IsPC() )
@@ -577,7 +573,7 @@ void MainMenu::PaintBackground()
 
 	int x, y, wide, tall;
 	pPanel->GetBounds( x, y, wide, tall );
-	DrawBlackBackground( x, y, wide, tall, false );	
+	// DrawBlackBackground( x, y, wide, tall, false );	
 }
 
 void MainMenu::SetFooterState()

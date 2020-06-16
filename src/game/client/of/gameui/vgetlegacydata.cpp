@@ -34,7 +34,7 @@ GetLegacyData::GetLegacyData( Panel *parent, const char *panelName )
 
 	SetTitle( "", false );
 	SetDeleteSelfOnClose( true );
-	SetLowerGarnishEnabled( false );
+	SetFooterEnabled( false );
 	SetMoveable( false );
 	LoadControlSettings( "Resource/UI/BaseModUI/getlegacydata.res" );
 }

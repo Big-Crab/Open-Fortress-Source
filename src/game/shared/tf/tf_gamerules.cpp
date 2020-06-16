@@ -5340,6 +5340,11 @@ void CTFGameRules::DeathNotice(CBasePlayer *pVictim, const CTakeDamageInfo &info
 				{
 					//scorer was killed by the same inflictor of the victim
 					Kamikaze = m_InflictorsArray[pKiller->entindex()] && pInflictor == m_InflictorsArray[pKiller->entindex()];
+					if(Kamikaze)
+					{
+						m_InflictorsArray[pKiller->entindex()] = NULL;
+						m_InflictorsArray[pVictim->entindex()] = NULL;
+					}
 				}
 				else //evaluating death of the suicidal killer
 				{
@@ -5353,6 +5358,8 @@ void CTFGameRules::DeathNotice(CBasePlayer *pVictim, const CTakeDamageInfo &info
 						if(pInflictor == m_InflictorsArray[i])
 						{
 							Kamikaze = true;
+							m_InflictorsArray[pVictim->entindex()] = NULL;
+							m_InflictorsArray[i] = NULL;
 							break;
 						}
 					}

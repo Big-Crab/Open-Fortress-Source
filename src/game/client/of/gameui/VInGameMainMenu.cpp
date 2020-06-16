@@ -48,7 +48,7 @@ BaseClass( parent, panelName, false, true )
 	SetProportional( true );
 	SetTitle( "", false );
 
-	SetLowerGarnishEnabled( true );
+	SetFooterEnabled( true );
 
 	SetFooterState();
 }
@@ -520,7 +520,7 @@ void InGameMainMenu::PaintBackground()
 
 	int x, y, wide, tall;
 	pPanel->GetBounds( x, y, wide, tall );
-	DrawSmearBackground( x, y, wide, tall );
+	// DrawSmearBackground( x, y, wide, tall );
 }
 
 //=============================================================================

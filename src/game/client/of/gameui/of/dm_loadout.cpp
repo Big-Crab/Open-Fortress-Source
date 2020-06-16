@@ -287,8 +287,6 @@ void DMLoadout::ApplySettings( KeyValues *inResourceData )
 						Q_snprintf( pEffectName, sizeof( pEffectName ), "dm_respawn_%d", i );
 					if ( pEffectName[0] != '\0' )
 						Q_strncpy( pTempMDL->szLoopingParticle, pEffectName, sizeof(pTempMDL->szLoopingParticle) );
-					// Set the animation.
-					pTempMDL->SetModelName( "models/empty.mdl", 4 );
 					pTempMDL->Update();
 				}
 				else
