@@ -366,6 +366,10 @@ float DeltaAngleRad(float a1, float a2)
 
 
 bool bSneakZapEnabled = false;
+
+bool bPerforatingLoop = false;
+// i cannot be fucked to move this function up here so 
+void PerforateThink();
 //-----------------------------------------------------------------------------
 // Purpose: Every think/update tick that the GUI uses
 //-----------------------------------------------------------------------------
@@ -379,6 +383,10 @@ void CHudSpeedometer::OnTick(void)
 
 	if (bSneakZapEnabled) {
 		SneakZap();
+	}
+
+	if (bPerforatingLoop) {
+		PerforateThink();
 	}
 
 	Vector velHor(0, 0, 0);
@@ -630,3 +638,217 @@ void DisableSneakZap() {
 
 ConCommand plusscanshot("+scanshot", EnableSneakZap);
 ConCommand minusscanshot("-scanshot", DisableSneakZap);
+
+
+
+#include "tf_gamerules.h"
+
+// nails
+//initialspeed
+#define NAIL_SPEED 1000
+// gravity? might be a factor of the sv_gravity? sv_gravity 0 doesn't seem to affect projectiles
+#define NAILGUN_NAIL_GRAVITY 0.3f
+bool bPerforateEnabled = false;
+CUtlVector<CTFPlayer*> playersVec;
+CTFPlayer* nearestPlayer = null;
+extern ConVar sv_gravity;
+
+void EnablePerforate() {
+	bPerforateEnabled = true;
+	if (playersVec.Count() > 0){
+		playersVec.Purge();
+	}
+
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if (!pPlayer)
+		return;
+
+	int maxClients = engine->GetMaxClients();
+	//int clientsConnected = 0;
+
+	for (int playerIndex = 0; playerIndex < maxClients; playerIndex++) {
+		player_info_t playerInfo;
+		if (engine->GetPlayerInfo(playerIndex, &playerInfo))
+		{
+			if (playerIndex == engine->GetLocalPlayer()) {
+				Msg("Skipping local player... \n");
+				continue;
+			}
+
+			C_BaseEntity *ent;
+			ent = cl_entitylist->GetEnt(playerIndex);
+			C_TFPlayer *pPlayer = ToTFPlayer(ent);
+
+			if (pPlayer != null)
+			{
+				// Ignore teammates
+				if (TFGameRules()->IsTeamplay() && pPlayer->GetTeamNumber() == CTFPlayer::GetLocalTFPlayer()->GetTeamNumber())
+					continue;
+
+				playersVec.AddToTail(pPlayer);
+			}
+		}
+	}
+
+}
+
+
+bool FindNearestPlayer() {
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	bool isFirst = true;
+	float smallestDistance = -1.0f;
+	nearestPlayer = null;
+	bool bFound = false;
+
+	if (!pPlayer)
+		return false;
+	if (playersVec.Count() > 0) {
+		for (int i = 0; i < playersVec.Count(); i++) {
+			C_TFPlayer *pEnemy = playersVec.Element(i);
+			if (pEnemy != null) {
+				if (pEnemy->IsPlayerDead()) {
+					continue;
+				}
+
+				float distance = (pPlayer->GetAbsOrigin() - pEnemy->GetAbsOrigin()).Length();
+				if (isFirst || distance < smallestDistance) {
+					smallestDistance = distance;
+					nearestPlayer = pEnemy;
+					isFirst = false;
+					bFound = true;
+				}
+			}
+		}
+	}
+
+	return bFound;
+}
+
+void DoPerforate() {
+	if (FindNearestPlayer()) {
+		bPerforatingLoop = true;
+	}
+}
+
+bool CalculateTrajectory(float TargetDistance, float ProjectileVelocity, float &CalculatedAngle) {
+	// in radians
+	// for some reason -G was returning negative values, so we just give +ve G here
+	// I think, following the projectile code, it uses entgravity * sv_gravity to do the actual gravity (a comment even says "rename to m_flGravityScale")
+	float actualGravity = sv_gravity.GetFloat() * NAILGUN_NAIL_GRAVITY;
+	CalculatedAngle = 0.5f * asinf((actualGravity * TargetDistance) / (ProjectileVelocity * ProjectileVelocity));
+	if (isnan(CalculatedAngle)) {
+		CalculatedAngle = 0;
+		return false;
+	}
+	return true;
+}
+
+//first-order intercept using relative target position
+float FirstOrderInterceptTime(float shotSpeed, Vector targetRelativePosition, Vector targetRelativeVelocity) {
+	float velocitySquared = targetRelativeVelocity.LengthSqr();
+	if (velocitySquared < 0.001f)
+		return 0.0f;
+
+	float a = velocitySquared - shotSpeed * shotSpeed;
+
+	//handle similar velocities
+	if (abs(a) < 0.001f) {
+		float t = -targetRelativePosition.LengthSqr() /
+			(2.0f * targetRelativeVelocity.Dot(targetRelativePosition));
+		return max(t, 0.0f); //don't shoot back in time
+	}
+
+	float b = 2.0f * targetRelativeVelocity.Dot(targetRelativePosition);
+	float c = targetRelativePosition.LengthSqr();
+	float determinant = b * b - 4.0f * a * c;
+
+	if (determinant > 0.0f) { //determinant > 0; two intercept paths (most common)
+		float t1 = (-b + sqrt(determinant)) / (2.0f * a),
+			t2 = (-b - sqrt(determinant)) / (2.0f * a);
+		if (t1 > 0.0f) {
+			if (t2 > 0.0f)
+				return min(t1, t2); //both are positive
+			else
+				return t1; //only t1 is positive
+		}
+		else
+			return max(t2, 0.0f); //don't shoot back in time
+	}
+	else if (determinant < 0.0f) //determinant < 0; no intercept path
+		return 0.0f;
+	else //determinant = 0; one intercept path, pretty much never happens
+		return max(-b / (2.0f * a), 0.0f); //don't shoot back in time
+}
+
+Vector FirstOrderIntercept(Vector shooterPosition, Vector shooterVelocity, float shotSpeed, Vector targetPosition, Vector targetVelocity) {
+	Vector targetRelativePosition = targetPosition - shooterPosition;
+	Vector targetRelativeVelocity = targetVelocity - shooterVelocity;
+	float t = FirstOrderInterceptTime(shotSpeed, targetRelativePosition, targetRelativeVelocity);
+	return targetPosition + t * (targetRelativeVelocity);
+}
+
+
+void PerforateThink() {
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if (!pPlayer)
+		return;
+
+	// Nailgun spawn point
+	Vector shotPoint = pPlayer->Weapon_ShootPosition();
+	// Enemy spine position
+	//bip_spine_3
+	// Reposition the callout based on our target's position
+	Vector vecSpinePos; QAngle qaSpineRot;
+	nearestPlayer->GetBonePosition(nearestPlayer->LookupBone("bip_spine_3"), vecSpinePos, qaSpineRot);
+
+	//Vector shotTargetPosition = nearestPlayer->GetAbsOrigin() + Vector(0.0f, 0.0f, 10.0f);
+	Vector shotTargetPosition = vecSpinePos;
+	Vector shotTargetVelocity = nearestPlayer->GetAbsVelocity();
+
+	float distance = (shotPoint - shotTargetPosition).Length();
+	float trajectoryAngle;
+
+	// Previously, we fed pPlayer->GetAbsVelocity() as the second argument (shooter velocity)
+	// Because nails do not inherit velocity, always pass a zero vector!!
+
+	Vector TargetCenter = FirstOrderIntercept(shotPoint, Vector(0.0f), NAIL_SPEED, shotTargetPosition, shotTargetVelocity);
+	if (CalculateTrajectory(distance, NAIL_SPEED, trajectoryAngle)) {
+		float trajectoryHeight = tanf(trajectoryAngle) * distance;
+		TargetCenter.z += trajectoryHeight;	// was previously .y because we forgot that this is Source not Unity (Z Is Up)
+	}
+
+	// now look at the point we calculated
+	Vector target = { TargetCenter.y, TargetCenter.x, TargetCenter.z };
+	//The camera is 64 units higher than the player:
+	Vector camPos = pPlayer->GetAbsOrigin() + pPlayer->GetViewOffset();
+	camPos = { camPos.y, camPos.x, camPos.z };
+
+	// Axis in the game, need to know it to fix up:
+	//              : L - R  ; F - B ;  U - D
+	// Rotation Axis:   x        z        y
+	// Translation  :   y        x        z
+
+	float xdis = target.x - camPos.x;
+	float ydis = target.z - camPos.z;
+	float zdis = target.y - camPos.y;
+	float xzdis = sqrtf(xdis * xdis + zdis * zdis);
+
+	QAngle angles = { RAD2DEG(-atan2f(ydis, xzdis)), RAD2DEG(-(atan2f(-xdis, zdis))), 0 };
+
+	// Apply the snap!
+	engine->SetViewAngles(angles);
+}
+
+void StopPerforate() {
+	bPerforatingLoop = false;
+}
+
+void DisablePerforate() {
+	bPerforateEnabled = false;
+	bPerforatingLoop = false;
+}
+ConCommand pluszapperforate("+zapperforate", EnablePerforate);
+ConCommand minuszapperforate("-zapperforate", DisablePerforate);
+
+ConCommand plusperforate("+perforate", DoPerforate);
+ConCommand minusperforate("-perforate", StopPerforate);
