@@ -41,6 +41,7 @@ enum ELanguage
 	k_Lang_Bulgarian,
 	k_Lang_Greek,
 	k_Lang_Ukrainian,
+	k_Lang_Welsh,
 	k_Lang_MAX
 };
 
