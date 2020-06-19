@@ -48,6 +48,9 @@
 
 #define BOLT_AIR_VELOCITY	3500
 #define BOLT_WATER_VELOCITY	1500
+
+ConVar of_grappleforce("of_grappleforce", "850", FCVAR_REPLICATED, "The pulling force of the grapple hook's rope.");
+ConVar of_grapplereelrate("of_grapplereelrate", "100", FCVAR_REPLICATED, "The length of rope reeled in per second while attached.");
  
 #ifndef CLIENT_DLL
  
@@ -80,6 +83,14 @@ CGrappleHook *CGrappleHook::HookCreate( const Vector &vecOrigin, const QAngle &a
 	pHook->m_hPlayer = (CTFPlayer *)pOwner->GetOwner();
  
 	return pHook;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Shortens the player's rope
+//-----------------------------------------------------------------------------
+void CGrappleHook::ReelIn() {
+	m_flCurrentRopeLength -= of_grapplereelrate.GetFloat() * gpGlobals->interval_per_tick;
+	m_flCurrentRopeLength = clamp(m_flCurrentRopeLength, m_flMinRopeLength, m_flMaxRopeLength);
 }
  
 //-----------------------------------------------------------------------------
@@ -230,6 +241,13 @@ void CGrappleHook::HookTouch( CBaseEntity *pOther )
 			m_hPlayer->m_Shared.SetGrapple( true );
 			m_hPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START );
 
+			// Remove any gravity velocity on the player if they grapple above themselves
+			if (GetAbsOrigin().z > m_hPlayer->GetAbsOrigin().z) {
+				Vector playerVelocity = m_hPlayer->GetAbsVelocity();
+				playerVelocity.z = playerVelocity.z > 0 ? playerVelocity.z : 0;
+				m_hPlayer->SetAbsVelocity(playerVelocity);
+			}
+
 			//IPhysicsObject *pPhysObject = m_hPlayer->VPhysicsGetObject();
 
 			/*
@@ -250,6 +268,9 @@ void CGrappleHook::HookTouch( CBaseEntity *pOther )
 			m_fSpringLength = (origin - rootOrigin).Length();
  
 			m_bPlayerWasStanding = ( ( m_hPlayer->GetFlags() & FL_DUCKING ) == 0 );
+			
+			m_flMaxRopeLength = m_fSpringLength;
+			m_flCurrentRopeLength = m_flMaxRopeLength;
  
 			SetThink( &CGrappleHook::HookedThink );
 			SetNextThink( gpGlobals->curtime + 0.1f );
@@ -276,26 +297,52 @@ void CGrappleHook::HookTouch( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 void CGrappleHook::HookedThink( void )
 {
+	const float tickTime = 0.05f;
 	//set next globalthink
-	SetNextThink( gpGlobals->curtime + 0.05f ); //0.1f
+	SetNextThink( gpGlobals->curtime + tickTime ); //0.1f
 
 	//All of this push the player far from the hook
-	Vector tempVec1 = m_hPlayer->GetAbsOrigin() - GetAbsOrigin();
-	VectorNormalize(tempVec1);
+	//Vector tempVec1 = m_hPlayer->GetAbsOrigin() - GetAbsOrigin();
+	//VectorNormalize(tempVec1);
 
-	int temp_multiplier = -1;
+	//int temp_multiplier = -1;
 
-	m_hPlayer->SetGravity(0.0f);
+	//m_hPlayer->SetGravity(0.0f);
 	m_hPlayer->SetGroundEntity(NULL);
 
-	if (m_hOwner->m_bHook){
+	/*if (m_hOwner->m_bHook){
 		//temp_multiplier = 1;
 		m_hPlayer->SetAbsVelocity(tempVec1*temp_multiplier*45); //50
 	}
 	else
 	{
 		m_hPlayer->SetAbsVelocity(tempVec1*temp_multiplier*800); //400
+	}*/
+
+	Vector toHook = -(m_hPlayer->GetAbsOrigin() - GetAbsOrigin());
+	float distanceToHook = toHook.Length();
+
+	float forceMultipler = 1.0f;
+
+	// If beyond the max rope length:
+	if (distanceToHook > m_flCurrentRopeLength) {
+
+		// Square it for exponential pull
+		//float stretchDistance = (distanceToHook / m_flCurrentRopeLength) * (distanceToHook / m_flCurrentRopeLength);
+
+		float extension = distanceToHook - m_flCurrentRopeLength;
+		forceMultipler = extension;
+
+		// Pull toward the grapple point like a rope swing
+		//Vector accelerationTowardCentre = toHook.Normalized() * of_grappleforce.GetFloat() * stretchDistance;
+		//m_hPlayer->SetAbsVelocity(m_hPlayer->GetAbsVelocity() + (accelerationTowardCentre * tickTime));
 	}
+	
+	m_hPlayer->SetGroundEntity(NULL);
+
+	Vector accelerationTowardCentre = toHook.Normalized() * of_grappleforce.GetFloat() * forceMultipler;
+	m_hPlayer->SetAbsVelocity(m_hPlayer->GetAbsVelocity() + (accelerationTowardCentre * tickTime));
+	ReelIn();
 }
  
 //-----------------------------------------------------------------------------

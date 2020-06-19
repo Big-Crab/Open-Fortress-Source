@@ -70,6 +70,13 @@ private:
     float                       m_fSpringLength;
     bool                        m_bPlayerWasStanding;
 
+	// Set each time the rope connects
+	float						m_flMaxRopeLength;
+	const float					m_flMinRopeLength = 50.0f;
+	// How reeled in we are currently
+	float						m_flCurrentRopeLength;
+	// Shortens the rope
+	void						ReelIn();
 	
 };
  
