@@ -25,8 +25,8 @@ class CTFNailgun : public CTFWeaponBaseGun
 {
 public:
 
-	DECLARE_CLASS( CTFNailgun, CTFWeaponBaseGun );
-	DECLARE_NETWORKCLASS(); 
+	DECLARE_CLASS(CTFNailgun, CTFWeaponBaseGun);
+	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
 
 	// Server specific.
@@ -37,21 +37,21 @@ public:
 	CTFNailgun() {}
 	~CTFNailgun() {}
 
-	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_NAILGUN; }
+	virtual int		GetWeaponID(void) const			{ return TF_WEAPON_NAILGUN; }
 
 private:
 
-	CTFNailgun( const CTFNailgun & ) {}
+	CTFNailgun(const CTFNailgun &) {}
 };
 
 class CTFCNailgun : public CTFNailgun
 {
 public:
 
-	DECLARE_CLASS( CTFCNailgun, CTFNailgun );
-	DECLARE_NETWORKCLASS(); 
+	DECLARE_CLASS(CTFCNailgun, CTFNailgun);
+	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
-	virtual int		GetWeaponID( void ) const			{ return TFC_WEAPON_NAILGUN; }
+	virtual int		GetWeaponID(void) const			{ return TFC_WEAPON_NAILGUN; }
 
 #ifdef GAME_DLL
 	DECLARE_DATADESC();
@@ -62,10 +62,10 @@ class CTFCNailgunSuper : public CTFNailgun
 {
 public:
 
-	DECLARE_CLASS( CTFCNailgunSuper, CTFNailgun );
+	DECLARE_CLASS(CTFCNailgunSuper, CTFNailgun);
 	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
-	virtual int		GetWeaponID( void ) const			{ return TFC_WEAPON_NAILGUN_SUPER; }
+	virtual int		GetWeaponID(void) const			{ return TFC_WEAPON_NAILGUN_SUPER; }
 
 #ifdef GAME_DLL
 	DECLARE_DATADESC();

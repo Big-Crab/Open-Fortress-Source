@@ -4,63 +4,61 @@
 //=============================================================================
 #include "cbase.h"
 #include "tf_weapon_nailgun.h"
-#include "tf_gamerules.h"
-#include "tf_shareddefs.h"
 
 //=============================================================================
 //
 // Weapon SMG tables.
 //
-IMPLEMENT_NETWORKCLASS_ALIASED( TFNailgun, DT_WeaponNailgun )
+IMPLEMENT_NETWORKCLASS_ALIASED(TFNailgun, DT_WeaponNailgun)
 
-BEGIN_NETWORK_TABLE( CTFNailgun, DT_WeaponNailgun )
+BEGIN_NETWORK_TABLE(CTFNailgun, DT_WeaponNailgun)
 END_NETWORK_TABLE()
 
-BEGIN_PREDICTION_DATA( CTFNailgun )
+BEGIN_PREDICTION_DATA(CTFNailgun)
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( tf_weapon_nailgun, CTFNailgun );
+LINK_ENTITY_TO_CLASS(tf_weapon_nailgun, CTFNailgun);
 //PRECACHE_WEAPON_REGISTER( tf_weapon_nailgun);
 
 // Server specific.
 #ifndef CLIENT_DLL
-BEGIN_DATADESC( CTFNailgun )
+BEGIN_DATADESC(CTFNailgun)
 END_DATADESC()
 #endif
 
 
-IMPLEMENT_NETWORKCLASS_ALIASED( TFCNailgun, DT_TFCNailgun )
+IMPLEMENT_NETWORKCLASS_ALIASED(TFCNailgun, DT_TFCNailgun)
 
-BEGIN_NETWORK_TABLE( CTFCNailgun, DT_TFCNailgun )
+BEGIN_NETWORK_TABLE(CTFCNailgun, DT_TFCNailgun)
 END_NETWORK_TABLE()
 
-BEGIN_PREDICTION_DATA( CTFCNailgun )
+BEGIN_PREDICTION_DATA(CTFCNailgun)
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( tfc_weapon_nailgun, CTFCNailgun );
+LINK_ENTITY_TO_CLASS(tfc_weapon_nailgun, CTFCNailgun);
 //PRECACHE_WEAPON_REGISTER( tfc_weapon_nailgun);
 
 // Server specific.
 #ifndef CLIENT_DLL
-BEGIN_DATADESC( CTFCNailgun )
+BEGIN_DATADESC(CTFCNailgun)
 END_DATADESC()
 #endif
 
 
-IMPLEMENT_NETWORKCLASS_ALIASED( TFCNailgunSuper, DT_TFCNailgunSuper )
+IMPLEMENT_NETWORKCLASS_ALIASED(TFCNailgunSuper, DT_TFCNailgunSuper)
 
-BEGIN_NETWORK_TABLE( CTFCNailgunSuper, DT_TFCNailgunSuper )
+BEGIN_NETWORK_TABLE(CTFCNailgunSuper, DT_TFCNailgunSuper)
 END_NETWORK_TABLE()
 
-BEGIN_PREDICTION_DATA( CTFCNailgunSuper )
+BEGIN_PREDICTION_DATA(CTFCNailgunSuper)
 END_PREDICTION_DATA()
 
-LINK_ENTITY_TO_CLASS( tfc_weapon_nailgun_super, CTFCNailgunSuper );
+LINK_ENTITY_TO_CLASS(tfc_weapon_nailgun_super, CTFCNailgunSuper);
 //PRECACHE_WEAPON_REGISTER( tfc_weapon_nailgun_super );
 
 // Server specific.
 #ifndef CLIENT_DLL
-BEGIN_DATADESC( CTFCNailgunSuper )
+BEGIN_DATADESC(CTFCNailgunSuper)
 END_DATADESC()
 #endif
 

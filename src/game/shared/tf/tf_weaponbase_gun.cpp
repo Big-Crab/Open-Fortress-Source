@@ -772,6 +772,8 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 	angForward.y += RandomFloat( -flSpread, flSpread );
 
 	CTFBaseProjectile *pProjectile = NULL;
+	CTFProjectile_Nail* pProjectileNail = NULL;
+	bool bWasNail = false;
 	switch( iSpecificNail )
 	{
 	case TF_PROJECTILE_SYRINGE:
@@ -783,12 +785,10 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 		break;
 		
     case TF_PROJECTILE_NAIL:
-		// why are clients allowed to create these???? ^^^
-#ifdef GAME_DLL
-		pProjectile = CTFProjectile_Nail::Create(this, vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit());
-#endif
+		pProjectileNail = CTFProjectile_Nail::Create(vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit());
+		pProjectile = pProjectileNail;
+		bWasNail = true;
 		break;	
-
 	default:
 		Assert(0);
 	}
@@ -798,6 +798,11 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 		pProjectile->SetWeaponID( GetWeaponID() );
 		pProjectile->SetCritical( IsCurrentAttackACrit() );
 #ifdef GAME_DLL
+		if (bWasNail)
+		{
+			pProjectileNail->SetExplosionRadius(GetDamageRadius());
+			pProjectileNail->SetExplosionDamage(GetDamage() / 4.0f);
+		}
 		pProjectile->SetDamage( GetProjectileDamage() );
 #endif
 	}
