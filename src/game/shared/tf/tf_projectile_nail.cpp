@@ -129,6 +129,28 @@ DECLARE_CLIENT_EFFECT( SYRINGE_DISPATCH_EFFECT, ClientsideProjectileSyringeCallb
 #define NAILGUN_NAIL_DISPATCH_EFFECT	"ClientProjectile_Nail"
 #define NAILGUN_NAIL_GRAVITY	0.3f
 
+IMPLEMENT_NETWORKCLASS_ALIASED(TFProjectile_Nail, DT_TFProjectile_Nail)
+
+BEGIN_NETWORK_TABLE(CTFProjectile_Nail, DT_TFProjectile_Nail)
+// Client specific.
+#ifdef CLIENT_DLL
+RecvPropVector(RECVINFO(m_vInitialVelocity)),
+
+RecvPropVector(RECVINFO_NAME(m_vecNetworkOrigin, m_vecOrigin)),
+RecvPropQAngles(RECVINFO_NAME(m_angNetworkAngles, m_angRotation)),
+// Server specific.
+#else
+SendPropVector(SENDINFO(m_vInitialVelocity), 12 /*nbits*/, 0 /*flags*/, -3000 /*low value*/, 3000 /*high value*/),
+
+//SendPropExclude("DT_BaseEntity", "m_vecOrigin"),
+//SendPropExclude("DT_BaseEntity", "m_angRotation"),
+
+//SendPropVector(SENDINFO(m_vecOrigin), -1, SPROP_COORD_MP_INTEGRAL | SPROP_CHANGES_OFTEN, 0.0f, HIGH_DEFAULT, SendProxy_Origin),
+//SendPropQAngles(SENDINFO(m_angRotation), 6, SPROP_CHANGES_OFTEN, SendProxy_Angles),
+#endif
+END_NETWORK_TABLE()
+
+
 #ifdef GAME_DLL
 BEGIN_DATADESC( CTFProjectile_Nail )
 DEFINE_ENTITYFUNC(NailTouch),
@@ -155,6 +177,36 @@ CTFProjectile_Nail::~CTFProjectile_Nail()
 {
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFProjectile_Nail::Precache(void)
+{
+	BaseClass::Precache();
+}
+
+// Nonstatic spawn function
+void CTFProjectile_Nail::Spawn()
+{
+	// Precache.
+	Precache();
+
+	// Client specific.
+#ifdef CLIENT_DLL
+	BaseClass::Spawn();
+
+	// Server specific.
+#else
+	// Setup the touch functions.
+	SetTouch(&CTFProjectile_Nail::NailTouch);
+	SetSolid( SOLID_BBOX );
+	SetMoveType( MOVETYPE_FLY, MOVECOLLIDE_FLY_CUSTOM );
+	AddEFlags( EFL_NO_WATER_VELOCITY_CHANGE );
+	AddEffects( EF_NOSHADOW );
+	SetCollisionGroup( TFCOLLISION_GROUP_ROCKETS );
+#endif
+}
+
 // Server specific functions
 #ifndef CLIENT_DLL
 //-----------------------------------------------------------------------------
@@ -177,29 +229,6 @@ CTFProjectile_Nail *CTFProjectile_Nail::Create(CTFWeaponBase *pWeapon, const Vec
 
 	//return static_cast<CTFProjectile_Nail*>(CTFBaseProjectile::Create("tf_projectile_nail", vecOrigin, vecAngles, pOwner, CTFProjectile_Nail::GetInitialVelocity(), g_sModelIndexNail, NAILGUN_NAIL_DISPATCH_EFFECT, pScorer, bCritical));
 	return pNail;
-}
-
-// Nonstatic spawn function
-void CTFProjectile_Nail::Spawn()
-{
-	// Precache.
-	Precache();
-
-//#ifdef GAME_DLL
-//#ifndef CLIENT_DLL
-	// Setup the touch functions.
-	SetTouch(&CTFProjectile_Nail::NailTouch);
-//#endif
-	/*
-	
-	SetSolid( SOLID_BBOX );
-	SetMoveType( MOVETYPE_FLY, MOVECOLLIDE_FLY_CUSTOM );
-	AddEFlags( EFL_NO_WATER_VELOCITY_CHANGE );
-	AddEffects( EF_NOSHADOW );
-
-	SetCollisionGroup( TFCOLLISION_GROUP_ROCKETS );
-
-	*/
 }
 
 //-----------------------------------------------------------------------------
@@ -235,6 +264,14 @@ int	CTFProjectile_Nail::GetCustomDamageType()
 	return TF_DMG_CUSTOM_NONE;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+unsigned int CTFProjectile_Nail::PhysicsSolidMaskForEntity(void) const
+{
+	int teamContents = (GetTeamNumber() == TF_TEAM_RED) ? CONTENTS_BLUETEAM : CONTENTS_REDTEAM;
+	return BaseClass::PhysicsSolidMaskForEntity() | teamContents;
+}
 
 void CTFProjectile_Nail::Explode(trace_t *pTrace, CBaseEntity *pOther)
 {

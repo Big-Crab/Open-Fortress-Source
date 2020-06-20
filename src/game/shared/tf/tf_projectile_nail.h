@@ -13,6 +13,10 @@
 #include "tf_projectile_base.h"
 #include "tf_weaponbase.h"
 
+#ifdef CLIENT_DLL
+#define CTFProjectile_Nail C_TFProjectile_Nail
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: Identical to a nail except for model used
 //-----------------------------------------------------------------------------
@@ -41,9 +45,13 @@ public:
 #define NAILSPEED 2000.0f
 class CTFProjectile_Nail : public CTFBaseProjectile
 {
-	DECLARE_CLASS(CTFProjectile_Nail, CTFBaseProjectile);
-
 public:
+	// Shared
+	DECLARE_CLASS(CTFProjectile_Nail, CTFBaseProjectile);
+	DECLARE_NETWORKCLASS();
+
+	void	Precache(void);
+	void	Spawn(void);
 
 	CTFProjectile_Nail();
 	~CTFProjectile_Nail();
@@ -61,11 +69,12 @@ public:
 	// New for explosive nails
 	//virtual void	ProjectileTouch(CBaseEntity *pOther);
 #ifdef GAME_DLL
+	DECLARE_DATADESC();
+
 	// Creation. (Moved to this preprocessor def)
 	static CTFProjectile_Nail *Create(CTFWeaponBase *pWeapon, const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false);
-	void Spawn(void);
 
-	DECLARE_DATADESC();
+	unsigned int	PhysicsSolidMaskForEntity(void) const;
 
 	virtual float	GetDamage() { return m_flDamage; }
 	virtual int		GetDamageType() { return g_aWeaponDamageTypes[GetWeaponID()]; }
