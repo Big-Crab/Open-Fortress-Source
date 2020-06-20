@@ -11,6 +11,7 @@
 
 #include "cbase.h"
 #include "tf_projectile_base.h"
+#include "tf_weaponbase.h"
 
 //-----------------------------------------------------------------------------
 // Purpose: Identical to a nail except for model used
@@ -25,7 +26,7 @@ public:
 	~CTFProjectile_Syringe();
 
 	// Creation.
-	static CTFProjectile_Syringe *Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false );	
+	static CTFProjectile_Syringe *Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false);
 
 	virtual const char *GetProjectileModelName( void );
 	virtual float GetGravity( void );
@@ -47,18 +48,46 @@ public:
 	CTFProjectile_Nail();
 	~CTFProjectile_Nail();
 
-	// Creation.
-	static CTFProjectile_Nail *Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false);
-
 	virtual const char *GetProjectileModelName(void);
 	virtual float GetGravity(void);
 
+	static float	GetInitialVelocity(void) { return NAILSPEED; }
+
+	// Track the original weapon used to fire this nail
+	CNetworkHandle(CBaseEntity, m_hOriginalLauncher);
+	virtual void	SetLauncher(CBaseEntity *pLauncher) { m_hOriginalLauncher = pLauncher; }
+	CBaseEntity		*GetOriginalLauncher(void) { return m_hOriginalLauncher; }
+
 	// New for explosive nails
 	//virtual void	ProjectileTouch(CBaseEntity *pOther);
-	//virtual void	Explode(trace_t *pTrace, CBaseEntity *pOther);
-	virtual unsigned int PhysicsSolidMaskForEntity(void) const;
+#ifdef GAME_DLL
+	// Creation. (Moved to this preprocessor def)
+	static CTFProjectile_Nail *Create(CTFWeaponBase *pWeapon, const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false);
+	void Spawn(void);
 
-	static float	GetInitialVelocity(void) { return NAILSPEED; }
+	DECLARE_DATADESC();
+
+	virtual float	GetDamage() { return m_flDamage; }
+	virtual int		GetDamageType() { return g_aWeaponDamageTypes[GetWeaponID()]; }
+	virtual int		GetCustomDamageType();
+	virtual void	SetDamage(float flDamage) { m_flDamage = flDamage; }
+	virtual void	SetDamageRadius(float flDamageRadius) { m_flDamageRadius = flDamageRadius; }
+	virtual float	GetRadius() { return m_flDamageRadius; }
+
+	virtual void	NailTouch(CBaseEntity *pOther);
+	virtual void	Explode(trace_t *pTrace, CBaseEntity *pOther);
+	int 	m_hWeaponID;
+
+protected:
+	// Not networked.
+	float					m_flDamage;
+	float					m_flDamageRadius;
+
+	CHandle<CBaseEntity>	m_hEnemy;
+#endif
+
+//	virtual unsigned int PhysicsSolidMaskForEntity(void) const;
+
 };
 
 //-----------------------------------------------------------------------------

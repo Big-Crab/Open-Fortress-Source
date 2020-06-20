@@ -783,7 +783,10 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 		break;
 		
     case TF_PROJECTILE_NAIL:
-		pProjectile = CTFProjectile_Nail::Create(vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit());
+		// why are clients allowed to create these???? ^^^
+#ifdef GAME_DLL
+		pProjectile = CTFProjectile_Nail::Create(this, vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit());
+#endif
 		break;	
 
 	default:

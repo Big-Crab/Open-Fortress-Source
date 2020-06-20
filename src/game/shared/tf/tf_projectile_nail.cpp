@@ -5,6 +5,7 @@
 //=============================================================================
 #include "cbase.h"
 #include "tf_projectile_nail.h"
+#include "tf_weaponbase.h"
 
 #ifdef CLIENT_DLL
 #include "c_basetempentity.h"
@@ -13,6 +14,9 @@
 #include "input.h"
 #include "c_tf_player.h"
 #include "cliententitylist.h"
+#else
+#include "tf_shareddefs.h"
+#include "baseanimating.h"
 #endif
 
 //=============================================================================
@@ -125,6 +129,13 @@ DECLARE_CLIENT_EFFECT( SYRINGE_DISPATCH_EFFECT, ClientsideProjectileSyringeCallb
 #define NAILGUN_NAIL_DISPATCH_EFFECT	"ClientProjectile_Nail"
 #define NAILGUN_NAIL_GRAVITY	0.3f
 
+#ifdef GAME_DLL
+BEGIN_DATADESC( CTFProjectile_Nail )
+DEFINE_ENTITYFUNC(NailTouch),
+//DEFINE_THINKFUNC(FlyThink),
+END_DATADESC()
+#endif
+
 LINK_ENTITY_TO_CLASS(tf_projectile_nail, CTFProjectile_Nail);
 PRECACHE_REGISTER(tf_projectile_nail);
 
@@ -144,13 +155,161 @@ CTFProjectile_Nail::~CTFProjectile_Nail()
 {
 }
 
+// Server specific functions
+#ifndef CLIENT_DLL
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-CTFProjectile_Nail *CTFProjectile_Nail::Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical)
+CTFProjectile_Nail *CTFProjectile_Nail::Create(CTFWeaponBase *pWeapon, const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical)
 {
-	return static_cast<CTFProjectile_Nail*>(CTFBaseProjectile::Create("tf_projectile_nail", vecOrigin, vecAngles, pOwner, CTFProjectile_Nail::GetInitialVelocity(), g_sModelIndexNail, NAILGUN_NAIL_DISPATCH_EFFECT, pScorer, bCritical));
+	CTFProjectile_Nail *pNail = static_cast<CTFProjectile_Nail*>(CBaseEntity::CreateNoSpawn("tf_projectile_nail", vecOrigin, vecAngles, pOwner));
+	// Initialize the owner.
+	pNail->SetOwnerEntity(pOwner);
+	if (pWeapon)
+	{
+		pNail->m_hWeaponID = pWeapon->GetWeaponID();
+		pNail->SetLauncher(pWeapon);
+		if (pWeapon->GetDamageRadius() >= 0)
+			pNail->SetDamageRadius(pWeapon->GetDamageRadius());
+	}
+	
+	pNail->Spawn();
+
+	//return static_cast<CTFProjectile_Nail*>(CTFBaseProjectile::Create("tf_projectile_nail", vecOrigin, vecAngles, pOwner, CTFProjectile_Nail::GetInitialVelocity(), g_sModelIndexNail, NAILGUN_NAIL_DISPATCH_EFFECT, pScorer, bCritical));
+	return pNail;
 }
+
+// Nonstatic spawn function
+void CTFProjectile_Nail::Spawn()
+{
+	// Precache.
+	Precache();
+
+//#ifdef GAME_DLL
+//#ifndef CLIENT_DLL
+	// Setup the touch functions.
+	SetTouch(&CTFProjectile_Nail::NailTouch);
+//#endif
+	/*
+	
+	SetSolid( SOLID_BBOX );
+	SetMoveType( MOVETYPE_FLY, MOVECOLLIDE_FLY_CUSTOM );
+	AddEFlags( EFL_NO_WATER_VELOCITY_CHANGE );
+	AddEffects( EF_NOSHADOW );
+
+	SetCollisionGroup( TFCOLLISION_GROUP_ROCKETS );
+
+	*/
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Handles nail collision interaction
+//-----------------------------------------------------------------------------
+void CTFProjectile_Nail::NailTouch(CBaseEntity *pOther)
+{
+	// Verify a correct "other."
+	if (pOther)
+	{
+		Assert(pOther);
+		if (pOther->IsSolidFlagSet(FSOLID_TRIGGER | FSOLID_VOLUME_CONTENTS))
+			return;
+	}
+	// Handle hitting skybox (disappear).
+	const trace_t *pTrace = &CBaseEntity::GetTouchTrace();
+	if (pTrace->surface.flags & SURF_SKY)
+	{
+		UTIL_Remove(this);
+		return;
+	}
+
+	trace_t trace;
+	memcpy(&trace, pTrace, sizeof(trace_t));
+	Explode(&trace, pOther);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+int	CTFProjectile_Nail::GetCustomDamageType()
+{
+	return TF_DMG_CUSTOM_NONE;
+}
+
+
+void CTFProjectile_Nail::Explode(trace_t *pTrace, CBaseEntity *pOther)
+{
+	// Save this entity as enemy, they will take 100% damage.
+	if (!pOther)
+		pOther = pTrace->m_pEnt;
+	m_hEnemy = pOther;
+
+	// Invisible.
+	SetModelName(NULL_STRING);
+	AddSolidFlags(FSOLID_NOT_SOLID);
+	m_takedamage = DAMAGE_NO;
+
+	// Pull out a bit.
+	if (pTrace->fraction != 1.0)
+	{
+		SetAbsOrigin(pTrace->endpos + (pTrace->plane.normal * 1.0f));
+	}
+	// SetAbsOrigin( pTrace->endpos - GetAbsVelocity() );
+
+	// Play explosion sound and effect.
+	Vector vecOrigin = GetAbsOrigin();
+	CPVSFilter filter(vecOrigin);
+	int EntIndex = 0;
+	if (pOther)
+		EntIndex = pOther->entindex();
+	
+	// Visual/Audio: (Removed for nails, copied from rockets) deleteme
+	//TE_TFExplosion(filter, 0.0f, vecOrigin, pTrace->plane.normal, EntIndex, GetWeaponID(), GetOriginalLauncher());
+	//CSoundEnt::InsertSound(SOUND_COMBAT, vecOrigin, 1024, 3.0);
+
+	// Damage.
+	CBaseEntity *pAttacker = GetOwnerEntity();
+	IScorer *pScorerInterface = dynamic_cast<IScorer*>(pAttacker);
+	if (pScorerInterface)
+	{
+		pAttacker = pScorerInterface->GetScorer();
+	}
+
+	CTakeDamageInfo info(this, pAttacker, vec3_origin, vecOrigin, GetDamage(), GetDamageType());
+	CTFWeaponBase *pTFWeapon = dynamic_cast<CTFWeaponBase*>( GetOriginalLauncher() );
+	info.SetWeapon(pTFWeapon);
+	info.SetDamageCustom( GetCustomDamageType() );
+	float flRadius = GetRadius();
+
+	RadiusDamage(info, vecOrigin, flRadius, CLASS_NONE, NULL);
+
+	// Debug!
+	/*if (tf_rocket_show_radius.GetBool())
+	{
+		DrawRadius(flRadius);
+	}*/
+
+	// Don't decal players with scorch.
+	if (!pOther->IsPlayer())
+	{
+		UTIL_DecalTrace(pTrace, "Scorch");
+	}
+
+	// Get the Weapon info
+	CTFWeaponBase *pWeapon = (CTFWeaponBase *)CreateEntityByName(WeaponIdToAlias(m_hWeaponID));
+	if (pWeapon)
+	{
+		WEAPON_FILE_INFO_HANDLE	hWpnInfo = LookupWeaponInfoSlot(pWeapon->GetClassname());
+		Assert(hWpnInfo != GetInvalidWeaponInfoHandle());
+		CTFWeaponInfo *pWeaponInfo = dynamic_cast<CTFWeaponInfo*>(GetFileWeaponInfoFromHandle(hWpnInfo));
+		Assert(pWeaponInfo && "Failed to get CTFWeaponInfo in weapon spawn");
+
+		UTIL_Remove(pWeapon);
+	}
+
+	// Remove the nail.
+	UTIL_Remove(this);
+}
+#endif
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -194,14 +353,14 @@ float CTFProjectile_Nail::GetGravity(void)
 	Explode(&trace, pOther);
 }*/
 
-unsigned int CTFProjectile_Nail::PhysicsSolidMaskForEntity(void) const
+/*unsigned int CTFProjectile_Nail::PhysicsSolidMaskForEntity(void) const
 {
 	// New: skips allies
 	// Only collide with the other team
 	//int teamContents = (GetTeamNumber() == TF_TEAM_RED) ? CONTENTS_BLUETEAM : CONTENTS_REDTEAM;
 	//return BaseClass::PhysicsSolidMaskForEntity() | teamContents | CONTENTS_HITBOX;
 	return BaseClass::PhysicsSolidMaskForEntity() | CONTENTS_HITBOX;
-}
+}*/
 
 
 #ifdef CLIENT_DLL

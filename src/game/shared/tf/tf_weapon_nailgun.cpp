@@ -26,24 +26,6 @@ LINK_ENTITY_TO_CLASS( tf_weapon_nailgun, CTFNailgun );
 #ifndef CLIENT_DLL
 BEGIN_DATADESC( CTFNailgun )
 END_DATADESC()
-
-//===================================
-// NailGun implementation
-//===================================
-CBaseEntity *CTFNailgun::FireProjectile(CTFPlayer *pPlayer)
-{
-	// Player boosting
-	if (pPlayer)
-	{
-		if (pPlayer->IsAlive()) {
-			Vector direction = -pPlayer->EyeDirection3D();
-			const float force = 75.0f;
-			pPlayer->ApplyAbsVelocityImpulse(direction * force);
-		}
-	}
-
-	return BaseClass::FireProjectile(pPlayer);
-}
 #endif
 
 
