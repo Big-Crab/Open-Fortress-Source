@@ -32,6 +32,7 @@ public:
 	// Server specific.
 #ifdef GAME_DLL
 	DECLARE_DATADESC();
+	virtual CBaseEntity *FireProjectile(CTFPlayer *pPlayer);
 #endif
 
 	CTFNailgun() {}

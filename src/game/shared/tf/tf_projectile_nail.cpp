@@ -168,6 +168,42 @@ float CTFProjectile_Nail::GetGravity(void)
 	return NAILGUN_NAIL_GRAVITY;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+/*void CTFProjectile_Nail::ProjectileTouch(CBaseEntity *pOther)
+{
+
+	// Verify a correct "other."
+	if (pOther)
+	{
+		Assert(pOther);
+		if (pOther->IsSolidFlagSet(FSOLID_TRIGGER | FSOLID_VOLUME_CONTENTS))
+			return;
+	}
+	// Handle hitting skybox (disappear).
+	const trace_t *pTrace = &CBaseEntity::GetTouchTrace();
+	if (pTrace->surface.flags & SURF_SKY)
+	{
+		UTIL_Remove(this);
+		return;
+	}
+
+	trace_t trace;
+	memcpy(&trace, pTrace, sizeof(trace_t));
+	Explode(&trace, pOther);
+}*/
+
+unsigned int CTFProjectile_Nail::PhysicsSolidMaskForEntity(void) const
+{
+	// New: skips allies
+	// Only collide with the other team
+	//int teamContents = (GetTeamNumber() == TF_TEAM_RED) ? CONTENTS_BLUETEAM : CONTENTS_REDTEAM;
+	//return BaseClass::PhysicsSolidMaskForEntity() | teamContents | CONTENTS_HITBOX;
+	return BaseClass::PhysicsSolidMaskForEntity() | CONTENTS_HITBOX;
+}
+
+
 #ifdef CLIENT_DLL
 //-----------------------------------------------------------------------------
 // Purpose: 

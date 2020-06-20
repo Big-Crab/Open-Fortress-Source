@@ -36,6 +36,8 @@ public:
 //-----------------------------------------------------------------------------
 // Purpose: Nailgun projectile 
 //-----------------------------------------------------------------------------
+// 1000 is the default in OF, 2000 is equivalent to the Quake3 plasma projectile speed
+#define NAILSPEED 2000.0f
 class CTFProjectile_Nail : public CTFBaseProjectile
 {
 	DECLARE_CLASS(CTFProjectile_Nail, CTFBaseProjectile);
@@ -51,7 +53,12 @@ public:
 	virtual const char *GetProjectileModelName(void);
 	virtual float GetGravity(void);
 
-	static float	GetInitialVelocity(void) { return 1000.0; }
+	// New for explosive nails
+	//virtual void	ProjectileTouch(CBaseEntity *pOther);
+	//virtual void	Explode(trace_t *pTrace, CBaseEntity *pOther);
+	virtual unsigned int PhysicsSolidMaskForEntity(void) const;
+
+	static float	GetInitialVelocity(void) { return NAILSPEED; }
 };
 
 //-----------------------------------------------------------------------------
