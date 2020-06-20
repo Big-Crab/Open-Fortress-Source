@@ -801,7 +801,7 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 		if (bWasNail)
 		{
 			pProjectileNail->SetExplosionRadius(GetDamageRadius());
-			pProjectileNail->SetExplosionDamage(GetDamage() / 4.0f);
+			pProjectileNail->SetExplosionDamage(Ceil2Int( GetDamage() / 3.0f ));
 		}
 		pProjectile->SetDamage( GetProjectileDamage() );
 #endif

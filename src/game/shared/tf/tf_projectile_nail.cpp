@@ -227,12 +227,15 @@ void CTFProjectile_Nail::ProjectileTouch(CBaseEntity *pOther)
 		pAttacker = pScorerInterface->GetScorer();
 	}
 
-	Vector pushForce = Vector(0.0f, 0.0f, 50.0f);
-
-	CTakeDamageInfo info(this, pAttacker, pushForce, vecOrigin, (float)m_iExplosionDamage, TF_DMG_CUSTOM_NONE);
+	CTakeDamageInfo info(this, pAttacker, Vector(0.0f, 0.0f, 9000.0f), vecOrigin, (float)m_iExplosionDamage, DMG_BLAST, 0, (Vector*)0);
 	//CTFWeaponBase *pTFWeapon = dynamic_cast<CTFWeaponBase*>( GetOriginalLauncher() );
 	//info.SetWeapon( pTFWeapon );
-	info.SetDamageCustom( TF_DMG_CUSTOM_NONE );
+	//info.SetDamageCustom( TF_DMG_CUSTOM_NONE );
+
+	info.SetDamageForceMult( 1.5f );
+
+//	info.SetDamageForForceCalc
+
 	float flRadius = m_flExplosionRadius;
 
 	RadiusDamage( info, vecOrigin, flRadius, CLASS_NONE, NULL );
