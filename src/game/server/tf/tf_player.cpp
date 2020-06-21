@@ -4929,9 +4929,11 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			flAdjustedDamage = 0.0f;		
 	
 		if ( info.GetAttacker() == this )
-		{			
+		{
 //			if( m_Shared.InCond( TF_COND_SHIELD ) )
 //				flAdjustedDamage = flAdjustedDamage * of_resistance.GetFloat();
+
+			// TODO Fix dynamite bomblets not being recognised as belonging to their player
 
 			switch ( of_selfdamage.GetInt() )
 			{

@@ -38,6 +38,8 @@ public:
 //-----------------------------------------------------------------------------
 class CTFProjectile_Nail : public CTFBaseProjectile
 {
+#define NAIL_SPEED 2000.0f
+
 	DECLARE_CLASS(CTFProjectile_Nail, CTFBaseProjectile);
 
 public:
@@ -61,7 +63,7 @@ public:
 	virtual void ProjectileTouch(CBaseEntity *pOther);
 #endif
 
-	static float	GetInitialVelocity(void) { return 1000.0; }
+	static float	GetInitialVelocity(void) { return NAIL_SPEED; }
 };
 
 //-----------------------------------------------------------------------------

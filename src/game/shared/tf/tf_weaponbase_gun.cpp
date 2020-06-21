@@ -800,6 +800,7 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 #ifdef GAME_DLL
 		if (bWasNail)
 		{
+			// Plasmagun splash damage maximum in Q3 is 1/3 of the base damage, so that's what's used here
 			pProjectileNail->SetExplosionRadius(GetDamageRadius());
 			pProjectileNail->SetExplosionDamage(Ceil2Int( GetDamage() / 3.0f ));
 		}

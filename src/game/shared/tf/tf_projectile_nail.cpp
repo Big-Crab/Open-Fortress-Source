@@ -227,12 +227,13 @@ void CTFProjectile_Nail::ProjectileTouch(CBaseEntity *pOther)
 		pAttacker = pScorerInterface->GetScorer();
 	}
 
-	CTakeDamageInfo info(this, pAttacker, Vector(0.0f, 0.0f, 9000.0f), vecOrigin, (float)m_iExplosionDamage, DMG_BLAST, 0, (Vector*)0);
+	// DMG_HALF_FALLOFF is needed for of_selfdamage to affect
+	CTakeDamageInfo info(this, pAttacker, Vector(0.0f, 0.0f, 9000.0f), vecOrigin, (float)m_iExplosionDamage, DMG_BLAST | DMG_HALF_FALLOFF);
 	//CTFWeaponBase *pTFWeapon = dynamic_cast<CTFWeaponBase*>( GetOriginalLauncher() );
 	//info.SetWeapon( pTFWeapon );
 	//info.SetDamageCustom( TF_DMG_CUSTOM_NONE );
 
-	info.SetDamageForceMult( 1.5f );
+	info.SetDamageForceMult( 2.5f );
 
 //	info.SetDamageForForceCalc
 
