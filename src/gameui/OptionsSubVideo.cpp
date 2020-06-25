@@ -472,7 +472,8 @@ public:
 		int nReduceFillRate = pKeyValues->GetInt( "ConVar.mat_reducefillrate", 0 );
 		int nColorCorrection = pKeyValues->GetInt( "ConVar.mat_colorcorrection", 0 );
 		int nMotionBlur = pKeyValues->GetInt( "ConVar.mat_motion_blur_enabled", 0 );
-		int nMulticore = pKeyValues->GetInt("ConVar.mat_queue_mode", -1);
+//		int nMulticore = pKeyValues->GetInt("ConVar.mat_queue_mode", -1);
+		int nMulticore = pKeyValues->GetInt("ConVar.mat_queue_mode", 2);
 
 		SetComboItemAsRecommended( m_pModelDetail, 2 - nRootLOD );
 		//SetComboItemAsRecommended( m_pTextureDetail, 2 - nSkipLevels );

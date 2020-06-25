@@ -2662,6 +2662,22 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 			break;
 		}
 	}
+#ifdef OF_CLIENT_DLL
+	// Testing new post process shaders (Proper blur for weapon wheel <discord @ HogynMelyn#2589>)
+	// Material <matname> has bad reference count 0 when being bound
+	// Might be fixed with mat_queue_mode 2
+
+	//static ConVarRef mat_queue_mode("mat_queue_mode");
+
+	static IMaterial *pMat = materials->FindMaterial("postproc/greyscale", TEXTURE_GROUP_OTHER);
+	if (pMat)
+	{
+		UpdateScreenEffectTexture();
+		pRenderContext->DrawScreenSpaceRectangle(pMat, 0, 0, w, h,
+			0, 0, w - 1, h - 1,
+			w, h);
+	}
+#endif
 
 #if defined( _X360 )
 	pRenderContext->PopVertexShaderGPRAllocation();
