@@ -1314,7 +1314,7 @@ void CViewRender::Render( vrect_t *rect )
 	matStub.End();
 #endif
 
-
+#if 0
 	// Draw all of the UI stuff "fullscreen"
     // (this is not health, ammo, etc. Nor is it pre-game briefing interface stuff - this is the stuff that appears when you hit Esc in-game)
 	// In stereo mode this is rendered inside of RenderView so it goes into the render target
@@ -1330,7 +1330,7 @@ void CViewRender::Render( vrect_t *rect )
 		render->VGui_Paint( PAINT_UIPANELS | PAINT_CURSOR );
 		render->PopView( GetFrustum() );
 	}
-
+#endif
 
 }
 
