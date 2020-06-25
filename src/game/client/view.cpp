@@ -1284,6 +1284,7 @@ void CViewRender::Render( vrect_t *rect )
 		{
 			bool bDoUndistort = ! engine->IsTakingScreenshot();
 
+
 			if ( bDoUndistort )
 			{
 				g_ClientVirtualReality.PostProcessFrame( eEye );
@@ -1314,7 +1315,6 @@ void CViewRender::Render( vrect_t *rect )
 	matStub.End();
 #endif
 
-#if 0
 	// Draw all of the UI stuff "fullscreen"
     // (this is not health, ammo, etc. Nor is it pre-game briefing interface stuff - this is the stuff that appears when you hit Esc in-game)
 	// In stereo mode this is rendered inside of RenderView so it goes into the render target
@@ -1326,11 +1326,14 @@ void CViewRender::Render( vrect_t *rect )
 		view2d.width			= rect->width;
 		view2d.height			= rect->height;
 
-		render->Push2DView( view2d, 0, NULL, GetFrustum() );
-		render->VGui_Paint( PAINT_UIPANELS | PAINT_CURSOR );
-		render->PopView( GetFrustum() );
+		if (view->GetFrustum()) {
+			//render->Push2DView( view2d, 0, NULL, GetFrustum() );
+			render->Push2DView(view2d, 0, NULL, view->GetFrustum());
+			render->VGui_Paint( PAINT_UIPANELS | PAINT_CURSOR );
+			//render->PopView( GetFrustum() );
+			render->PopView(view->GetFrustum());
+		}
 	}
-#endif
 
 }
 
