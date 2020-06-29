@@ -1,0 +1,295 @@
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set TTEXE=..\..\devtools\bin\timeprecise.exe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist ..\..\devtools\bin\timeprecise.exe goto no_ttexe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set TTEXE=time /t 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo ~~~~~~ buildsdkshaders  ~~~~~~ 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>time /t -cur-Q 
+17:13
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set tt_all_start=0 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set tt_all_chkpt= 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set BUILD_SHADER=call buildshaders.bat 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set ARG_EXTRA= 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>call buildshaders.bat stdshader_dx9_20b		-game "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress" -source "..\.." 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set TTEXE=..\..\devtools\bin\timeprecise.exe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist ..\..\devtools\bin\timeprecise.exe goto no_ttexe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set TTEXE=time /t 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo.
+
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo ==================== buildshaders stdshader_dx9_20b		-game "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress" -source "..\.." ================== 
+==================== buildshaders stdshader_dx9_20b		-game "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress" -source "..\.." ==================
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>time /t -cur-Q 
+17:13
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set tt_start=0 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set tt_chkpt=0 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM usage: buildshaders <shaderProjectName> 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>setlocal
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set arg_filename=stdshader_dx9_20b 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set shadercompilecommand=ShaderCompile.exe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set targetdir=shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SrcDirBase=..\.. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set shaderDir=shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SDKArgs=-local 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if "stdshader_dx9_20b" == "" goto usage 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set inputbase=stdshader_dx9_20b 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM ignore -dx9_30 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "" == "-dx9_30" shift /6 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "" == "-force30" goto set_force30_arg 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>goto set_force_end 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "-game" == "-game" goto set_mod_args 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist "..\..\devtools\bin\ShaderCompile.exe" goto NoShaderCompile 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set ChangeToDir=..\..\devtools\bin\ 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "-source" NEQ "-source" goto NoSourceDirSpecified 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SrcDirBase=..\.. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM ** use the -game parameter to tell us where to put the files 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set targetdir=C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\gameinfo.txt" goto InvalidGameDirectory 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist "stdshader_dx9_20b.txt" goto InvalidInputFile 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>goto build_shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo -------------------------------- 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo stdshader_dx9_20b 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo -------------------------------- 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM make sure that target dirs exist 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM files will be built in these targets and copied to their final destination 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist include mkdir include 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist shaders mkdir shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist shaders\fxc mkdir shaders\fxc 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM Nuke some files that we will add to later. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SHVER=20b 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if defined IS30 (set SHVER=30 ) 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>title stdshader_dx9_20b 20b 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo Building inc files and worklist for stdshader_dx9_20b... 
+Building inc files and worklist for stdshader_dx9_20b...
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set DYNAMIC= 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if "" == "1" set DYNAMIC=-Dynamic 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>powershell -NoLogo -ExecutionPolicy Bypass -Command "..\..\devtools\bin\process_shaders.ps1  -Version 20b 'stdshader_dx9_20b.txt'" 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM PC Shader copy 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM Publish the generated files to the output dir using XCOPY 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM This batch file may have been invoked standalone or slaved (master does final smart mirror copy) 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not "" == "1" (
+if not exist "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders" md "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders"  
+ if not "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders" == "shaders" xcopy shaders\*.* "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders" /e /y 
+) 
+shaders\fxc\postproc_dofblursmart_ps30.vcs
+shaders\fxc\postproc_dofblursmart_vs30.vcs
+2 File(s) copied
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>goto end 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>time /t -diff 0 
+17:13
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo.
+
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>call buildshaders.bat stdshader_dx9_30			-game "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress" -source "..\.."	-force30  
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set TTEXE=..\..\devtools\bin\timeprecise.exe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist ..\..\devtools\bin\timeprecise.exe goto no_ttexe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set TTEXE=time /t 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo.
+
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo ==================== buildshaders stdshader_dx9_30			-game "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress" -source "..\.."	-force30 ================== 
+==================== buildshaders stdshader_dx9_30			-game "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress" -source "..\.."	-force30 ==================
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>time /t -cur-Q 
+17:13
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set tt_start=0 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set tt_chkpt=0 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM usage: buildshaders <shaderProjectName> 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>setlocal
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set arg_filename=stdshader_dx9_30 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set shadercompilecommand=ShaderCompile.exe 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set targetdir=shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SrcDirBase=..\.. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set shaderDir=shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SDKArgs=-local 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if "stdshader_dx9_30" == "" goto usage 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set inputbase=stdshader_dx9_30 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM ignore -dx9_30 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "-force30" == "-dx9_30" shift /6 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "-force30" == "-force30" goto set_force30_arg 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set IS30=1 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>goto set_force_end 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "-game" == "-game" goto set_mod_args 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist "..\..\devtools\bin\ShaderCompile.exe" goto NoShaderCompile 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set ChangeToDir=..\..\devtools\bin\ 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if /I "-source" NEQ "-source" goto NoSourceDirSpecified 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SrcDirBase=..\.. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM ** use the -game parameter to tell us where to put the files 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set targetdir=C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\gameinfo.txt" goto InvalidGameDirectory 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist "stdshader_dx9_30.txt" goto InvalidInputFile 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>goto build_shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo -------------------------------- 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo stdshader_dx9_30 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo -------------------------------- 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM make sure that target dirs exist 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM files will be built in these targets and copied to their final destination 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist include mkdir include 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist shaders mkdir shaders 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not exist shaders\fxc mkdir shaders\fxc 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM Nuke some files that we will add to later. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set SHVER=20b 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if defined IS30 (set SHVER=30 ) 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>title stdshader_dx9_30 30 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo Building inc files and worklist for stdshader_dx9_30... 
+Building inc files and worklist for stdshader_dx9_30...
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>set DYNAMIC= 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if "" == "1" set DYNAMIC=-Dynamic 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>powershell -NoLogo -ExecutionPolicy Bypass -Command "..\..\devtools\bin\process_shaders.ps1  -Version 30 'stdshader_dx9_30.txt'" 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM PC Shader copy 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM Publish the generated files to the output dir using XCOPY 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM This batch file may have been invoked standalone or slaved (master does final smart mirror copy) 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>REM **************** 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not "" == "1" (
+if not exist "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders" md "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders"  
+ if not "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders" == "shaders" xcopy shaders\*.* "C:\Program Files (x86)\Steam\steamapps\sourcemods\open_fortress\shaders" /e /y 
+) 
+shaders\fxc\postproc_dofblursmart_ps30.vcs
+shaders\fxc\postproc_dofblursmart_vs30.vcs
+2 File(s) copied
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>goto end 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>time /t -diff 0 
+17:13
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>echo.
+
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem echo. 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>if not "" == "1" (rem echo Finished full buildallshaders  )  else (rem echo Finished dynamic buildallshaders  ) 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem time /t -diff 0 -cur 
+
+E:\OpenFortress\OF Development 2\Open-Fortress-Source\src\materialsystem\stdshaders>rem

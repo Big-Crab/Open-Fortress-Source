@@ -2646,6 +2646,9 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 
 			pRenderContext->SetRenderTarget(NULL);
 #ifdef OF_CLIENT_DLL			
+			// Depth of Field testing
+			//ApplyPostProcessingPasses(DepthOfFieldBlur);
+
 			if ( mat_show_histogram.GetInt() )
 #else
 			if ( mat_show_histogram.GetInt() && (engine->GetDXSupportLevel()>=90))
@@ -2662,6 +2665,19 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 			break;
 		}
 	}
+
+	// Depth of Field testing
+/*#ifdef OF_CLIENT_DLL
+	static IMaterial *pMat = materials->FindMaterial("dev/postproc_dofblursmart", TEXTURE_GROUP_OTHER);
+
+	if (pMat)
+	{
+		UpdateScreenEffectTexture();
+		pRenderContext->DrawScreenSpaceRectangle( pMat, 0, 0, w, h,
+			0, 0, w - 1, h - 1,
+			w, h );
+	}
+#endif*/
 
 #if defined( _X360 )
 	pRenderContext->PopVertexShaderGPRAllocation();
