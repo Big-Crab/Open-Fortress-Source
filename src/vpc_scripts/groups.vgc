@@ -36,11 +36,6 @@ $Group "game_no_gameui"
 	"vgui_controls"
 }
 
-$Group "shaders"
-{
-	"game_shader_dx9"
-}
-
 $Group "everything"
 {
 	"captioncompiler"
@@ -63,6 +58,12 @@ $Group "everything"
 	"vtfdiff"
 	"vvis_dll"
 	"vvis_launcher"
+	"game_shader_dx9_of"
+}
+
+$Group "shaders"
+{
+	"game_shader_dx9_of"
 }
 
 $Group "dedicated"

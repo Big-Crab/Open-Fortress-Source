@@ -8,5 +8,3 @@
 //
 
 // There are no examples of such shaders in the SDK, but add yours here.
-postproc_dofblursmart_ps30.fxc
-postproc_dofblursmart_vs30.fxc

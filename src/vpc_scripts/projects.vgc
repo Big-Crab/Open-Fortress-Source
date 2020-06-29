@@ -21,6 +21,12 @@ $Project "client"
 	"game\client\client_of.vpc"			[($WIN32||$POSIX) && $OFD]
 }
 
+$Project "game_shader_dx9_of"
+{
+	"materialsystem\stdshaders\game_shader_dx9_of.vpc"			[$WIN32]
+}
+
+
 $Project "fgdlib"
 {
 	"fgdlib\fgdlib.vpc" [$WIN32]

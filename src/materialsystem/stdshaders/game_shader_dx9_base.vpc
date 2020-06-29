@@ -56,6 +56,8 @@ $Project
 
 		$File	"Bloom.cpp"
 		$File	"screenspace_general.cpp"
+		
+		$File	"DOFBlurShader.cpp"
 	}
 
 	$Folder	"Header Files"
