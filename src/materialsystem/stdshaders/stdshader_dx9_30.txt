@@ -8,3 +8,6 @@
 //
 
 // There are no examples of such shaders in the SDK, but add yours here.
+GreyscaleTest_ps30.fxc
+postproc_dofblursmart_ps30.fxc
+BlurDOF_ps30.fxc

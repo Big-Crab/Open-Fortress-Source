@@ -21,7 +21,7 @@ $Project "client"
 	"game\client\client_of.vpc"			[($WIN32||$POSIX) && $OFD]
 }
 
-$Project "game_shader_dx9_of"
+$Project "game_shader_dx9"
 {
 	"materialsystem\stdshaders\game_shader_dx9_of.vpc"			[$WIN32]
 }
@@ -30,11 +30,6 @@ $Project "game_shader_dx9_of"
 $Project "fgdlib"
 {
 	"fgdlib\fgdlib.vpc" [$WIN32]
-}
-
-$Project "game_shader_dx9"
-{
-	"materialsystem\stdshaders\game_shader_dx9_hl2mp.vpc" [$HL2MP]
 }
 
 $Project "glview"

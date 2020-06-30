@@ -1,0 +1,128 @@
+// Includes
+#include "common_ps_fxc.h"
+//#include "common_vertexlitgeneric_dx9.h"
+//#include "common_lightmappedgeneric_fxc.h"
+//#include "common_flashlight_fxc.h"
+//#include "common_parallax.h"
+
+
+// Samplers
+//sampler _Sampler_00		: register( s0 );
+sampler FBSampler	: register( s0 );
+
+// Constants
+//const float2 _g_TexelSize		: register( c16 );
+//const static float2 _g_TexelSize = float2(0.000520833333, 0.000925925926);
+const float2 _g_TexelSize : register( c13 );
+
+const float _focusscale : register ( c17 );
+const float _focuspoint : register ( c18 );
+
+// User code - globals
+#define GOLDEN_ANGLE 2.39996323
+#define MAX_BLUR_SIZE 10.0
+
+// Smaller = nicer blur, larger = faster
+#define RAD_SCALE 1
+
+static float near = 7; //Z-near
+static float far = 192.0; //Z-far
+static float zScaleLinear = near / far;
+static float zScaleLinearRev = far / near;
+
+float getBlurSize(float depth, float focusPoint, float focusScale)
+{
+	float coc = clamp((1.0 / focusPoint - 1.0 / depth) * focusScale, -1.0, 1.0);
+	return abs(coc) * MAX_BLUR_SIZE;
+}
+
+float3 mix(float3 x, float3 y, float a)
+{
+	return x*(1-a) + y*a;
+}
+
+float readDepth(in float2 coord, sampler tex)
+{
+	return tex2D(tex, coord ).a * zScaleLinear;
+}
+
+float readDepth(float linDepth)
+{
+	return linDepth * zScaleLinear;
+}
+
+// User code - function bodies
+void depthOfField( in float2 uvCoords, in float2 texelSize, in sampler samplerObject, in float focusPoint, in float focusScale, out float3 colourOut )
+{
+	// This might need to be readDepth(coord, sampler) or readDepth(depth)
+	// This is meant to be the depth at the centre in world space
+	 float centreDepth = readDepth(uvCoords, samplerObject);
+
+	float centreSize = getBlurSize( centreDepth, focusPoint, focusScale );
+	float3 colour = tex2D( samplerObject, uvCoords ).rgb;
+	float total = 1.0;
+	
+	float radius = RAD_SCALE;
+	for(float ang = 0.0; radius < MAX_BLUR_SIZE; ang += GOLDEN_ANGLE )
+	{
+		float2 tc = uvCoords + float2(cos(ang), sin(ang)) * texelSize * radius;
+
+		float4 sampleAll = tex2D(samplerObject, tc);
+		float3 sampleColour = sampleAll.rgb;
+		float sampleDepth = sampleAll.a;
+		float sampleSize = getBlurSize(sampleDepth, focusPoint, focusScale);
+		if(sampleDepth > centreDepth)
+		{
+			sampleSize = clamp(sampleSize, 0.0, centreSize * 2.0);
+		}
+
+		float m = smoothstep(radius-0.5, radius+0.5, sampleSize);
+		colour += mix(colour / total, sampleColour, m);
+		total += 1.0;
+		radius += RAD_SCALE/radius;
+	}
+
+	colourOut = colour / total;
+}
+
+// Semantic structures
+struct PS_INPUT
+{
+	float2 texCoord			:	TEXCOORD0;
+};
+
+//struct PS_OUTPUT
+//{
+//	float4 vColor_0				:	COLOR0;
+//};
+
+// Entry point
+//PS_OUTPUT main( const PS_INPUT In )
+//{
+//	PS_OUTPUT Out;
+//	float3 _var0 = (float3)0;
+//	depthOfField( In.vTexCoord_0, _g_TexelSize, _Sampler_00, float( 0.175000 ), float( 0.150000 ), _var0 );
+//	float _var1 = tex2D( _Sampler_00, In.vTexCoord_0 ).a;
+//	float4 _var2 = float4( _var0, _var1 );
+//	Out.vColor_0 = _var2;
+//	return Out;
+//}
+
+float4 main ( PS_INPUT i ) : COLOR
+{
+	// clear as yellow
+	float3 colourOut = float3(1.0, 1.0, 0.7);
+	depthOfField( i.texCoord, _g_TexelSize, FBSampler, _focuspoint, _focusscale, colourOut );
+
+	float alpha = tex2D( FBSampler, i.texCoord ).a;
+	return FinalOutput( float4(colourOut, alpha), 0, PIXEL_FOG_TYPE_NONE, TONEMAP_SCALE_NONE );
+}
+
+//float4 main( PS_INPUT i ) : COLOR
+//{
+//	float4 fbSample = tex2D( FBSampler, i.texCoord );
+//	float desaturated = dot( fbSample.rgb, float3(1.0, 1.0, 1.0) );
+//	desaturated /= 3;
+//	float4 asColour = float4( desaturated, desaturated, desaturated, 1.0f );
+//	return FinalOutput( asColour, 0, PIXEL_FOG_TYPE_NONE, TONEMAP_SCALE_NONE );
+//}

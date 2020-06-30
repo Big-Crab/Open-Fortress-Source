@@ -1218,7 +1218,7 @@ void CViewRender::PerformScreenOverlay( int x, int y, int w, int h )
 	{
 		tmZone( TELEMETRY_LEVEL0, TMZF_NONE, "%s", __FUNCTION__ );
 
-		if ( m_ScreenOverlayMaterial->NeedsFullFrameBufferTexture() )
+		if ( m_ScreenOverlayMaterial->NeedsFullFrameBufferTexture() || true)
 		{
             // FIXME: check with multi/sub-rect renders. Should this be 0,0,w,h instead?
 			DrawScreenEffectMaterial( m_ScreenOverlayMaterial, x, y, w, h );

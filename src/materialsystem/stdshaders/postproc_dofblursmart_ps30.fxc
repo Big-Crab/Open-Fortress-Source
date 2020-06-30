@@ -108,3 +108,12 @@ PS_OUTPUT main( const PS_INPUT In )
 	Out.vColor_0 = _var2;
 	return Out;
 }
+
+//float4 main( PS_INPUT i ) : COLOR
+//{
+//	float4 fbSample = tex2D( FBSampler, i.texCoord );
+//	float desaturated = dot( fbSample.rgb, float3(1.0, 1.0, 1.0) );
+//	desaturated /= 3;
+//	float4 asColour = float4( desaturated, desaturated, desaturated, 1.0f );
+//	return FinalOutput( asColour, 0, PIXEL_FOG_TYPE_NONE, TONEMAP_SCALE_NONE );
+//}

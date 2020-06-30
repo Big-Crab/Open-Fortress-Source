@@ -58,12 +58,12 @@ $Group "everything"
 	"vtfdiff"
 	"vvis_dll"
 	"vvis_launcher"
-	"game_shader_dx9_of"
+	"game_shader_dx9"
 }
 
 $Group "shaders"
 {
-	"game_shader_dx9_of"
+	"game_shader_dx9"
 }
 
 $Group "dedicated"
