@@ -28,6 +28,9 @@
 #include "tf_imagepanel.h"
 #include <vgui_controls/Controls.h>
 
+// For the DOF blur
+#include "viewpostprocess.h"
+
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -119,6 +122,9 @@ private:
 	// Slot numbers formatted & ready for printing. Assumes that we never have more than 16 slots, which is a safe bet.
 	wchar_t *slotNames[16];
 
+	// The DOF Blur post process material that we want to control in here.
+	/*static */IMaterial *m_pDOFBlurMat;
+
 	CHudTexture *GetIcon(const char *szIcon, bool bInvert);
 
 	void DrawString(const wchar_t *text, int xpos, int ypos, Color col, bool bCenter);
@@ -129,11 +135,11 @@ private:
 	CPanelAnimationVarAliasType(int, m_nPanelTextureId, "panel_texture", "hud/weaponwheel_panel", "textureid");
 	CPanelAnimationVarAliasType(int, m_nPanelHighlightedTextureId, "panel_texture_highlighted", "hud/weaponwheel_panel_highlighted", "textureid");
 	CPanelAnimationVarAliasType(int, m_nCircleTextureId, "circle_texture", "hud/weaponwheel_circle", "textureid");
-	CPanelAnimationVarAliasType(int, m_nBlurTextureId, "blur_material", "hud/weaponwheel_blur", "textureid");
-
+	//CPanelAnimationVarAliasType(int, m_nBlurTextureId, "blur_material", "hud/weaponwheel_blur", "textureid");
+	CPanelAnimationVarAliasType(int, m_nBlurShaderId, "blur_material", "dofblur", "textureid");
 
 	// Other vars that are loaded from the .res
-	CPanelAnimationVar(float, m_flBlurCircleRadius, "BlurRadius", "500");
+	//CPanelAnimationVar(float, m_flBlurCircleRadius, "BlurRadius", "500");
 	CPanelAnimationVar(int, m_iShadowOffset, "ShadowOffset", "3");
 	CPanelAnimationVar(int, m_iShadowAlpha, "ShadowAlpha", "255");
 	CPanelAnimationVar(float, m_flSegmentMargin, "segment_margin", "10");
@@ -141,6 +147,18 @@ private:
 	CPanelAnimationVar(float, m_flOuterRadius, "outer_radius", "100");
 	CPanelAnimationVar(int, m_iWheelMargin, "wheel_margin", "20");
 	CPanelAnimationVar(int, m_iTextOffset, "text_offset", "25");
+
+	// These are used to parameterise and defer the DoF blur's lerp settings to the .res layout file
+	CPanelAnimationVar(float, m_flDOFBlurScaleMax, "dof_blur_scale_max", "0.5");
+	CPanelAnimationVar(float, m_flDOFBlurScaleMin, "dof_blur_scale_min", "0.15");
+	CPanelAnimationVar(float, m_flDOFBlurDistance, "dof_blur_dist", "0.175");
+	CPanelAnimationVar(float, m_flBlurLerpTimeOn, "dof_blur_transitiontime_on", "0.5");
+	CPanelAnimationVar(float, m_flBlurLerpTimeOff, "dof_blur_transitiontime_off", "0.1");
+
+	float	m_flLerpTime = 0.0f;		// Timer
+	bool	m_bBlurEnabled = false;		// Controls the lerp direction
+	void	SetBlurLerpTimer(float t);
+	void	PerformBlurLerp();
 };
 
 DECLARE_HUDELEMENT(CHudWeaponWheel);
@@ -189,6 +207,9 @@ CHudWeaponWheel::CHudWeaponWheel(const char *pElementName) : CHudElement(pElemen
 
 	//allocate the wheel
 	segments = new WheelSegment[numberOfSegments];
+
+	//Find that blur shader
+	m_pDOFBlurMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER);
 	
 	ivgui()->AddTickSignal(GetVPanel());
 }
@@ -367,6 +388,22 @@ void CHudWeaponWheel::RefreshEquippedWeapons(void)
 	}
 }
 
+void CHudWeaponWheel::SetBlurLerpTimer(float t)
+{
+	// Set the timer to m_flBlurLerpTimeOn or m_flBlurLerpTimeOff
+	m_flLerpTime = gpGlobals->curtime + t;
+}
+void CHudWeaponWheel::PerformBlurLerp()
+{
+	float target = m_bBlurEnabled ? m_flDOFBlurScaleMax : m_flDOFBlurScaleMin;
+	
+	// Remap time to a 0 to 1 lerp amount
+	float timeRemaining = max( m_flLerpTime - gpGlobals->curtime, 0 );
+	float lerpAmount = 1 - (timeRemaining / m_flLerpTime);
+
+	float blurScale = Lerp();
+}
+
 void CHudWeaponWheel::RefreshWheelVerts(void)
 {
 	CTFPlayer* pPlayer = CTFPlayer::GetLocalTFPlayer();
@@ -470,11 +507,11 @@ void CHudWeaponWheel::Paint(void)
 		return;
 	*/
 
-	// Draw the blurry boy behind the UI
-	surface()->DrawSetTexture(m_nBlurTextureId);
-	surface()->DrawTexturedRect(iCentreWheelX - m_flBlurCircleRadius, iCentreWheelY - m_flBlurCircleRadius, iCentreWheelX + m_flBlurCircleRadius, iCentreWheelY + m_flBlurCircleRadius);
-
-	surface()->DrawSetColor(Color (255, 255, 255, 255));
+	// Draw the blurry boy behind the UI - REMOVED 30/06/2020 in favour of a new DoF post process! <3
+	//surface()->DrawSetTexture(m_nBlurTextureId);
+	//surface()->DrawTexturedRect(iCentreWheelX - m_flBlurCircleRadius, iCentreWheelY - m_flBlurCircleRadius, iCentreWheelX + m_flBlurCircleRadius, iCentreWheelY + m_flBlurCircleRadius);
+	
+	surface()->DrawSetColor(Color(255, 255, 255, 255));
 	surface()->DrawSetTexture(m_nCircleTextureId);
 	surface()->DrawTexturedRect(iCentreWheelX - m_flWheelRadius, iCentreWheelY - m_flWheelRadius, iCentreWheelX + m_flWheelRadius, iCentreWheelY + m_flWheelRadius);
 
@@ -482,13 +519,19 @@ void CHudWeaponWheel::Paint(void)
 	for (int i = 0; i < numberOfSegments; i++)
 	{
 		if (i == slotSelected)
+		{
 			surface()->DrawSetTexture(m_nPanelHighlightedTextureId);
-		else 
+		}
+		else
+		{
 			surface()->DrawSetTexture(m_nPanelTextureId);
+		}
 
 		WheelSegment segment = segments[i];
 		surface()->DrawTexturedPolygon(NUM_VERTS_SPOKE, segment.vertices);
 	}
+
+	surface()->DrawSetAlphaMultiplier(1.0f);
 
 	// Now the outline, slot number, and ammo
 	for (int i = 0; i < numberOfSegments; i++)
@@ -637,6 +680,9 @@ void CHudWeaponWheel::CheckWheel()
 		SetMouseInputEnabled(false);
 		SetVisible(false);
 	}
+
+	// temp
+	g_bDOFBlur = bWheelActive;
 }
 
 

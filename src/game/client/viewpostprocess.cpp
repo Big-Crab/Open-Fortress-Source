@@ -19,6 +19,10 @@
 #include "filesystem.h"
 #include "tier0/vprof.h"
 
+// This wasn't included before
+// WHAT THE FUCK!?!??!?!
+#include "viewpostprocess.h"
+
 #include "proxyentity.h"
 
 //-----------------------------------------------------------------------------
@@ -2667,17 +2671,19 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 	}
 
 	// Depth of Field testing
-/*#ifdef OF_CLIENT_DLL
-	static IMaterial *pMat = materials->FindMaterial("dev/postproc_dofscreenspace", TEXTURE_GROUP_OTHER);
-
-	if (pMat)
+#ifdef OF_CLIENT_DLL
+	if (g_bDOFBlur)
 	{
-		UpdateScreenEffectTexture();
-		pRenderContext->DrawScreenSpaceRectangle( pMat, 0, 0, w, h,
-			0, 0, w - 1, h - 1,
-			w, h );
+		static IMaterial *pMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER);
+		if (pMat)
+		{
+			UpdateScreenEffectTexture();
+			pRenderContext->DrawScreenSpaceRectangle(pMat, 0, 0, w, h,
+				0, 0, w - 1, h - 1,
+				w, h);
+		}
 	}
-#endif*/
+#endif
 
 #if defined( _X360 )
 	pRenderContext->PopVertexShaderGPRAllocation();
