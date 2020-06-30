@@ -805,6 +805,9 @@ CLIENTEFFECT_REGISTER_BEGIN( PrecachePostProcessingEffects )
 	CLIENTEFFECT_MATERIAL( "dev/pyro_vignette" )
 	CLIENTEFFECT_MATERIAL( "dev/pyro_post" )
 #endif
+#ifdef OF_CLIENT_DLL
+	CLIENTEFFECT_MATERIAL("dofblur")
+#endif
 
 CLIENTEFFECT_REGISTER_END_CONDITIONAL( engine->GetDXSupportLevel() >= 90 )
 

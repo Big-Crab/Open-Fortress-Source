@@ -20,5 +20,10 @@ void DumpTGAofRenderTarget( const int width, const int height, const char *pFile
 
 #ifdef OF_CLIENT_DLL
 // Exposes enabling of the DOF Blur shader (e.g. allow weapon wheel to affect its state)
-bool g_bDOFBlur = false;
+//bool g_bDOFBlur = false;
+//float g_vDOFBlurScale = -1.0f;
+//static IMaterial *g_pDOFBlurMat;
+void SetDOFBlurScale(float scale);
+void SetDOFBlurDistance(float dist);
+void SetDOFBlurEnabled(bool enabled);
 #endif

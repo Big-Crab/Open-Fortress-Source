@@ -20,8 +20,8 @@
 #include "tier0/vprof.h"
 
 // This wasn't included before
-// WHAT THE FUCK!?!??!?!
-#include "viewpostprocess.h"
+// WHAT !?!??!?!
+// #include "viewpostprocess.h"
 
 #include "proxyentity.h"
 
@@ -99,6 +99,15 @@ ConVar mat_tonemap_min_avglum( "mat_tonemap_min_avglum", "3.0", FCVAR_CHEAT );
 ConVar mat_fullbright( "mat_fullbright", "0", FCVAR_CHEAT );
 
 extern ConVar localplayer_visionflags;
+
+#ifdef OF_CLIENT_DLL
+// Used to enabled DoF blur postproc effect
+static bool g_bDOFBlur = false;
+void SetDOFBlurEnabled(bool enabled)
+{
+	g_bDOFBlur = enabled;
+}
+#endif
 
 enum PostProcessingCondition {
 	PPP_ALWAYS,
@@ -2674,13 +2683,24 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 #ifdef OF_CLIENT_DLL
 	if (g_bDOFBlur)
 	{
-		static IMaterial *pMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER);
-		if (pMat)
-		{
+		//static IMaterial *pMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER);
+
+		//g_pDOFBlurMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER);
+
+		static IMaterial *pDOFBlurMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER);
+
+		if (pDOFBlurMat){
 			UpdateScreenEffectTexture();
-			pRenderContext->DrawScreenSpaceRectangle(pMat, 0, 0, w, h,
-				0, 0, w - 1, h - 1,
-				w, h);
+			pRenderContext->DrawScreenSpaceRectangle(pDOFBlurMat, 0, 0, w, h,
+					0, 0, w - 1, h - 1,
+					w, h, GetClientWorldEntity()->GetClientRenderable());
+
+			/*bool bFound = false;
+			IMaterialVar *var = pDOFBlurMat->FindVar("$FOCUSSCALE", &bFound, true);
+			if (bFound)
+				Msg( "$FOCUSSCALE was %f.\n", var->GetFloatValue() );
+			else
+				Msg("dofblur's $FOCUSSCALE was not found!.\n", var->GetFloatValue());*/
 		}
 	}
 #endif
@@ -2689,6 +2709,72 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 	pRenderContext->PopVertexShaderGPRAllocation();
 #endif
 }
+
+#ifdef OF_CLIENT_DLL
+// DOF Blur Material Proxy =========================================================================================
+static float g_vDOFBlurScale = -1.0f;
+void SetDOFBlurScale(float scale)
+{
+	g_vDOFBlurScale = scale;
+}
+static float g_vDOFBlurDistance = -1.0f;
+void SetDOFBlurDistance(float dist)
+{
+	g_vDOFBlurDistance = dist;
+}
+
+class CDOFBlurMaterialProxy : public CEntityMaterialProxy //perhaps CEntityMaterialProxy -> IMaterialProxy
+{
+public:
+	CDOFBlurMaterialProxy();
+	virtual ~CDOFBlurMaterialProxy();
+	virtual bool Init(IMaterial *pMaterial, KeyValues *pKeyValues);
+	virtual void OnBind(C_BaseEntity *pEntity);
+	virtual IMaterial *GetMaterial();
+
+private:
+	IMaterialVar *m_pMaterialParam;
+	IMaterialVar *m_pMaterialParamDistance;
+};
+
+CDOFBlurMaterialProxy::CDOFBlurMaterialProxy()
+{
+	m_pMaterialParam = NULL;
+}
+
+CDOFBlurMaterialProxy::~CDOFBlurMaterialProxy()
+{
+	// Do nothing
+}
+
+bool CDOFBlurMaterialProxy::Init(IMaterial *pMaterial, KeyValues *pKeyValues)
+{
+	bool bFoundVar = false;
+
+	m_pMaterialParam = pMaterial->FindVar("$FOCUSSCALE", &bFoundVar, false);
+	m_pMaterialParamDistance = pMaterial->FindVar("$FOCUSDISTANCE", &bFoundVar, false);
+	return bFoundVar;
+}
+
+void CDOFBlurMaterialProxy::OnBind(C_BaseEntity *pEnt)
+{
+	if (m_pMaterialParam != NULL)
+		m_pMaterialParam->SetFloatValue(g_vDOFBlurScale);
+	if (m_pMaterialParamDistance != NULL)
+		m_pMaterialParamDistance->SetFloatValue(g_vDOFBlurDistance);
+
+}
+
+IMaterial *CDOFBlurMaterialProxy::GetMaterial()
+{
+	if (m_pMaterialParam == NULL)
+		return NULL;
+
+	return m_pMaterialParam->GetOwningMaterial();
+}
+
+EXPOSE_INTERFACE(CDOFBlurMaterialProxy, IMaterialProxy, "DOFBlur" IMATERIAL_PROXY_INTERFACE_VERSION);
+#endif
 
 // Motion Blur Material Proxy =========================================================================================
 static float g_vMotionBlurValues[4] = { 0.0f, 0.0f, 0.0f, 0.0f };

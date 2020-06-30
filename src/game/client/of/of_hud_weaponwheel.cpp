@@ -30,7 +30,8 @@
 
 // For the DOF blur
 #include "viewpostprocess.h"
-
+#include "materialsystem/imaterial.h"
+#include "materialsystem/imaterialvar.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -123,7 +124,7 @@ private:
 	wchar_t *slotNames[16];
 
 	// The DOF Blur post process material that we want to control in here.
-	/*static */IMaterial *m_pDOFBlurMat;
+	//IMaterialVar *m_pBlurScale;
 
 	CHudTexture *GetIcon(const char *szIcon, bool bInvert);
 
@@ -156,7 +157,9 @@ private:
 	CPanelAnimationVar(float, m_flBlurLerpTimeOff, "dof_blur_transitiontime_off", "0.1");
 
 	float	m_flLerpTime = 0.0f;		// Timer
+	float	m_flTargetFadeTime = -1.0f;		// The fade time (different for turning blur on and off, two directions)
 	bool	m_bBlurEnabled = false;		// Controls the lerp direction
+	bool	m_bLerpDone = true;
 	void	SetBlurLerpTimer(float t);
 	void	PerformBlurLerp();
 };
@@ -209,8 +212,13 @@ CHudWeaponWheel::CHudWeaponWheel(const char *pElementName) : CHudElement(pElemen
 	segments = new WheelSegment[numberOfSegments];
 
 	//Find that blur shader
-	m_pDOFBlurMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER);
-	
+	/*bool bFound = false;
+	//m_pDOFBlurMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER); // moved to use static ref
+	if (g_pDOFBlurMat) {
+		m_pBlurScale = g_pDOFBlurMat->FindVar("$FOCUSSCALE", &bFound, true);
+		Msg("$FOCUSSCALE was%s found!", bFound ? "" : " not");
+	}*/
+
 	ivgui()->AddTickSignal(GetVPanel());
 }
 
@@ -392,16 +400,35 @@ void CHudWeaponWheel::SetBlurLerpTimer(float t)
 {
 	// Set the timer to m_flBlurLerpTimeOn or m_flBlurLerpTimeOff
 	m_flLerpTime = gpGlobals->curtime + t;
+	m_bLerpDone = false;
+	m_flTargetFadeTime = t;
 }
 void CHudWeaponWheel::PerformBlurLerp()
 {
-	float target = m_bBlurEnabled ? m_flDOFBlurScaleMax : m_flDOFBlurScaleMin;
-	
 	// Remap time to a 0 to 1 lerp amount
-	float timeRemaining = max( m_flLerpTime - gpGlobals->curtime, 0 );
-	float lerpAmount = 1 - (timeRemaining / m_flLerpTime);
+	float timeRemaining = max( m_flLerpTime - gpGlobals->curtime, 0.0f );
+	float lerpAmount = 1.0f - (timeRemaining / m_flTargetFadeTime);
 
-	float blurScale = Lerp();
+	// if blur is turning on (true), lerp between min and max. If it's turning off, lerp between max and min.
+	float blurScale = Lerp(
+		lerpAmount, 
+		m_bBlurEnabled ? m_flDOFBlurScaleMin : m_flDOFBlurScaleMax,
+		m_bBlurEnabled ? m_flDOFBlurScaleMax : m_flDOFBlurScaleMin
+		);
+
+	//DevMsg("lerpAmount : %.2f, timeRemaining : %.2f, blurScale : %.2f.\n", lerpAmount, timeRemaining, blurScale);
+
+	SetDOFBlurScale( blurScale );
+
+	if (lerpAmount >= 1.0f)  {
+		m_bLerpDone = true;
+
+		if (!bWheelActive)
+		{
+			// Switches off the DoF Blur for good (stops it even being considered in the post process cycle; performance!)
+			SetDOFBlurEnabled(false);
+		}
+	}
 }
 
 void CHudWeaponWheel::RefreshWheelVerts(void)
@@ -603,6 +630,12 @@ void CHudWeaponWheel::OnTick(void)
 	if (!(pPlayer && pPlayerBase))
 		return;
 
+	// If we've still lerping to be done, do it!
+	if (!m_bLerpDone)
+	{
+		PerformBlurLerp();
+	}
+
 	// If weapon wheel active bool has changed, change mouse input capabilities etc
 	if (lastWheel != bWheelActive)
 		CheckWheel();
@@ -655,7 +688,7 @@ void CHudWeaponWheel::CheckWheel()
 
 		bHasCursorBeenInWheel = false;
 
-		Activate();
+//		Activate();
 		SetMouseInputEnabled(true);			// Capture the mouse...
 		SetKeyBoardInputEnabled(false);		// ...but not the keyboard!
 
@@ -665,9 +698,11 @@ void CHudWeaponWheel::CheckWheel()
 		// On Windows, this should still let us start at iCentreScreenXY
 		vgui::input()->GetCursorPos(iCentreWheelX, iCentreWheelY);
 
-		iCentreWheelX += 4;
-		iCentreWheelX -= 2;
-		iCentreWheelX -= 2;
+		SetDOFBlurEnabled( true );
+
+		// this var is just used to decide the lerp direction, it doesn't toggle it on/off
+		m_bBlurEnabled = true;
+		SetBlurLerpTimer(m_flBlurLerpTimeOn);
 	}
 	else
 	{
@@ -679,10 +714,12 @@ void CHudWeaponWheel::CheckWheel()
 		}
 		SetMouseInputEnabled(false);
 		SetVisible(false);
+
+		m_bBlurEnabled = false;
+		SetBlurLerpTimer(m_flBlurLerpTimeOff);
 	}
 
-	// temp
-	g_bDOFBlur = bWheelActive;
+	SetDOFBlurDistance( m_flDOFBlurDistance );
 }
 
 
