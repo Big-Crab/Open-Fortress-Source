@@ -85,8 +85,8 @@ public:
 		float centreAngle;
 
 		// Keeps track of the weapon we have currently selected in this slot
-		int bucketSelected = -1;
-		int defaultBucket = -1;
+		int bucketSelected = 0;
+		int defaultBucket = 0;
 	};
 
 	WheelSegment *segments;
@@ -119,7 +119,7 @@ private:
 
 	bool	lastWheel = false;
 	void	CheckWheel();
-	
+
 	// Slot numbers formatted & ready for printing. Assumes that we never have more than 16 slots, which is a safe bet.
 	wchar_t *slotNames[16];
 
@@ -162,6 +162,12 @@ private:
 	bool	m_bLerpDone = true;
 	void	SetBlurLerpTimer(float t);
 	void	PerformBlurLerp();
+
+	// Check for resolution changes by polling the vertical size of the screen
+	// Pixel measurements need to be relative to 1080p, otherwise they stay literal on 720p and double in size lol
+	int		m_iLastScreenHeight = -1;
+	const int iReferenceScreenHeight = 1080;
+	bool	bLayoutInvalidated = true;
 };
 
 DECLARE_HUDELEMENT(CHudWeaponWheel);
@@ -211,6 +217,10 @@ CHudWeaponWheel::CHudWeaponWheel(const char *pElementName) : CHudElement(pElemen
 	//allocate the wheel
 	segments = new WheelSegment[numberOfSegments];
 
+	// Make the wheel vertices
+	RefreshWheelVerts();
+	//RefreshEquippedWeapons(); //deleteme - inappropriate in the constructor.
+
 	ivgui()->AddTickSignal(GetVPanel());
 }
 
@@ -221,6 +231,9 @@ void CHudWeaponWheel::ApplySchemeSettings(IScheme *pScheme)
 {
 	// load control settings...
 	LoadControlSettings("resource/UI/HudWeaponwheel.res");
+
+	bLayoutInvalidated = true;
+
 
 	/*for (int i = 0; i < numberOfSegments; i++) {
 
@@ -345,7 +358,7 @@ void CHudWeaponWheel::CheckMousePos()
 				}
 			}
 		}
-		else 
+		else
 		{
 			// The cursor has been registered as having been inside the centre circle;
 			// after this, it can select things (see above).
@@ -359,9 +372,11 @@ void CHudWeaponWheel::CheckMousePos()
 	}
 }
 
-// might have fucked up the weapon select stay???
+// DO NOT CALL THIS EVERY FRAME.
 void CHudWeaponWheel::RefreshEquippedWeapons(void)
 {
+	Msg("########Refreshing equipped weapons.########\n");
+
 	if (GetHudWeaponSelection())
 	{
 		for (int slot = 0; slot < numberOfSegments; slot++)
@@ -376,8 +391,11 @@ void CHudWeaponWheel::RefreshEquippedWeapons(void)
 				{
 					segments[slot].imageIcon[bucketSlot] = weaponInSlot->GetSpriteActive();
 					segments[slot].bHasIcon = true;
+
+					Msg("- Grabbed icon %s. - \n", weaponInSlot->GetSpriteActive()->szShortName);
+
 					if (isFirstBucket)
-					{ 
+					{
 						segments[slot].defaultBucket = bucketSlot;
 						segments[slot].bucketSelected = bucketSlot;
 						isFirstBucket = false;
@@ -399,19 +417,19 @@ void CHudWeaponWheel::SetBlurLerpTimer(float t)
 void CHudWeaponWheel::PerformBlurLerp()
 {
 	// Remap time to a 0 to 1 lerp amount
-	float timeRemaining = max( m_flLerpTime - gpGlobals->curtime, 0.0f );
+	float timeRemaining = max(m_flLerpTime - gpGlobals->curtime, 0.0f);
 	float lerpAmount = 1.0f - (timeRemaining / m_flTargetFadeTime);
 
 	// if blur is turning on (true), lerp between min and max. If it's turning off, lerp between max and min.
 	float blurScale = Lerp(
-		lerpAmount, 
+		lerpAmount,
 		m_bBlurEnabled ? m_flDOFBlurScaleMin : m_flDOFBlurScaleMax,
 		m_bBlurEnabled ? m_flDOFBlurScaleMax : m_flDOFBlurScaleMin
 		);
 
 	//DevMsg("lerpAmount : %.2f, timeRemaining : %.2f, blurScale : %.2f.\n", lerpAmount, timeRemaining, blurScale);
 
-	SetDOFBlurScale( blurScale );
+	SetDOFBlurScale(blurScale);
 
 	if (lerpAmount >= 1.0f)  {
 		m_bLerpDone = true;
@@ -426,9 +444,17 @@ void CHudWeaponWheel::PerformBlurLerp()
 
 void CHudWeaponWheel::RefreshWheelVerts(void)
 {
+
+	// This check isn't necessary at all. Deleteme
+/*
 	CTFPlayer* pPlayer = CTFPlayer::GetLocalTFPlayer();
 	if (!pPlayer)
 		return;
+*/
+
+	// Scale things relative to 1080p, otherwise 720p looks bloody HUGE
+	// Fucking integer logic...
+	float scaleFactor = (float)m_iLastScreenHeight / (float)iReferenceScreenHeight;
 
 	float pointAngleFromCentre = 360 / (2 * numberOfSegments);
 
@@ -440,38 +466,57 @@ void CHudWeaponWheel::RefreshWheelVerts(void)
 
 		segment.centreAngle = currentCentreAngle;
 
-		segment.centreX = iCentreScreenX + (sin(DEG2RAD(currentCentreAngle)) * (m_flWheelRadius + m_iWheelMargin));
-		segment.centreY = iCentreScreenY + (cos(DEG2RAD(currentCentreAngle)) * (m_flWheelRadius + m_iWheelMargin));
+		segment.centreX = iCentreScreenX + (sin(DEG2RAD(currentCentreAngle)) * ((m_flWheelRadius + m_iWheelMargin) * scaleFactor));
+		segment.centreY = iCentreScreenY + (cos(DEG2RAD(currentCentreAngle)) * (m_flWheelRadius + m_iWheelMargin) * scaleFactor);
 
 		Vector2D centreToPoint = Vector2D(sin(DEG2RAD(currentCentreAngle)), cos(DEG2RAD(currentCentreAngle)));
 
 		segment.vertices[0].Init(
-			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin))),
+			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin) * scaleFactor)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin) * scaleFactor))),
 			Vector2D(0, 0)
 			);
 
 		segment.vertices[1].Init(
-			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin))),
+			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin) * scaleFactor)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin) * scaleFactor))),
 			Vector2D(1, 0)
 			);
 
 		segment.vertices[2].Init(
-			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin + m_flOuterRadius)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin + m_flOuterRadius))),
+			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin + m_flOuterRadius) * scaleFactor)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle + pointAngleFromCentre - (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin + m_flOuterRadius) * scaleFactor))),
 			Vector2D(1, 1)
 			);
 
 		segment.vertices[3].Init(
-			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin + m_flOuterRadius)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * (m_flWheelRadius + m_iWheelMargin + m_flOuterRadius))),
+			Vector2D(iCentreScreenX + (sin(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin + m_flOuterRadius) * scaleFactor)), iCentreScreenY + (cos(DEG2RAD(currentCentreAngle - pointAngleFromCentre + (m_flSegmentMargin / 2))) * ((m_flWheelRadius + m_iWheelMargin + m_flOuterRadius) * scaleFactor))),
 			Vector2D(0, 1)
 			);
 
 		segment.angleSin = sin(DEG2RAD(currentCentreAngle));
 		segment.angleCos = cos(DEG2RAD(currentCentreAngle));
 
+		// To prevent the invalidated layout from overriding the weapon slot, copy the selected bucket info
+/*		segment.bHasIcon = segments[i].bHasIcon;
+		for (int n = 0; n < sizeof(segments[i].imageIcon); n++)
+		{
+			if (segments[i].imageIcon[n])
+			{
+				segment.imageIcon[n] = segments[i].imageIcon[n];
+			}
+		}
+*/
+
+		Msg("########Refreshing vertices.########\n");
+
+
+		segment.bucketSelected = segments[i].bucketSelected;
+		segment.defaultBucket = segments[i].defaultBucket;
+
 		segments[i] = segment;
 
 		currentCentreAngle += 360 / numberOfSegments;
 	}
+
+	bLayoutInvalidated = false;
 }
 
 void CHudWeaponWheel::RefreshCentre(void)
@@ -487,6 +532,13 @@ void CHudWeaponWheel::RefreshCentre(void)
 	// but Linux currently struggles to set the cursor position so it can be variable.)
 	iCentreWheelX = iCentreScreenX;
 	iCentreWheelY = iCentreScreenY;
+
+	// If the user has changed resolution, invalidate and reload the vertices
+	if (height != m_iLastScreenHeight)
+	{
+		m_iLastScreenHeight = height;
+		bLayoutInvalidated = true;
+	}
 }
 
 void CHudWeaponWheel::DrawString(const wchar_t *text, int xpos, int ypos, Color col, bool bCenter)
@@ -496,7 +548,7 @@ void CHudWeaponWheel::DrawString(const wchar_t *text, int xpos, int ypos, Color 
 
 	// count the position
 	int slen = 0, charCount = 0, maxslen = 0;
-		
+
 	for (const wchar_t *pch = text; *pch != 0; pch++)
 	{
 		if (*pch == '\n')
@@ -524,43 +576,40 @@ void CHudWeaponWheel::Paint(void)
 {
 	/* not needed, if ShouldDraw is false Paint is not computed
 	if (!bWheelActive)
-		return;
+	return;
 	*/
 
 	// Draw the blurry boy behind the UI - REMOVED 30/06/2020 in favour of a new DoF post process! <3
 	//surface()->DrawSetTexture(m_nBlurTextureId);
 	//surface()->DrawTexturedRect(iCentreWheelX - m_flBlurCircleRadius, iCentreWheelY - m_flBlurCircleRadius, iCentreWheelX + m_flBlurCircleRadius, iCentreWheelY + m_flBlurCircleRadius);
-	
-	CBaseHudWeaponSelection* weaponSelect = GetHudWeaponSelection();
+
+	float scaleFactor = m_iLastScreenHeight / iReferenceScreenHeight;
+	float wheelRadius = m_flWheelRadius * scaleFactor;
 
 	surface()->DrawSetColor(Color(255, 255, 255, 255));
 	surface()->DrawSetTexture(m_nCircleTextureId);
-	surface()->DrawTexturedRect(iCentreWheelX - m_flWheelRadius, iCentreWheelY - m_flWheelRadius, iCentreWheelX + m_flWheelRadius, iCentreWheelY + m_flWheelRadius);
+	surface()->DrawTexturedRect(iCentreWheelX - wheelRadius, iCentreWheelY - wheelRadius, iCentreWheelX + wheelRadius, iCentreWheelY + wheelRadius);
 
 	// Spokes!	
 	for (int i = 0; i < numberOfSegments; i++)
 	{
 		if (i == slotSelected)
-		{
 			surface()->DrawSetTexture(m_nPanelHighlightedTextureId);
-		}
 		else
-		{
 			surface()->DrawSetTexture(m_nPanelTextureId);
-		}
 
 		WheelSegment segment = segments[i];
 		surface()->DrawTexturedPolygon(NUM_VERTS_SPOKE, segment.vertices);
 	}
 
-	surface()->DrawSetAlphaMultiplier(1.0f);
+	//	surface()->DrawSetAlphaMultiplier(1.0f); //deleteme
 
 	// Now the outline, slot number, and ammo
 	for (int i = 0; i < numberOfSegments; i++)
 	{
 		WheelSegment segment = segments[i];
 		// Slot number + shadow
-		int offset = m_flWheelRadius + m_iTextOffset;
+		int offset = (m_flWheelRadius + m_iTextOffset * scaleFactor);
 
 		int xpos = iCentreWheelX + (segment.angleSin * offset);
 		int ypos = iCentreWheelY + (segment.angleCos * offset);
@@ -568,7 +617,7 @@ void CHudWeaponWheel::Paint(void)
 		//DrawString(slotNames[i], xpos + 1, ypos + 1, Color(0, 0, 0, 255), true);
 		//DrawString(slotNames[i], xpos, ypos, Color(255, 255, 255, 255), true);
 
-//		CBaseHudWeaponSelection* weaponSelect = GetHudWeaponSelection();
+		CBaseHudWeaponSelection* weaponSelect = GetHudWeaponSelection();
 
 		// Display the currently select weapon's icon and ammo
 		C_BaseCombatWeapon *pWeapon = weaponSelect->GetWeaponInSlot(i, segment.bucketSelected);
@@ -579,13 +628,13 @@ void CHudWeaponWheel::Paint(void)
 			// Draw the icon
 			if (segment.imageIcon[segment.bucketSelected] != NULL && segment.bHasIcon)
 			{
-				offset += 60;
+				offset += (60 * scaleFactor);
 				xpos = iCentreWheelX + (segment.angleSin * offset);
 				ypos = iCentreWheelY + (segment.angleCos * offset);
 
-				int iconWide = segment.imageIcon[segment.bucketSelected]->EffectiveWidth(1.0f) * WEAP_IMAGE_SCALE;
-				int iconTall = segment.imageIcon[segment.bucketSelected]->EffectiveHeight(1.0f) * WEAP_IMAGE_SCALE;
-					
+				int iconWide = segment.imageIcon[segment.bucketSelected]->EffectiveWidth(1.0f) * WEAP_IMAGE_SCALE * scaleFactor;
+				int iconTall = segment.imageIcon[segment.bucketSelected]->EffectiveHeight(1.0f) * WEAP_IMAGE_SCALE * scaleFactor;
+
 				// Icon Shadow
 				segment.imageIcon[segment.bucketSelected]->DrawSelf(xpos - (iconWide / 2) + m_iShadowOffset, ypos - (iconTall / 2) + m_iShadowOffset, iconWide, iconTall, Color(0, 0, 0, m_iShadowAlpha));
 				// Icon
@@ -634,12 +683,7 @@ void CHudWeaponWheel::OnTick(void)
 		return;
 
 	// attempt to tell the darkening overlay to FUCK OFFFFFFFFFFFFFFFFFFFFFF
-	//DisableFadeEffect();
-	//SetFadeEffectDisableOverride(true); //true??!?!?
-	//SetOutOfFocusColor(Color(255, 0, 0, 255));
-	//SetBgColor(Color(255, 0, 0, 255));
 	SetPaintBackgroundEnabled(false);
-	// or paintbackground
 
 	// If we've still lerping to be done, do it!
 	if (!m_bLerpDone)
@@ -650,13 +694,18 @@ void CHudWeaponWheel::OnTick(void)
 	// If weapon wheel active bool has changed, change mouse input capabilities etc
 	if (lastWheel != bWheelActive)
 		CheckWheel();
+
 	lastWheel = bWheelActive;
 
-	if (!bWheelActive)
-		return;
+	// This optimisation is bad
+//	if (!bWheelActive)
+//		return;
 
-	//Do the thing
-	CheckMousePos();
+//	//Do the thing
+//	CheckMousePos();
+
+	if (bWheelActive)
+		CheckMousePos();
 
 	// Scan for changes in the number of weapons we have
 	int weaponsThisTick = 0;
@@ -665,7 +714,7 @@ void CHudWeaponWheel::OnTick(void)
 	{
 		for (int slot = 0; slot < numberOfSegments; slot++)
 		{
-			for (int bucket = 0; bucket < MAX_WEPS_PER_SLOT; bucket++) 
+			for (int bucket = 0; bucket < MAX_WEPS_PER_SLOT; bucket++)
 			{
 				if (weaponSelect->GetWeaponInSlot(slot, bucket))
 					weaponsThisTick++;
@@ -693,11 +742,20 @@ void CHudWeaponWheel::CheckWheel()
 {
 	if (bWheelActive)
 	{
-//		slotSelected = -1;
+		// This is safe to do every frame/opening of the wheel
 		RefreshCentre();
-		RefreshWheelVerts();
 
-		RefreshEquippedWeapons();
+		// THIS IS NOT. Doing so will reset the player's chosen weapons constantly. We do not want to do this.
+		// If we do that, each slot will revert back to the same weapon every frame, forgetting what the player selected in that slot.
+		
+		if (bLayoutInvalidated)
+		{
+			RefreshWheelVerts();
+			RefreshEquippedWeapons();
+		}
+	
+		// Call this when the player's equipped weapons change. This is done in ::OnTick and ONLY when the player picks up a new weapon/drops one.
+		//RefreshEquippedWeapons();
 
 		bHasCursorBeenInWheel = false;
 
@@ -706,12 +764,12 @@ void CHudWeaponWheel::CheckWheel()
 		SetKeyBoardInputEnabled(false);		// ...but not the keyboard!
 
 		vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY);
-		
+
 		// since Linux can't snap to centre :( we just start the weapon wheel wherever their mouse is
 		// On Windows, this should still let us start at iCentreScreenXY
 		vgui::input()->GetCursorPos(iCentreWheelX, iCentreWheelY);
 
-		SetDOFBlurEnabled( true );
+		SetDOFBlurEnabled(true);
 
 		// this var is just used to decide the lerp direction, it doesn't toggle it on/off
 		m_bBlurEnabled = true;
@@ -723,7 +781,7 @@ void CHudWeaponWheel::CheckWheel()
 		if (useHighlighted)
 		{
 			// Select it and close
-			WeaponSelected( slotSelected, segments[slotSelected].bucketSelected);
+			WeaponSelected(slotSelected, segments[slotSelected].bucketSelected);
 		}
 		SetMouseInputEnabled(false);
 		SetVisible(false);
@@ -732,7 +790,7 @@ void CHudWeaponWheel::CheckWheel()
 		SetBlurLerpTimer(m_flBlurLerpTimeOff);
 	}
 
-	SetDOFBlurDistance( m_flDOFBlurDistance );
+	SetDOFBlurDistance(m_flDOFBlurDistance);
 }
 
 
@@ -763,7 +821,7 @@ void CHudWeaponWheel::OnMouseWheeled(int delta)
 					lastValidIndex = i;
 				}
 			}
-			
+
 			if (wepsCurrentlyInSlot > 0)
 			{
 				int iterations = 0;
@@ -784,15 +842,15 @@ void CHudWeaponWheel::OnMouseWheeled(int delta)
 
 					iterations++;
 				}
-				
+
 				// Used to stop being able to cycle slots with 1 weapon
-				if ( segments[slotSelected].bucketSelected != bucket )
+				if (segments[slotSelected].bucketSelected != bucket)
 				{
 					WeaponSelected(slotSelected, bucket, false);
 					segments[slotSelected].bucketSelected = bucket;
 				}
 			}
-			
+
 			// We only need to disable selecting the highlighted one if the player actually changes a slot's weapon
 			if (wepsCurrentlyInSlot > 1)
 				useHighlighted = false;
