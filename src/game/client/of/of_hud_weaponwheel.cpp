@@ -77,7 +77,8 @@ public:
 		//int textCentreX, textCentreY;
 
 		bool bHasIcon = false;
-		const CHudTexture *imageIcon[8];
+		#define	NUMICONS 8
+		const CHudTexture *imageIcon[NUMICONS];
 
 		vgui::Vertex_t vertices[NUM_VERTS_SPOKE];
 
@@ -392,7 +393,7 @@ void CHudWeaponWheel::RefreshEquippedWeapons(void)
 					segments[slot].imageIcon[bucketSlot] = weaponInSlot->GetSpriteActive();
 					segments[slot].bHasIcon = true;
 
-					Msg("- Grabbed icon %s. - \n", weaponInSlot->GetSpriteActive()->szShortName);
+					Msg("- Grabbed icon for %s. - \n", weaponInSlot->GetName());
 
 					if (isFirstBucket)
 					{
@@ -495,15 +496,18 @@ void CHudWeaponWheel::RefreshWheelVerts(void)
 		segment.angleCos = cos(DEG2RAD(currentCentreAngle));
 
 		// To prevent the invalidated layout from overriding the weapon slot, copy the selected bucket info
-/*		segment.bHasIcon = segments[i].bHasIcon;
-		for (int n = 0; n < sizeof(segments[i].imageIcon); n++)
+		segment.bHasIcon = segments[i].bHasIcon;
+		if (segment.bHasIcon)
 		{
-			if (segments[i].imageIcon[n])
+			for (int n = 0; n < NUMICONS; n++)
 			{
-				segment.imageIcon[n] = segments[i].imageIcon[n];
+				if (segments[i].imageIcon[n] != NULL)
+				{
+					segment.imageIcon[n] = segments[i].imageIcon[n];
+				}
 			}
 		}
-*/
+
 
 		Msg("########Refreshing vertices.########\n");
 
