@@ -85,8 +85,8 @@ public:
 		float centreAngle;
 
 		// Keeps track of the weapon we have currently selected in this slot
-		int bucketSelected = 0;
-		int defaultBucket = 0;
+		int bucketSelected = -1;
+		int defaultBucket = -1;
 	};
 
 	WheelSegment *segments;
@@ -126,7 +126,7 @@ private:
 	// The DOF Blur post process material that we want to control in here.
 	//IMaterialVar *m_pBlurScale;
 
-	CHudTexture *GetIcon(const char *szIcon, bool bInvert);
+	//CHudTexture *GetIcon(const char *szIcon, bool bInvert);
 
 	void DrawString(const wchar_t *text, int xpos, int ypos, Color col, bool bCenter);
 
@@ -210,14 +210,6 @@ CHudWeaponWheel::CHudWeaponWheel(const char *pElementName) : CHudElement(pElemen
 
 	//allocate the wheel
 	segments = new WheelSegment[numberOfSegments];
-
-	//Find that blur shader
-	/*bool bFound = false;
-	//m_pDOFBlurMat = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER); // moved to use static ref
-	if (g_pDOFBlurMat) {
-		m_pBlurScale = g_pDOFBlurMat->FindVar("$FOCUSSCALE", &bFound, true);
-		Msg("$FOCUSSCALE was%s found!", bFound ? "" : " not");
-	}*/
 
 	ivgui()->AddTickSignal(GetVPanel());
 }
@@ -367,6 +359,7 @@ void CHudWeaponWheel::CheckMousePos()
 	}
 }
 
+// might have fucked up the weapon select stay???
 void CHudWeaponWheel::RefreshEquippedWeapons(void)
 {
 	if (GetHudWeaponSelection())
@@ -538,6 +531,8 @@ void CHudWeaponWheel::Paint(void)
 	//surface()->DrawSetTexture(m_nBlurTextureId);
 	//surface()->DrawTexturedRect(iCentreWheelX - m_flBlurCircleRadius, iCentreWheelY - m_flBlurCircleRadius, iCentreWheelX + m_flBlurCircleRadius, iCentreWheelY + m_flBlurCircleRadius);
 	
+	CBaseHudWeaponSelection* weaponSelect = GetHudWeaponSelection();
+
 	surface()->DrawSetColor(Color(255, 255, 255, 255));
 	surface()->DrawSetTexture(m_nCircleTextureId);
 	surface()->DrawTexturedRect(iCentreWheelX - m_flWheelRadius, iCentreWheelY - m_flWheelRadius, iCentreWheelX + m_flWheelRadius, iCentreWheelY + m_flWheelRadius);
@@ -573,7 +568,7 @@ void CHudWeaponWheel::Paint(void)
 		//DrawString(slotNames[i], xpos + 1, ypos + 1, Color(0, 0, 0, 255), true);
 		//DrawString(slotNames[i], xpos, ypos, Color(255, 255, 255, 255), true);
 
-		CBaseHudWeaponSelection* weaponSelect = GetHudWeaponSelection();
+//		CBaseHudWeaponSelection* weaponSelect = GetHudWeaponSelection();
 
 		// Display the currently select weapon's icon and ammo
 		C_BaseCombatWeapon *pWeapon = weaponSelect->GetWeaponInSlot(i, segment.bucketSelected);
@@ -615,6 +610,14 @@ void CHudWeaponWheel::Paint(void)
 				DrawString(pText, xpos - 1, ypos - 1, Color(0, 0, 0, 255), true);
 				DrawString(pText, xpos, ypos, ammoColor, true);
 			}
+
+			if (i == slotSelected)
+			{
+				wchar_t wepText[64];
+				g_pVGuiLocalize->ConstructString(wepText, sizeof(wepText), VarArgs("%s", pWeapon->GetPrintName()), 0);
+				DrawString(wepText, iCentreWheelX - 1, iCentreWheelY - 1, Color(0, 0, 0, 255), true);
+				DrawString(wepText, iCentreWheelX, iCentreWheelY, Color(245, 245, 245, 255), true);
+			}
 		}
 	}
 }
@@ -629,6 +632,14 @@ void CHudWeaponWheel::OnTick(void)
 
 	if (!(pPlayer && pPlayerBase))
 		return;
+
+	// attempt to tell the darkening overlay to FUCK OFFFFFFFFFFFFFFFFFFFFFF
+	//DisableFadeEffect();
+	//SetFadeEffectDisableOverride(true); //true??!?!?
+	//SetOutOfFocusColor(Color(255, 0, 0, 255));
+	//SetBgColor(Color(255, 0, 0, 255));
+	SetPaintBackgroundEnabled(false);
+	// or paintbackground
 
 	// If we've still lerping to be done, do it!
 	if (!m_bLerpDone)
@@ -682,13 +693,15 @@ void CHudWeaponWheel::CheckWheel()
 {
 	if (bWheelActive)
 	{
+//		slotSelected = -1;
 		RefreshCentre();
 		RefreshWheelVerts();
+
 		RefreshEquippedWeapons();
 
 		bHasCursorBeenInWheel = false;
 
-//		Activate();
+		Activate();
 		SetMouseInputEnabled(true);			// Capture the mouse...
 		SetKeyBoardInputEnabled(false);		// ...but not the keyboard!
 
