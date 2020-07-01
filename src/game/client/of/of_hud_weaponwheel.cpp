@@ -44,6 +44,9 @@ using namespace vgui;
 #define MAX_WEPS_PER_SLOT 8
 #define WEAP_IMAGE_SCALE 0.5
 
+// 2px shadow offset for text
+#define TEXT_SHADOW_OFFSET 2
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -376,8 +379,6 @@ void CHudWeaponWheel::CheckMousePos()
 // DO NOT CALL THIS EVERY FRAME.
 void CHudWeaponWheel::RefreshEquippedWeapons(void)
 {
-	Msg("########Refreshing equipped weapons.########\n");
-
 	if (GetHudWeaponSelection())
 	{
 		for (int slot = 0; slot < numberOfSegments; slot++)
@@ -392,8 +393,6 @@ void CHudWeaponWheel::RefreshEquippedWeapons(void)
 				{
 					segments[slot].imageIcon[bucketSlot] = weaponInSlot->GetSpriteActive();
 					segments[slot].bHasIcon = true;
-
-					Msg("- Grabbed icon for %s. - \n", weaponInSlot->GetName());
 
 					if (isFirstBucket)
 					{
@@ -427,8 +426,6 @@ void CHudWeaponWheel::PerformBlurLerp()
 		m_bBlurEnabled ? m_flDOFBlurScaleMin : m_flDOFBlurScaleMax,
 		m_bBlurEnabled ? m_flDOFBlurScaleMax : m_flDOFBlurScaleMin
 		);
-
-	//DevMsg("lerpAmount : %.2f, timeRemaining : %.2f, blurScale : %.2f.\n", lerpAmount, timeRemaining, blurScale);
 
 	SetDOFBlurScale(blurScale);
 
@@ -507,10 +504,6 @@ void CHudWeaponWheel::RefreshWheelVerts(void)
 				}
 			}
 		}
-
-
-		Msg("########Refreshing vertices.########\n");
-
 
 		segment.bucketSelected = segments[i].bucketSelected;
 		segment.defaultBucket = segments[i].defaultBucket;
@@ -660,7 +653,7 @@ void CHudWeaponWheel::Paint(void)
 
 			if (hasAmmo)
 			{
-				DrawString(pText, xpos - 1, ypos - 1, Color(0, 0, 0, 255), true);
+				DrawString(pText, xpos + TEXT_SHADOW_OFFSET, ypos + TEXT_SHADOW_OFFSET, Color(0, 0, 0, 255), true);
 				DrawString(pText, xpos, ypos, ammoColor, true);
 			}
 
@@ -668,7 +661,7 @@ void CHudWeaponWheel::Paint(void)
 			{
 				wchar_t wepText[64];
 				g_pVGuiLocalize->ConstructString(wepText, sizeof(wepText), VarArgs("%s", pWeapon->GetPrintName()), 0);
-				DrawString(wepText, iCentreWheelX - 1, iCentreWheelY - 1, Color(0, 0, 0, 255), true);
+				DrawString(wepText, iCentreWheelX + TEXT_SHADOW_OFFSET, iCentreWheelY + TEXT_SHADOW_OFFSET, Color(0, 0, 0, 255), true);
 				DrawString(wepText, iCentreWheelX, iCentreWheelY, Color(245, 245, 245, 255), true);
 			}
 		}
