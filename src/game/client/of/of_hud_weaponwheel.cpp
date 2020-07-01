@@ -580,7 +580,7 @@ void CHudWeaponWheel::Paint(void)
 	//surface()->DrawSetTexture(m_nBlurTextureId);
 	//surface()->DrawTexturedRect(iCentreWheelX - m_flBlurCircleRadius, iCentreWheelY - m_flBlurCircleRadius, iCentreWheelX + m_flBlurCircleRadius, iCentreWheelY + m_flBlurCircleRadius);
 
-	float scaleFactor = m_iLastScreenHeight / iReferenceScreenHeight;
+	float scaleFactor = (float)m_iLastScreenHeight / (float)iReferenceScreenHeight;
 	float wheelRadius = m_flWheelRadius * scaleFactor;
 
 	surface()->DrawSetColor(Color(255, 255, 255, 255));
