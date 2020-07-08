@@ -59,6 +59,8 @@ $Project
 		
 		$File	"BlurDOF.cpp"
 		
+		$File	"ToxicOverlay.cpp"
+		
 		$File	"Greyscale.cpp"
 	}
 

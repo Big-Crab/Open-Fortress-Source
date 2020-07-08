@@ -11,3 +11,4 @@
 GreyscaleTest_ps30.fxc
 postproc_dofblursmart_ps30.fxc
 BlurDOF_ps30.fxc
+ToxicOverlay_ps30.fxc
