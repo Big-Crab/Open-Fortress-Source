@@ -40,6 +40,9 @@
 #include <vgui_controls/Slider.h>
 #include "fmtstr.h"
 
+#include "iclientmode.h"
+#include "vgui_controls/AnimationController.h"
+
 #include "tier0/dbg.h"
 
 using namespace BaseModUI;
@@ -89,6 +92,8 @@ void DMLoadout::ApplySettings( KeyValues *inResourceData )
 	InitLoadoutHandle();
 	BaseClass::ApplySettings( inResourceData );
 
+	GetAnimationController()->SetScriptFile( GetVPanel(), "scripts/HudAnimations_tf.txt" );
+	
 	KeyValues *inNewResourceData = new KeyValues("ResourceData");	
 	if( !inNewResourceData->LoadFromFile( filesystem, m_ResourceName) )
 		return;	
@@ -527,9 +532,12 @@ void DMLoadout::ApplySchemeSettings(IScheme *pScheme)
 }
 
 void DMLoadout::PerformLayout()
-{
+{	
 	BaseClass::PerformLayout();
 
+	GetAnimationController()->StartAnimationSequence( this, "LoadoutPopup" );
+	
+//	GetAnimationController()->StartAnimationSequence("LoadoutPopup");
 }
 
 #define QUICK_CVAR(x) ConVar x(#x, "0", FCVAR_NONE);

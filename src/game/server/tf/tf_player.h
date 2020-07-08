@@ -721,6 +721,8 @@ public:
 	void				InputSpeakResponseConcept( inputdata_t &inputdata );
 	void				InputIgnitePlayer( inputdata_t &inputdata );
 	void				InputExtinguishPlayer( inputdata_t &inputdata );
+	void				InputPoisonPlayer( inputdata_t &inputdata );
+	void				InputDePoisonPlayer( inputdata_t &inputdata );
 	void				InputSetZombie( inputdata_t &inputdata );
 	void				InputSetTeamNoKill( inputdata_t &inputdata );
 	bool				m_bNotAlreadyPlayingMusic;

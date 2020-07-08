@@ -473,7 +473,7 @@ void CHudSpeedometer::Paint(void)
 void CHudSpeedometer::QStrafeJumpHelp()
 {
 	C_TFPlayer *pPlayerBase = C_TFPlayer::GetLocalTFPlayer();
-	if (!pPlayerBase)
+	if (!pPlayerBase || pPlayerBase->GetWaterLevel() > 2 || pPlayerBase->m_Shared.GetHook() || pPlayerBase->GetMoveType() == MOVETYPE_LADDER)
 		return;
 
 	float forwardMove = g_pMoveData->m_flForwardMove;
@@ -498,7 +498,7 @@ void CHudSpeedometer::QStrafeJumpHelp()
 	float wishSpeed = VectorNormalize(wishDir);
 
 	float maxCurSpeed, maxAccel;
-	if (pPlayerBase->m_Shared.IsCSliding()) //csliding
+	if (pPlayerBase->IsCSliding()) //csliding
 	{
 		wishSpeed = min(speed, of_cslidestopspeed.GetFloat());
 		maxAccel = min(of_cslideaccelerate.GetFloat() * wishSpeed * gpGlobals->interval_per_tick, wishSpeed);

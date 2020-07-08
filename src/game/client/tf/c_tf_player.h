@@ -402,6 +402,11 @@ public:
 	float				m_flBurnEffectStartTime;
 	float				m_flBurnEffectEndTime;
 
+	// Poison
+	CNewParticleEffect	*m_pPoisonEffect;
+	float				m_flPoisonEffectStartTime;
+	float				m_flPoisonEffectEndTime;
+
 	CNewParticleEffect	*m_pDisguisingEffect;
 	float m_flDisguiseEffectStartTime;
 	float m_flDisguiseEndEffectStartTime;

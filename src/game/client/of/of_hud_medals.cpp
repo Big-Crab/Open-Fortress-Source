@@ -113,10 +113,9 @@ void CTFHudMedals::OnThink(void)
 	//Initialize the time frame medal should be drawn
 	if (!drawTime)
 	{
-		char szFullSound[32];
-		Q_snprintf(szFullSound, sizeof(szFullSound), "%s.%s", "Benja", medalsQueue[0].medal_sound);
-		CLocalPlayerFilter filter;
-		C_TFPlayer::GetLocalTFPlayer()->EmitSound(filter, SOUND_FROM_LOCAL_PLAYER, szFullSound);
+		// if things crash here, uncomment the line below
+		// if( TFGameRules() )
+		TFGameRules()->BroadcastSound( TEAM_UNASSIGNED, medalsQueue[0].medal_sound );
 
 		m_pMedalImage->SetImage(medalsQueue[0].medal_name);
 		m_pMedalImage->SetVisible(true);

@@ -17,6 +17,9 @@ SHADER_PARAM(CIRCLEOVERLAY, SHADER_PARAM_TYPE_TEXTURE, "effects/circle_altered",
 SHADER_PARAM(VEINRBAMAP, SHADER_PARAM_TYPE_TEXTURE, "effects/poison/bloodshot_veins_bluetimemap", "")
 SHADER_PARAM(VEINNORMALMAP, SHADER_PARAM_TYPE_TEXTURE, "effects/berserk_overlay_normal", "")
 SHADER_PARAM(TIME, SHADER_PARAM_TYPE_FLOAT, "0.0", "")
+SHADER_PARAM(HEARTRATE, SHADER_PARAM_TYPE_FLOAT, "1.0", "")
+SHADER_PARAM(BLOODCOLOR, SHADER_PARAM_TYPE_VEC3, "[0.5 0.0 0.0]", "")
+SHADER_PARAM(POISONCOLOR, SHADER_PARAM_TYPE_VEC3, "[0.0 0.7 0.0]", "")
 END_SHADER_PARAMS
 
 SHADER_INIT
@@ -62,8 +65,8 @@ SHADER_DRAW
 
 		pShaderShadow->EnableDepthWrites(false);
 
-		pShaderShadow->EnableTexture(SHADER_SAMPLER0, true); // FB
-		pShaderShadow->EnableTexture(SHADER_SAMPLER1, true); // Vein Normal map
+		pShaderShadow->EnableTexture(SHADER_SAMPLER0, true); // Vein Normal Map
+		pShaderShadow->EnableTexture(SHADER_SAMPLER1, true); // FB
 		pShaderShadow->EnableTexture(SHADER_SAMPLER2, true); // Vein RBA
 		pShaderShadow->EnableTexture(SHADER_SAMPLER3, true); // Dusty circle
 
@@ -82,8 +85,8 @@ SHADER_DRAW
 
 	DYNAMIC_STATE
 	{
-		BindTexture(SHADER_SAMPLER0, FBTEXTURE, -1);
-		BindTexture(SHADER_SAMPLER1, VEINNORMALMAP, -1);
+		BindTexture(SHADER_SAMPLER0, VEINNORMALMAP, -1);
+		BindTexture(SHADER_SAMPLER1, FBTEXTURE, -1);
 		BindTexture(SHADER_SAMPLER2, VEINRBAMAP, -1);
 		BindTexture(SHADER_SAMPLER3, CIRCLEOVERLAY, -1);
 
@@ -104,6 +107,12 @@ SHADER_DRAW
 		// Pass time in
 		float curtime = pShaderAPI->CurrentTime();
 		pShaderAPI->SetPixelShaderConstant(17, &curtime, true);
+		// Pass heartrate multiplier
+		float heartrateMult = params[HEARTRATE]->GetFloatValue();
+		pShaderAPI->SetPixelShaderConstant(18, &heartrateMult, true);
+		// Pass blood & poison colours
+		pShaderAPI->SetPixelShaderConstant(19, params[BLOODCOLOR]->GetVecValue(), true);
+		pShaderAPI->SetPixelShaderConstant(20, params[POISONCOLOR]->GetVecValue(), true);
 
 		//BindTexture(SHADER_SAMPLER1, BLURTEXTURE, -1);
 		DECLARE_DYNAMIC_VERTEX_SHADER(sdk_screenspaceeffect_vs20);

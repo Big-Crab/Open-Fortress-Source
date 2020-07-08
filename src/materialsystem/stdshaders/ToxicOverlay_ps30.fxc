@@ -1,138 +1,174 @@
-// First draft of converting toxic shader -> HLSL manually
+// ********************************
+// ** auto generated pixelshader **
+// ********************************
 
-// Bespoke Functions:
-// 1. Heartbeat generator
-// 2. UV Refraction
-// 3. Blue -> Time Mapper
+//#define SHADER_EDITOR_2013_COMPILE
 
+
+// Includes
 #include "common_ps_fxc.h"
+//#include "common_vertexlitgeneric_dx9.h"
+//#include "common_lightmappedgeneric_fxc.h"
+//#include "common_flashlight_fxc.h"
+//#include "common_parallax.h"
 
-// ### Samplers ###
-// Framebuffer
-sampler FBSampler	: register( s0 );
-// Vein | Normal Map
-sampler VeinNormalSampler	: register( s1 );
-// Vein | R:transp B:time
-sampler VeinRBSampler	: register( s2 );
-// Dusty Circle | RGB->Transparency
-sampler dustyCircleSampler	: register( s3 );
 
-// TODO: How to get Time?
-// pShaderAPI->CurrentTime() ?
-// SHADER_PARAM( TIME, SHADER_PARAM_TYPE_FLOAT, "", "" )
-// check water.cpp
+// Samplers
+sampler _Sampler_VeinNormal		: register( s0 ); // "Vein Normals / Alpha"
+sampler _Sampler_FB		: register( s1 ); // Framebuffer
+sampler _Sampler_VeinRBA		: register( s2 ); // Bloodshot Texture RBA
+sampler _Sampler_Circle		: register( s3 ); // Dusty Circle
 
-const float _time : register ( c17 );
-//const float _focuspoint : register ( c18 );
+// Constants
+const float _g_Time		: register( c17 );
+const float _g_HeartRate	: register( c18 );
+const float3 _g_DefaultBloodColour	: register (c19);
+const float3 _g_PoisonColour	: register (c20);
 
-// For a given time, t (seconds), generates the "heartbeat" sine wave at that point
-// TODO Pass in 4t
-float Heartbeat(float t)
-{
-	// 0.95 is the beat offset
-	float waveB = sin(t + 0.95f);
-	float waveA = sin(t);
-	
-	const int sharpness = 6;
-	const float BPeakMultiplier = 0.65f;
-	
-	waveA = pow(waveA, sharpness);
-	waveB = pow(waveB, sharpness) * BPeakMultiplier;
-	
-	return max(max(waveA, waveB), 0.0f);
-}
-
-float2 RefractUV(float2 inUV, float strength, float3 normalMapFrag)
+void Refract( in float2 inUV, in float3 normalMapFrag, in float strength, out float2 outUV )
 {
 	float3 normalVec = float3((2.0f*normalMapFrag.r)-1, (2.0f*normalMapFrag.g)-1, (2.0f*normalMapFrag.b)-1);
-	return float2(inUV.x + (normalVec.r * strength), inUV.y + (normalVec.g * strength));
+	outUV = float2(inUV.x + (normalVec.r * strength), inUV.y + (normalVec.g * strength));
 }
 
 // Semantic structures
 struct PS_INPUT
 {
-	float2 texCoord			:	TEXCOORD0;
+	float2 vTexCoord_0			:	TEXCOORD0;
 };
 
-static const float3 poisonGreen = float3(0.0f, 0.7f, 0.0f);
-static const float3 bloodRed = float3(0.5f, 0.0f, 0.0f);
-
-
-// TODO:
-/*
-	Sine (-1 to 1 range) (Clamped): DONE
-	Vein Normal Refraction: DONE
-	Heartbeat: DONE
-	Sine (0-1 range) (Faster): DONE
-	Lerp (Green | Red): DONE
-	remap Blue channel to TIME : DONE
-	General Vein Overlay : DONE
-	Dusty Circle Overlay : DONE
-	FinalMixing: DONE
-	Average Veins + Overlay alpha: DONE
-	Time as an input? (in seconds)
-	
-
-*/
-
-float4 main ( PS_INPUT i ) : COLOR
+struct PS_OUTPUT
 {
-	float heartbeatNow = Heartbeat(_time * 4.0f);
-	// Vein Timer (Sine -1 to 1, clamped to 0-1);
-	float veinTimer = max( sin(_time), 0.0f);
-	// Refract strength = 0.015 * heartbeat * inverse of veintimer
-	float refractStrength = 0.015f * heartbeatNow * (1.0f - veinTimer);
-	// Sample the vein normal map
-	float3 veinNormals = tex2D(VeinNormalSampler, i.texCoord).rgb;
-	// Refract the UVs by the vein normal map * refractStrength
-	float2 refractedUVs = RefractUV(i.texCoord, refractStrength, veinNormals);
+	float4 vColor_0				:	COLOR0;
+};
 
-	// ### Read FB ###
-	float4 framebufferRGBA = tex2D(FBSampler, refractedUVs);
+// Entry point
+PS_OUTPUT main( const PS_INPUT In )
+{
+	PS_OUTPUT Out;
 	
-	// ### Remap blue channel to time, red*alpha to opacity
-	float4 veinsRBA = tex2D(VeinRBSampler, refractedUVs);
-	float veinFillFinal = veinsRBA.a * veinsRBA.r * smoothstep(0.0f, 1.0f, veinTimer - veinsRBA.b);
-	// veinsFillFinal -> averageVeinsOverlayAlpha
+	// ### Heartbeat ###
+	// time * TimeScale
+	float heartbeat = _g_Time * 4.0f;
+	// Wave A
+	float waveA = sin( heartbeat );
+	// Sharpen A
+	waveA = pow( waveA, 6.0f );
 	
+	// beat offset
+	float waveB = heartbeat + 0.95f;
+	// Wave B
+	waveB = sin( waveB );
+	// Sharpen B
+	waveB = pow( waveB, 6.0f );
+	// Peak Multiplier
+	waveB *= 0.65f;
+
+	heartbeat = max( max( waveA, waveB ), 0.0f );
+	// -> Vein Normal Refraction
+	// -> General Vein Overlay
+	// -> Dusty Circle Overlay
+	// ################
 	
-	// ### Dusty Circle Overlay
+	// ### Sine (-1 to 1 range) (Clamped) ###
+	float clampedSine = sin( _g_Time );
+	clampedSine = max( clampedSine, 0.0f );
+	// -> Vein Normal Refraction
+	// -> remap Blue channel to TIME
+	// ######################################
+	
+	// ### Vein Normal Refraction ###
+	// outUV
+	float2 refractedUVs = (float2)0;
+	// Refract UVs
+	Refract( In.vTexCoord_0, tex2D( _Sampler_VeinNormal, In.vTexCoord_0 ).rgb, (heartbeat * 0.015f) * (1.0f - clampedSine), refractedUVs );
+	// -> remap Blue channel to TIME
+	// -> Framebuffer
+	// -> General Vein Overlay
+	// -> Dusty Circle Overlay
+	// ##############################
+	
+	// ### Sine (0-1 range) (Faster) ###
+	// Timescale
+	float sinePositiveFast = _g_Time * 2.0f;
+	sinePositiveFast = sin( sinePositiveFast );
+	sinePositiveFast = sinePositiveFast + 1.0;
+	sinePositiveFast = sinePositiveFast / 2.0;
+	// -> Lerp (Poison | Blood)
+	// ##################################
+	
+	// ### Lerp (Poison | Blood) ###
+	float3 bloodColour = lerp( _g_PoisonColour, _g_DefaultBloodColour, sinePositiveFast );
+	// -> Final Mixing
+	// ##########################
+	
+	// ### Dusty Circle Overlay ###
 	// Translate to centre
-	float2 dustyCircleUVs = refractedUVs + float2(-0.5f, -0.5f);
-	// Scale
-	dustyCircleUVs *= (0.625f + (heartbeatNow * 0.1f));
+	float2 circleUVs = refractedUVs + float2( -0.5f, -0.5f );
+	// Scale UVs
+	circleUVs *= ((0.1f * heartbeat) + 0.625f);
 	// Translate back
-	dustyCircleUVs -= float2(-0.5f, -0.5f);
-	float dustyCircleTransp = tex2D(dustyCircleSampler, dustyCircleUVs).r * 1.5f;
+	circleUVs -= float2( -0.5f, -0.5f );
+	// Circle (Scaled + Warped UVs)
+	float circleTransp = tex2D( _Sampler_Circle, circleUVs ).r * 1.5f;
+	// -> General Vein Overlay
+	// ############################
 	
-	// ### General Veins Overlay ###
-	// Translate to centre
-	float2 generalVeinsUV = refractedUVs + float2(-0.5f, -0.5f);
-	// Scale
-	generalVeinsUV *= (heartbeatNow * 0.1f) - 0.6f;
+	// ### General Vein Overlay ###
+	// Translate to Centre
+	float2 genVeinUVs = refractedUVs + float2( -0.5f, -0.5f );
+	// Scale UVs
+	genVeinUVs *= ((0.1f * heartbeat) - 0.6f);
 	// Translate back
-	generalVeinsUV -= float2(-0.5f, -0.5f);
-	// Sum alpha with dusty circle
-	float veinAlpha = tex2D(VeinNormalSampler, generalVeinsUV).a + dustyCircleTransp;
+	genVeinUVs -= float2( -0.5f, -0.5f );
+	// Resample Vein Alpha (WarpedUVs)
+	circleTransp += tex2D( _Sampler_VeinNormal, genVeinUVs ).a;
+	// -> Average Veins + Overlay alpha
+	// ############################
 	
+	// ### remap Blue channel to TIME ###
+	// Bloodshot Texture
+	float4 bloodshotLookup = tex2D( _Sampler_VeinRBA, refractedUVs );
+	float bloodshotR = bloodshotLookup.r;
+	float bloodshotBTime = bloodshotLookup.b;
+	float bloodshotA = bloodshotLookup.a;
+	
+	// blue - time
+	bloodshotBTime -= clampedSine;
+	// Smoothstep bluetime
+	bloodshotBTime = smoothstep( 0.0f, 1.0f, bloodshotBTime );
+	// VeinFill * RedMask
+	bloodshotR *= bloodshotBTime;
+	// Vein Fill Final * Alpha Mask
+	bloodshotA *= bloodshotR;
+	// -> Average Veins + Overlay alpha
+	// ##################################	
 
-	// ### Green / Red lerp ### | ### Sine(0-1 range) (faster)
-	// sine 0 to 1 range
-	float sineTimeFast = (sin(_time * 2.0f) + 1.0f) / 2.0f;
-	float3 bloodColour = lerp(poisonGreen, bloodRed, sineTimeFast);
-
+	
 	// ### Average Veins + Overlay alpha ###
-	float averagVeinsOverlayAlpha = (veinAlpha + veinFillFinal) / 2.0f;
+	// Sum Alphas
+	circleTransp = circleTransp + bloodshotA;
+	circleTransp = circleTransp / 2.0f;
+	// #####################################
+	
+	// ### Framebuffer ###
+	float4 fbLookup = tex2D( _Sampler_FB, refractedUVs );
+	float3 fbRGB = fbLookup.rgb;
+	float fbAlpha = fbLookup.a;
+	// -> Final Mixing
+	// ###################
 	
 	// ### Final Mixing ###
-	float3 addFB = (averagVeinsOverlayAlpha * bloodColour) + framebufferRGBA.rgb;
-	float3 multFB = (averagVeinsOverlayAlpha * bloodColour) * framebufferRGBA.rgb;
-	float3 rgbFinal = lerp(addFB, multFB, averagVeinsOverlayAlpha);
-
-	// Default alpha of the FB - best to just pass this through.
-	float alpha = tex2D( FBSampler, i.texCoord ).a;
-	
-	
-	return FinalOutput( float4(rgbFinal, alpha), 0, PIXEL_FOG_TYPE_NONE, TONEMAP_SCALE_NONE );
-	//return FinalOutput( float4(colourOut, alpha), 0, PIXEL_FOG_TYPE_NONE, TONEMAP_SCALE_NONE );
+	// AlphaMapFinal * Colour
+	bloodColour *= circleTransp;
+	// Add blood to FB
+	float3 finalRGB = fbRGB + bloodColour;
+	// Multiply blood with FB
+	float3 fbBloodRGB = bloodColour * fbRGB;	
+	// Mix Add & Mult w/ VFF*AlphaMask
+	finalRGB = lerp( finalRGB, fbBloodRGB, circleTransp );
+	// PS Output
+	Out.vColor_0 = float4( finalRGB, fbAlpha );
+	return Out;
+	// ####################
 }
