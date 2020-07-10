@@ -91,6 +91,7 @@ void C_BaseCombatCharacter::OnDataChanged( DataUpdateType_t updateType )
 	}
 #endif // GLOWS_ENABLE
 #endif
+	UpdateTeamPatternEffect();
 }
 
 //-----------------------------------------------------------------------------
@@ -172,6 +173,35 @@ void C_BaseCombatCharacter::DestroyGlowEffect( void )
 }
 #endif // GLOWS_ENABLE
 #endif
+//########################################
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseCombatCharacter::UpdateTeamPatternEffect(void)
+{
+	// Destroy
+	if (m_pTeamPatternEffect)
+	{
+		delete m_pTeamPatternEffect;
+		m_pTeamPatternEffect = NULL;
+	}
+	// Create
+	m_pTeamPatternEffect = new CTeamPatternObject(this, 1);
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseCombatCharacter::DestroyTeamPatternEffect(void)
+{
+	// Destroy
+	if (m_pTeamPatternEffect)
+	{
+		delete m_pTeamPatternEffect;
+		m_pTeamPatternEffect = NULL;
+	}
+}
+//########################################
 
 IMPLEMENT_CLIENTCLASS(C_BaseCombatCharacter, DT_BaseCombatCharacter, CBaseCombatCharacter);
 

@@ -137,7 +137,13 @@ public:
 
 	// Teams are encoded in the stencil buffer in the red channel.
 	// This enum is used to index the stencil buffer colour to use
-	enum COLORBLIND_TEAMS { CB_TEAM_RED, CB_TEAM_BLU, CB_TEAM_GRN, CB_TEAM_YLW };
+	enum COLORBLIND_TEAMS {
+		CB_TEAM_NONE,	// = 0, no effect (texture 0, white)
+		CB_TEAM_RED,	// = 1, texture 1
+		CB_TEAM_BLU,	// = 2, texture 2
+		CB_TEAM_GRN,	// = 3, texture 3
+		CB_TEAM_YLW		// = 4, texture 4
+	};
 
 	CTeamPatternObject(C_BaseEntity *pEntity, const int nTeam = CB_TEAM_RED)
 	{

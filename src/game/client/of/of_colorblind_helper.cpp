@@ -126,15 +126,16 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 
 	SetRenderTargetAndViewPort(pRtFullFrame, pSetup->width, pSetup->height);
 
+	// Clear colour but not depth or stencil
 	pRenderContext->ClearColor3ub(0, 0, 0);
 	pRenderContext->ClearBuffers(true, false, false);
 
 	// Set override material for glow color
 	IMaterial *pMatGlowColor = NULL;
-
 	pMatGlowColor = materials->FindMaterial("dev/glow_color", TEXTURE_GROUP_OTHER, true);
 	g_pStudioRender->ForcedMaterialOverride(pMatGlowColor);
 
+	// Disabled stencil? Doesn't write I guess
 	ShaderStencilState_t stencilState;
 	stencilState.m_bEnable = false;
 	stencilState.m_nReferenceValue = 0;
@@ -157,6 +158,27 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 //		render->SetBlend(m_TeamPatternObjectDefinitions[i].m_flGlowAlpha);
 //		Vector vGlowColor = m_GlowObjectDefinitions[i].m_vGlowColor * m_GlowObjectDefinitions[i].m_flGlowAlpha;
 //		render->SetColorModulation(&vGlowColor[0]); // This only sets rgb, not alpha
+		
+		render->SetBlend(1.0f);
+		Vector vTeamColor;
+		switch (m_TeamPatternObjectDefinitions[i].m_nTeam)
+		{
+		case CTeamPatternObject::CB_TEAM_RED:
+			vTeamColor = Vector(1.0f, 0.0f, 0.0f);
+			break;
+		case CTeamPatternObject::CB_TEAM_BLU:
+			vTeamColor = Vector(0.0f, 0.0f, 1.0f);
+			break;
+		case CTeamPatternObject::CB_TEAM_GRN:
+			vTeamColor = Vector(0.0f, 1.0f, 0.0f);
+			break;
+		case CTeamPatternObject::CB_TEAM_YLW:
+			vTeamColor = Vector(1.0f, 1.0f, 0.0f);
+			break;
+		}
+
+		// why is this [0] ??? why is it only a float?? is this as RGB in a single value maybe?
+		render->SetColorModulation(&vTeamColor[0]); // This only sets rgb, not alpha
 
 		m_TeamPatternObjectDefinitions[i].DrawModel();
 	}
@@ -231,32 +253,31 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 			}
 			else if (m_GlowObjectDefinitions[i].m_bRenderWhenUnoccluded) */
 //			{
-				ShaderStencilState_t stencilState;
-				stencilState.m_bEnable = true;
-				stencilState.m_nReferenceValue = 2;
-				stencilState.m_nTestMask = 0x1;
-				stencilState.m_nWriteMask = 0x3;
-				stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;
-				stencilState.m_PassOp = STENCILOPERATION_INCRSAT;
-				stencilState.m_FailOp = STENCILOPERATION_KEEP;
-				stencilState.m_ZFailOp = STENCILOPERATION_REPLACE;
+			ShaderStencilState_t stencilState;
+			stencilState.m_bEnable = true;
+			stencilState.m_nReferenceValue = 2;
+			stencilState.m_nTestMask = 0x1;
+			stencilState.m_nWriteMask = 0x3;
+			stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;
+			stencilState.m_PassOp = STENCILOPERATION_INCRSAT;	// Increment the stencil-buffer entry, clamping to the maximum value. (I think it's min(++buffer, maxval) ???)
+			stencilState.m_FailOp = STENCILOPERATION_KEEP;		// Does not update the entry in the stencil buffer
+			stencilState.m_ZFailOp = STENCILOPERATION_REPLACE;	// Replace the stencil-buffer entry with a reference value.
 
-				stencilState.SetStencilState(pRenderContext);
+			stencilState.SetStencilState(pRenderContext);
 
-				m_TeamPatternObjectDefinitions[i].DrawModel();
+			m_TeamPatternObjectDefinitions[i].DrawModel();
 			//}
 		
-
-				iNumTeamPatternObjects++;
+			iNumTeamPatternObjects++;
 	}
 
-	// Need to do a 2nd pass to warm stencil for objects which are rendered only when occluded
+	/*	// Need to do a 2nd pass to warm stencil for objects which are rendered only when occluded
 	for (int i = 0; i < m_TeamPatternObjectDefinitions.Count(); ++i)
 	{
 		if (m_TeamPatternObjectDefinitions[i].IsUnused())
 			continue;
 
-/*		if (m_TeamPatternObjectDefinitions[i].m_bRenderWhenOccluded && !m_TeamPatternObjectDefinitions[i].m_bRenderWhenUnoccluded)
+		if (m_TeamPatternObjectDefinitions[i].m_bRenderWhenOccluded && !m_TeamPatternObjectDefinitions[i].m_bRenderWhenUnoccluded)
 		{
 			ShaderStencilState_t stencilState;
 			stencilState.m_bEnable = true;
@@ -268,8 +289,9 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 			stencilState.SetStencilState(pRenderContext);
 
 			m_GlowObjectDefinitions[i].DrawModel();
-		}*/
+		}
 	}
+	*/
 
 	pRenderContext->OverrideDepthEnable(false, false);
 	render->SetBlend(flSavedBlend);
@@ -300,7 +322,12 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 	ITexture *pRtQuarterSize1 = materials->FindTexture("_rt_SmallFB1", TEXTURE_GROUP_RENDER_TARGET);
 
 	{
+
+
 		//=======================================================================================================//
+		// I don't think we need this part? All it does is get rid of the glow where the original models are
+		// it seems to call the haloaddoutline_ps20 shader
+		//
 		// At this point, pRtQuarterSize0 is filled with the fully colored glow around everything as solid glowy //
 		// blobs. Now we need to stencil out the original objects by only writing pixels that have no            //
 		// stencil bits set in the range we care about.                                                          //
@@ -309,8 +336,8 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 
 		// Do not fade the glows out at all (weight = 1.0)
 		IMaterialVar *pDimVar = pMatHaloAddToScreen->FindVar("$C0_X", NULL);
-
 		pDimVar->SetFloatValue(1.0f);
+		//pDimVar->SetFloatValue(0.5f);
 
 		// Set stencil state
 		ShaderStencilState_t stencilState;
@@ -319,9 +346,9 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		stencilState.m_nTestMask = 0xFF;
 		stencilState.m_nReferenceValue = 0x0;
 		stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;
-		stencilState.m_PassOp = STENCILOPERATION_KEEP;
-		stencilState.m_FailOp = STENCILOPERATION_KEEP;
-		stencilState.m_ZFailOp = STENCILOPERATION_KEEP;
+		stencilState.m_PassOp = STENCILOPERATION_KEEP;	// keeps the buffer data
+		stencilState.m_FailOp = STENCILOPERATION_KEEP;	// keeps the buffer data
+		stencilState.m_ZFailOp = STENCILOPERATION_KEEP;	// keeps the buffer data
 		stencilState.SetStencilState(pRenderContext);
 
 		// Draw quad
