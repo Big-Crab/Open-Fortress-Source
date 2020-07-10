@@ -92,7 +92,7 @@ public:
 		return false;
 	}
 
-	void RenderTeamPatternEffects(const CViewSetup *pSetup, int nSplitScreenSlot);
+	void RenderTeamPatternEffects(const CViewSetup *pSetup);
 
 private:
 

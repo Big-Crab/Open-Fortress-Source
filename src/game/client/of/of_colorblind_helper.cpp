@@ -14,9 +14,11 @@
 #include "view_shared.h"
 #include "viewpostprocess.h"
 
+// This is typically the un-processed framebuffer after the main rendering loop - the order of post processing effects
+// will affect this framebuffer.
 #define FULL_FRAME_TEXTURE "_rt_FullFrameFB"
 
-#ifdef GLOWS_ENABLE
+//#ifdef GLOWS_ENABLE
 
 ConVar of_colorblind_pattern_enable("of_colorblind_pattern_enable", "0", FCVAR_ARCHIVE, "Enable patterns for team-coloured entities to assist with colourblindness.");
 //ConVar glow_outline_effect_width("glow_outline_width", "10.0f", FCVAR_CHEAT, "Width of glow outline effect in screen space.");
@@ -79,7 +81,7 @@ struct ShaderStencilState_t
 	}
 };
 
-void CGlowObjectManager::RenderGlowEffects(const CViewSetup *pSetup, int nSplitScreenSlot)
+void CTeamPatternObjectManager::RenderTeamPatternEffects(const CViewSetup *pSetup)
 {
 	if (g_pMaterialSystemHardwareConfig->SupportsPixelShaders_2_0())
 	{
@@ -92,7 +94,7 @@ void CGlowObjectManager::RenderGlowEffects(const CViewSetup *pSetup, int nSplitS
 
 			//PIXEvent _pixEvent(pRenderContext, "EntityGlowEffects");
 			PIXEvent _pixEvent(pRenderContext, "EntityTeamPatternEffects");
-			ApplyEntityGlowEffects(pSetup, nSplitScreenSlot, pRenderContext, of_colorblind_pattern_enable.GetFloat(), nX, nY, nWidth, nHeight);
+			ApplyEntityTeamPatternEffects(pSetup, pRenderContext, nX, nY, nWidth, nHeight);
 		}
 	}
 }
@@ -104,7 +106,7 @@ static void SetRenderTargetAndViewPort(ITexture *rt, int w, int h)
 	pRenderContext->Viewport(0, 0, w, h);
 }
 
-void CGlowObjectManager::RenderGlowModels(const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext)
+void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup, CMatRenderContextPtr &pRenderContext)
 {
 	//==========================================================================================//
 	// This renders solid pixels with the correct coloring for each object that needs the glow.	//
@@ -147,16 +149,16 @@ void CGlowObjectManager::RenderGlowModels(const CViewSetup *pSetup, int nSplitSc
 	//==================//
 	// Draw the objects //
 	//==================//
-	for (int i = 0; i < m_GlowObjectDefinitions.Count(); ++i)
+	for (int i = 0; i < m_TeamPatternObjectDefinitions.Count(); ++i)
 	{
-		if (m_GlowObjectDefinitions[i].IsUnused() || !m_GlowObjectDefinitions[i].ShouldDraw(nSplitScreenSlot))
+		if (m_TeamPatternObjectDefinitions[i].IsUnused())
 			continue;
 
-		render->SetBlend(m_GlowObjectDefinitions[i].m_flGlowAlpha);
-		Vector vGlowColor = m_GlowObjectDefinitions[i].m_vGlowColor * m_GlowObjectDefinitions[i].m_flGlowAlpha;
-		render->SetColorModulation(&vGlowColor[0]); // This only sets rgb, not alpha
+//		render->SetBlend(m_TeamPatternObjectDefinitions[i].m_flGlowAlpha);
+//		Vector vGlowColor = m_GlowObjectDefinitions[i].m_vGlowColor * m_GlowObjectDefinitions[i].m_flGlowAlpha;
+//		render->SetColorModulation(&vGlowColor[0]); // This only sets rgb, not alpha
 
-		m_GlowObjectDefinitions[i].DrawModel();
+		m_TeamPatternObjectDefinitions[i].DrawModel();
 	}
 
 	if (g_bDumpRenderTargets)
@@ -175,7 +177,7 @@ void CGlowObjectManager::RenderGlowModels(const CViewSetup *pSetup, int nSplitSc
 	pRenderContext->PopRenderTargetAndViewport();
 }
 
-void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nSplitScreenSlot, CMatRenderContextPtr &pRenderContext, float flBloomScale, int x, int y, int w, int h)
+void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *pSetup, CMatRenderContextPtr &pRenderContext, int x, int y, int w, int h)
 {
 	//=======================================================//
 	// Render objects into stencil buffer					 //
@@ -192,16 +194,14 @@ void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nS
 	render->SetBlend(0.0f);
 	pRenderContext->OverrideDepthEnable(true, false);
 
-	int iNumGlowObjects = 0;
+	int iNumTeamPatternObjects = 0;
 
-	for (int i = 0; i < m_GlowObjectDefinitions.Count(); ++i)
+	for (int i = 0; i < m_TeamPatternObjectDefinitions.Count(); ++i)
 	{
-		if (m_GlowObjectDefinitions[i].IsUnused() || !m_GlowObjectDefinitions[i].ShouldDraw(nSplitScreenSlot))
+		if (m_TeamPatternObjectDefinitions[i].IsUnused())
 			continue;
 
-		if (m_GlowObjectDefinitions[i].m_bRenderWhenOccluded || m_GlowObjectDefinitions[i].m_bRenderWhenUnoccluded)
-		{
-			if (m_GlowObjectDefinitions[i].m_bRenderWhenOccluded && m_GlowObjectDefinitions[i].m_bRenderWhenUnoccluded)
+/*			if (m_TeamPatternObjectDefinitions[i].m_bRenderWhenOccluded && m_GlowObjectDefinitions[i].m_bRenderWhenUnoccluded)
 			{
 				ShaderStencilState_t stencilState;
 				stencilState.m_bEnable = true;
@@ -229,8 +229,8 @@ void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nS
 
 				m_GlowObjectDefinitions[i].DrawModel();
 			}
-			else if (m_GlowObjectDefinitions[i].m_bRenderWhenUnoccluded)
-			{
+			else if (m_GlowObjectDefinitions[i].m_bRenderWhenUnoccluded) */
+//			{
 				ShaderStencilState_t stencilState;
 				stencilState.m_bEnable = true;
 				stencilState.m_nReferenceValue = 2;
@@ -243,20 +243,20 @@ void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nS
 
 				stencilState.SetStencilState(pRenderContext);
 
-				m_GlowObjectDefinitions[i].DrawModel();
-			}
-		}
+				m_TeamPatternObjectDefinitions[i].DrawModel();
+			//}
+		
 
-		iNumGlowObjects++;
+				iNumTeamPatternObjects++;
 	}
 
 	// Need to do a 2nd pass to warm stencil for objects which are rendered only when occluded
-	for (int i = 0; i < m_GlowObjectDefinitions.Count(); ++i)
+	for (int i = 0; i < m_TeamPatternObjectDefinitions.Count(); ++i)
 	{
-		if (m_GlowObjectDefinitions[i].IsUnused() || !m_GlowObjectDefinitions[i].ShouldDraw(nSplitScreenSlot))
+		if (m_TeamPatternObjectDefinitions[i].IsUnused())
 			continue;
 
-		if (m_GlowObjectDefinitions[i].m_bRenderWhenOccluded && !m_GlowObjectDefinitions[i].m_bRenderWhenUnoccluded)
+/*		if (m_TeamPatternObjectDefinitions[i].m_bRenderWhenOccluded && !m_TeamPatternObjectDefinitions[i].m_bRenderWhenUnoccluded)
 		{
 			ShaderStencilState_t stencilState;
 			stencilState.m_bEnable = true;
@@ -268,7 +268,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nS
 			stencilState.SetStencilState(pRenderContext);
 
 			m_GlowObjectDefinitions[i].DrawModel();
-		}
+		}*/
 	}
 
 	pRenderContext->OverrideDepthEnable(false, false);
@@ -279,7 +279,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nS
 	// If there aren't any objects to glow, don't do all this other stuff
 	// this fixes a bug where if there are glow objects in the list, but none of them are glowing,
 	// the whole screen blooms.
-	if (iNumGlowObjects <= 0)
+	if (iNumTeamPatternObjects <= 0)
 		return;
 
 	//=============================================
@@ -287,7 +287,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nS
 	//=============================================
 	{
 		PIXEvent pixEvent(pRenderContext, "RenderGlowModels");
-		RenderGlowModels(pSetup, nSplitScreenSlot, pRenderContext);
+		RenderTeamPatternModels(pSetup, pRenderContext);
 	}
 
 	// Get viewport
@@ -334,7 +334,7 @@ void CGlowObjectManager::ApplyEntityGlowEffects(const CViewSetup *pSetup, int nS
 	}
 }
 
-void CGlowObjectManager::GlowObjectDefinition_t::DrawModel()
+void CTeamPatternObjectManager::TeamPatternObjectDefinition_t::DrawModel()
 {
 	if (m_hEntity.Get())
 	{
@@ -343,7 +343,7 @@ void CGlowObjectManager::GlowObjectDefinition_t::DrawModel()
 
 		while (pAttachment != NULL)
 		{
-			if (!g_GlowObjectManager.HasGlowEffect(pAttachment) && pAttachment->ShouldDraw())
+			if (!g_TeamPatternObjectManager.HasTeamPatternEffect(pAttachment) && pAttachment->ShouldDraw())
 			{
 				pAttachment->DrawModel(STUDIO_RENDER);
 			}
@@ -352,4 +352,4 @@ void CGlowObjectManager::GlowObjectDefinition_t::DrawModel()
 	}
 }
 
-#endif // GLOWS_ENABLE
+//#endif // GLOWS_ENABLE
