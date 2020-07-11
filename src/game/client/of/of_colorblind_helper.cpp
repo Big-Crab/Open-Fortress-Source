@@ -349,23 +349,27 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		//=======================================================================================================//
 		//IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dev/halo_add_to_screen", TEXTURE_GROUP_OTHER, true);
 		IMaterial *pMatHaloAddToScreen = materials->FindMaterial("ColourBlindRedToPattern", TEXTURE_GROUP_OTHER, true);
+		//IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER, true);
 
 		// Do not fade the glows out at all (weight = 1.0)
 		//IMaterialVar *pDimVar = pMatHaloAddToScreen->FindVar("$C0_X", NULL);
 		//pDimVar->SetFloatValue(1.0f);
 		//pDimVar->SetFloatValue(0.5f);
 
+		
 		// Set stencil state
 		ShaderStencilState_t stencilState;
 		stencilState.m_bEnable = true;
 		stencilState.m_nWriteMask = 0x0; // We're not changing stencil
 		stencilState.m_nTestMask = 0xFF;
 		stencilState.m_nReferenceValue = 0x0;
-		stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;	// is (stencilRef & stencilMask) == (stencilBufferValue & stencilMask)?
+		//stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;	// is (stencilRef & stencilMask) == (stencilBufferValue & stencilMask)?
+		stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_NOTEQUAL;
 		stencilState.m_PassOp = STENCILOPERATION_KEEP;	// keeps the buffer data
 		stencilState.m_FailOp = STENCILOPERATION_KEEP;	// keeps the buffer data
 		stencilState.m_ZFailOp = STENCILOPERATION_KEEP;	// keeps the buffer data
 		stencilState.SetStencilState(pRenderContext);
+		
 
 		// Draw quad
 		pRenderContext->DrawScreenSpaceRectangle(pMatHaloAddToScreen, 0, 0, nViewportWidth, nViewportHeight,

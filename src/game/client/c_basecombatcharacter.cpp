@@ -43,6 +43,9 @@ C_BaseCombatCharacter::C_BaseCombatCharacter()
 #endif // GLOWS_ENABLE
 #else
 	m_bColorBlindInitialised = false;
+	PrecacheMaterial("greyscale");
+	PrecacheMaterial("dofblur");
+	PrecacheMaterial("ColourBlindRedToPattern");
 #endif
 }
 
