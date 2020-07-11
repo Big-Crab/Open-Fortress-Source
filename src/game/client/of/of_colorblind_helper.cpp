@@ -173,6 +173,7 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 		{
 		case CTeamPatternObject::CB_TEAM_RED:
 			//vTeamColor = Vector(1.0f, 0.0f, 0.0f);
+			//s_rgflStencilTeams
 			vTeamColor[0] = 1.0f;
 			break;
 		case CTeamPatternObject::CB_TEAM_BLU:
