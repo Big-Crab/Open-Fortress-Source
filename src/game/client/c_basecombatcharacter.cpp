@@ -13,6 +13,10 @@
 #include "cbase.h"
 #include "c_basecombatcharacter.h"
 
+#ifdef OF_CLIENT_DLL
+#include "tf_shareddefs.h"
+#endif
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
@@ -41,6 +45,8 @@ C_BaseCombatCharacter::C_BaseCombatCharacter()
 	m_bOldGlowEnabled = false;
 	m_bClientSideGlowEnabled = false;
 #endif // GLOWS_ENABLE
+#else
+	m_bColorBlindInitialised = false;
 #endif
 }
 
@@ -95,6 +101,11 @@ void C_BaseCombatCharacter::OnDataChanged( DataUpdateType_t updateType )
 	}
 #endif // GLOWS_ENABLE
 #endif
+	if (!m_bColorBlindInitialised)
+	{
+		// This seems to be called every frame :(
+		UpdateTeamPatternEffect();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -175,6 +186,59 @@ void C_BaseCombatCharacter::DestroyGlowEffect( void )
 	}
 }
 #endif // GLOWS_ENABLE
+#else
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseCombatCharacter::UpdateTeamPatternEffect(void)
+{
+	// Destroy
+	if (m_pTeamPatternEffect)
+	{
+		delete m_pTeamPatternEffect;
+		m_pTeamPatternEffect = NULL;
+	}
+	
+	// Create
+	int n_playerTeam = GetTeamNumber();
+	int n_teamColour;
+	switch (n_playerTeam)
+	{
+		case TF_TEAM_RED:
+			n_teamColour = CTeamPatternObject::CB_TEAM_RED;
+			break;
+		case TF_TEAM_BLUE:
+			n_teamColour = CTeamPatternObject::CB_TEAM_BLU;
+			break;
+		case TF_TEAM_MERCENARY:
+			n_teamColour = random->RandomInt(CTeamPatternObject::CB_TEAM_RED, CTeamPatternObject::CB_TEAM_YLW);
+			break;
+//		case TF_TEAM_YELLOW:
+//			n_teamColour = CTeamPatternObject::CB_TEAM_YLW;
+//			break;
+//		case TF_TEAM_GREEN:
+//			n_teamColour = CTeamPatternObject::CB_TEAM_GRN;
+//			break;
+		default:
+			n_teamColour = CTeamPatternObject::CB_TEAM_NONE;
+			break;
+	}
+	m_pTeamPatternEffect = new CTeamPatternObject(this, n_teamColour);
+	m_bColorBlindInitialised = true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseCombatCharacter::DestroyTeamPatternEffect(void)
+{
+	// Destroy
+	if (m_pTeamPatternEffect)
+	{
+		delete m_pTeamPatternEffect;
+		m_pTeamPatternEffect = NULL;
+	}
+}
 #endif
 
 IMPLEMENT_CLIENTCLASS(C_BaseCombatCharacter, DT_BaseCombatCharacter, CBaseCombatCharacter);

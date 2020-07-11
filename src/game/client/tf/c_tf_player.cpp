@@ -83,6 +83,9 @@
 
 #include "gameui/of/dm_loadout.h"
 
+// TESTING COLORBLIND OPTION
+#include "../of/of_colorblind_helper.h"
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
