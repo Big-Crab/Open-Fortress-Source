@@ -160,25 +160,37 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 //		render->SetColorModulation(&vGlowColor[0]); // This only sets rgb, not alpha
 		
 		render->SetBlend(1.0f);
-		Vector vTeamColor;
+		float vTeamColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+		//float vTeamColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 		switch (m_TeamPatternObjectDefinitions[i].m_nTeam)
 		{
 		case CTeamPatternObject::CB_TEAM_RED:
-			vTeamColor = Vector(1.0f, 0.0f, 0.0f);
+			//vTeamColor = Vector(1.0f, 0.0f, 0.0f);
+			vTeamColor[0] = 1.0f;
 			break;
 		case CTeamPatternObject::CB_TEAM_BLU:
-			vTeamColor = Vector(0.0f, 0.0f, 1.0f);
+			//vTeamColor[2] = 1.0f;
+			vTeamColor[0] = 0.75f;
 			break;
 		case CTeamPatternObject::CB_TEAM_GRN:
-			vTeamColor = Vector(0.0f, 1.0f, 0.0f);
+			//vTeamColor[1] = 1.0f;
+			vTeamColor[0] = 0.5f;
 			break;
 		case CTeamPatternObject::CB_TEAM_YLW:
-			vTeamColor = Vector(1.0f, 1.0f, 0.0f);
+			vTeamColor[0] = 0.25f;
+			//vTeamColor[0] = 1.0f;
+			//vTeamColor[1] = 1.0f;
+			break;
+		case CTeamPatternObject::CB_TEAM_NONE:
+			vTeamColor[0] = 0.0f; // no effect
+			break;
+		default:
+			vTeamColor[0] = 0.0f; // no effect
 			break;
 		}
 
-		// why is this [0] ??? why is it only a float?? is this as RGB in a single value maybe?
-		render->SetColorModulation(&vTeamColor[0]); // This only sets rgb, not alpha
+		//render->SetColorModulation(&vTeamColor[0]); // This only sets rgb, not alpha
+		render->SetColorModulation(vTeamColor); // This only sets rgb, not alpha ?
 
 		m_TeamPatternObjectDefinitions[i].DrawModel();
 	}
@@ -332,7 +344,8 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		// blobs. Now we need to stencil out the original objects by only writing pixels that have no            //
 		// stencil bits set in the range we care about.                                                          //
 		//=======================================================================================================//
-		IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dev/halo_add_to_screen", TEXTURE_GROUP_OTHER, true);
+		//IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dev/halo_add_to_screen", TEXTURE_GROUP_OTHER, true);
+		IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dev/compositoradd", TEXTURE_GROUP_OTHER, true);
 
 		// Do not fade the glows out at all (weight = 1.0)
 		IMaterialVar *pDimVar = pMatHaloAddToScreen->FindVar("$C0_X", NULL);

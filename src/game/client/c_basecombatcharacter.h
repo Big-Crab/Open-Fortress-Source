@@ -120,9 +120,10 @@ protected:
 	virtual void		UpdateGlowEffect( void );
 	virtual void		DestroyGlowEffect( void );
 #endif // GLOWS_ENABLE
-#endif
+#else
 	virtual void		UpdateTeamPatternEffect( void );
 	virtual void		DestroyTeamPatternEffect( void );
+#endif
 
 	int			m_bloodColor;			// color of blood particless
 
@@ -141,9 +142,10 @@ private:
 	bool				m_bOldGlowEnabled;
 	CGlowObject			*m_pGlowEffect;
 #endif // GLOWS_ENABLE
-#endif
+#else
+	bool				m_bColorBlindInitialised;
 	CTeamPatternObject	*m_pTeamPatternEffect;
-
+#endif
 private:
 	C_BaseCombatCharacter( const C_BaseCombatCharacter & ); // not defined, not accessible
 
