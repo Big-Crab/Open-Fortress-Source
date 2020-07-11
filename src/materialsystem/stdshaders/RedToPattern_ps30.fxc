@@ -47,14 +47,13 @@ PS_OUTPUT main( const PS_INPUT In )
 	float pattern = tex2D( _Sampler_Pattern, scaledUV )[patternIndex];
 
 	// ### Multiply the FB by the pattern ###
-/*	int isBlack = clamp(patternIndex, -1, 0);
+	int isBlack = clamp(patternIndex, -1, 0);
 	isBlack = abs(isBlack);
 	pattern += isBlack;
-*/
+
 	
-	//float4 fbSample = tex2D(_Sampler_FB, In.vTexCoord_0);
-	float4 fbSample = tex2D(_Sampler_Scratch, In.vTexCoord_0);
-//	fbSample.rgb *= pattern;	
+	float4 fbSample = tex2D(_Sampler_FB, In.vTexCoord_0);
+	fbSample.rgb *= pattern;	
 	
 	// PS Output
 	Out.vColor_0 = float4( fbSample.rgb, fbSample.a );
