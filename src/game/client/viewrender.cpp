@@ -2102,6 +2102,9 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 
 		PerformScreenSpaceEffects( 0, 0, view.width, view.height );
 
+		// NEW colour blind pattern effect
+		g_TeamPatternObjectManager.RenderTeamPatternEffects(&view);
+
 		if ( g_pMaterialSystemHardwareConfig->GetHDRType() == HDR_TYPE_INTEGER )
 		{
 			pRenderContext.GetFrom( materials );
@@ -2334,6 +2337,8 @@ void CViewRender::RenderView( const CViewSetup &view, int nClearFlags, int whatT
 		pRenderContext->Flush();
 		pRenderContext.SafeRelease();
 	}
+
+	// colourblind pattern was previously here
 
 	CDebugViewRender::Draw2DDebuggingInfo( view );
 

@@ -19,6 +19,8 @@
 #include "filesystem.h"
 #include "tier0/vprof.h"
 
+#include "of/of_colorblind_helper.h"
+
 #include "proxyentity.h"
 
 //-----------------------------------------------------------------------------
@@ -2662,6 +2664,9 @@ void DoEnginePostProcessing( int x, int y, int w, int h, bool bFlashlightIsOn, b
 			break;
 		}
 	}
+
+	// moved this actually -> viewrender.cpp to allow it to be after everything else
+	//g_TeamPatternObjectManager.RenderTeamPatternEffects(pSetup);
 
 #if defined( _X360 )
 	pRenderContext->PopVertexShaderGPRAllocation();

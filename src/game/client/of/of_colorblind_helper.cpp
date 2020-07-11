@@ -17,6 +17,7 @@
 // This is typically the un-processed framebuffer after the main rendering loop - the order of post processing effects
 // will affect this framebuffer.
 #define FULL_FRAME_TEXTURE "_rt_FullFrameFB"
+#define SCRATCH_FULLFRAME "_rt_FullFrameFB1"
 
 //#ifdef GLOWS_ENABLE
 
@@ -128,10 +129,10 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 //	pRtFullFrame = materials->FindTexture(FULL_FRAME_TEXTURE, TEXTURE_GROUP_RENDER_TARGET);
 //	SetRenderTargetAndViewPort(pRtFullFrame, pSetup->width, pSetup->height);
 
-	// Get pointer to smallFB
-	ITexture *pRtSmall = NULL;
-	pRtSmall = materials->FindTexture("_rt_SmallFB1", TEXTURE_GROUP_RENDER_TARGET);
-	SetRenderTargetAndViewPort(pRtSmall, pSetup->width, pSetup->height);
+	// Get pointer to our render target
+	ITexture *pRtScratch = NULL;
+	pRtScratch = materials->FindTexture(SCRATCH_FULLFRAME, TEXTURE_GROUP_RENDER_TARGET);
+	SetRenderTargetAndViewPort(pRtScratch, pSetup->width, pSetup->height);
 
 	// Clear colour but not depth or stencil
 	pRenderContext->ClearColor3ub(0, 0, 0);
@@ -205,7 +206,7 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 
 	if (g_bDumpRenderTargets)
 	{
-		DumpTGAofRenderTarget(pSetup->width, pSetup->height, "GlowModels");
+		DumpTGAofRenderTarget(pSetup->width, pSetup->height, "TeamPatternRedModels");
 	}
 
 	g_pStudioRender->ForcedMaterialOverride(NULL);
@@ -325,7 +326,7 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		return;
 
 	//=============================================
-	// Render the glow colors to _rt_SmallFB1 (was _rt_FullFrameFB)
+	// Render the glow colors to SCRATCH_FULLFRAME (was _rt_FullFrameFB)
 	//=============================================
 	{
 		PIXEvent pixEvent(pRenderContext, "RenderGlowModels");
@@ -337,9 +338,9 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 	int nSrcHeight = pSetup->height;
 	int nViewportX, nViewportY, nViewportWidth, nViewportHeight;
 	pRenderContext->GetViewport(nViewportX, nViewportY, nViewportWidth, nViewportHeight);
-
+	
 	// Get material and texture pointers
-	ITexture *pRtQuarterSize1 = materials->FindTexture("_rt_SmallFB1", TEXTURE_GROUP_RENDER_TARGET);
+	ITexture *pRtFullSize1 = materials->FindTexture(SCRATCH_FULLFRAME, TEXTURE_GROUP_RENDER_TARGET);
 
 	{
 
@@ -354,7 +355,7 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		// stencil bits set in the range we care about.                                                          //
 		//=======================================================================================================//
 		//IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dev/halo_add_to_screen", TEXTURE_GROUP_OTHER, true);
-		IMaterial *pMatHaloAddToScreen = materials->FindMaterial("ColourBlindRedToPattern", TEXTURE_GROUP_OTHER, true);
+		IMaterial *pMatPattern = materials->FindMaterial("ColourBlindRedToPattern", TEXTURE_GROUP_OTHER, true);
 		//IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dofblur", TEXTURE_GROUP_OTHER, true);
 
 		// Do not fade the glows out at all (weight = 1.0)
@@ -377,11 +378,15 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		stencilState.SetStencilState(pRenderContext);
 		
 
-		// Draw quad
-		pRenderContext->DrawScreenSpaceRectangle(pMatHaloAddToScreen, 0, 0, nViewportWidth, nViewportHeight,
+		// Draw quad (quarter size?)
+		/*pRenderContext->DrawScreenSpaceRectangle(pMatHaloAddToScreen, 0, 0, nViewportWidth, nViewportHeight,
 			0.0f, -0.5f, nSrcWidth / 4 - 1, nSrcHeight / 4 - 1,
 			pRtQuarterSize1->GetActualWidth(),
-			pRtQuarterSize1->GetActualHeight());
+			pRtQuarterSize1->GetActualHeight());*/
+		pRenderContext->DrawScreenSpaceRectangle(pMatPattern, 0, 0, nViewportWidth, nViewportHeight,
+			0.0f, -0.5f, nSrcWidth - 1, nSrcHeight - 1,
+			pRtFullSize1->GetActualWidth(),
+			pRtFullSize1->GetActualHeight());
 
 		stencilStateDisable.SetStencilState(pRenderContext);
 	}

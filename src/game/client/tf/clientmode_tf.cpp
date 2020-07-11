@@ -317,7 +317,9 @@ bool ClientModeTFNormal::DoPostScreenSpaceEffects(const CViewSetup *pSetup)
 	if (!IsInFreezeCam())
 	{
 		g_GlowObjectManager.RenderGlowEffects(pSetup, 0);
-		g_TeamPatternObjectManager.RenderTeamPatternEffects(pSetup);
+	
+		// moved this -> viewpostprocess cause it's causing itself a feedback loop
+		//g_TeamPatternObjectManager.RenderTeamPatternEffects(pSetup);
 	}
 
 	return BaseClass::DoPostScreenSpaceEffects(pSetup);
