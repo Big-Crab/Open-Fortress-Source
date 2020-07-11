@@ -123,11 +123,15 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 	render->GetColorModulation(vOrigColor.Base());
 	float flOrigBlend = render->GetBlend();
 
-	// Get pointer to FullFrameFB
-	ITexture *pRtFullFrame = NULL;
-	pRtFullFrame = materials->FindTexture(FULL_FRAME_TEXTURE, TEXTURE_GROUP_RENDER_TARGET);
+	// Get pointer to FullFrameFB // OLD
+//	ITexture *pRtFullFrame = NULL;
+//	pRtFullFrame = materials->FindTexture(FULL_FRAME_TEXTURE, TEXTURE_GROUP_RENDER_TARGET);
+//	SetRenderTargetAndViewPort(pRtFullFrame, pSetup->width, pSetup->height);
 
-	SetRenderTargetAndViewPort(pRtFullFrame, pSetup->width, pSetup->height);
+	// Get pointer to smallFB
+	ITexture *pRtSmall = NULL;
+	pRtSmall = materials->FindTexture("_rt_SmallFB1", TEXTURE_GROUP_RENDER_TARGET);
+	SetRenderTargetAndViewPort(pRtSmall, pSetup->width, pSetup->height);
 
 	// Clear colour but not depth or stencil
 	pRenderContext->ClearColor3ub(0, 0, 0);
@@ -320,7 +324,7 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		return;
 
 	//=============================================
-	// Render the glow colors to _rt_FullFrameFB 
+	// Render the glow colors to _rt_SmallFB1 (was _rt_FullFrameFB)
 	//=============================================
 	{
 		PIXEvent pixEvent(pRenderContext, "RenderGlowModels");
@@ -342,6 +346,7 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		//=======================================================================================================//
 		// I don't think we need this part? All it does is get rid of the glow where the original models are
 		// it seems to call the haloaddoutline_ps20 shader
+		// now we use _rt_SmallFB1 as the scratch for the stencil
 		//
 		// At this point, pRtQuarterSize0 is filled with the fully colored glow around everything as solid glowy //
 		// blobs. Now we need to stencil out the original objects by only writing pixels that have no            //
