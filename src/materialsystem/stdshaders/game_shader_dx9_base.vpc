@@ -61,6 +61,8 @@ $Project
 		
 		$File	"ToxicOverlay.cpp"
 		
+		$File	"RedToPattern.cpp"
+		
 		$File	"Greyscale.cpp"
 	}
 

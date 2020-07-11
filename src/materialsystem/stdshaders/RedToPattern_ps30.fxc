@@ -1,0 +1,63 @@
+
+// Includes
+#include "common_ps_fxc.h"
+//#include "common_vertexlitgeneric_dx9.h"
+//#include "common_lightmappedgeneric_fxc.h"
+//#include "common_flashlight_fxc.h"
+//#include "common_parallax.h"
+
+
+// Samplers
+sampler _Sampler_FB		: register( s0 ); // FB
+sampler _Sampler_Pattern		: register( s1 ); // Pattern Image (RGBA)
+sampler _Sampler_Scratch		: register( s2 ); // Scratch buffer, whichever RT we used to render the red info into
+
+// Constants
+const float2 _g_TexelSize		: register( c17 );
+const float _g_UVScaling	: register( c18 );
+//const float3 _g_DefaultBloodColour	: register (c19);
+//const float3 _g_PoisonColour	: register (c20);
+
+// Semantic structures
+struct PS_INPUT
+{
+	float2 vTexCoord_0			:	TEXCOORD0;
+};
+
+struct PS_OUTPUT
+{
+	float4 vColor_0				:	COLOR0;
+};
+
+// Entry point
+PS_OUTPUT main( const PS_INPUT In )
+{
+	PS_OUTPUT Out;
+
+	// Scale the units
+	float2 scaledUV = In.vTexCoord_0 * _g_UVScaling;
+	// Make the units square
+	scaledUV.y *= (_g_TexelSize.x / _g_TexelSize.y);
+	
+	// ### Find the pattern index for the current pixel ###
+	// (0 -> -1, 0.25 -> 0, 0.5 -> 1, 0.75 -> 2, 1.0 -> 3)
+	int patternIndex = (int) (ceil((tex2D( _Sampler_Scratch, In.vTexCoord_0 ).r * 4.0f) - 0.01f)) - 1;
+	
+	// Black/No Pattern will be -1, might work? might just give us black
+	float pattern = tex2D( _Sampler_Pattern, scaledUV )[patternIndex];
+
+	// ### Multiply the FB by the pattern ###
+/*	int isBlack = clamp(patternIndex, -1, 0);
+	isBlack = abs(isBlack);
+	pattern += isBlack;
+*/
+	
+	//float4 fbSample = tex2D(_Sampler_FB, In.vTexCoord_0);
+	float4 fbSample = tex2D(_Sampler_Scratch, In.vTexCoord_0);
+//	fbSample.rgb *= pattern;	
+	
+	// PS Output
+	Out.vColor_0 = float4( fbSample.rgb, fbSample.a );
+	return Out;
+	// ####################
+}
