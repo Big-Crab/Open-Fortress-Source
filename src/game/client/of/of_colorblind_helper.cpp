@@ -45,6 +45,9 @@ const float CTeamPatternObjectManager::s_rgflStencilTeams[] = {1.0f, 0.75f, 0.5f
 	#	(e.g. colour must be at least 50% saturated = 0.5), and a value minimum (e.g. colour	#
 	#	must be at least 60% in luminanace/value = 0.6).										#
 	#																							#
+	#	The red-channel stencil pass is written to a scratch buffer (_rt_SmallFB1?), which		#
+	#	should be passed to the shader as 														#
+	#																							#
 	#############################################################################################
 */
 
@@ -345,11 +348,11 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		// stencil bits set in the range we care about.                                                          //
 		//=======================================================================================================//
 		//IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dev/halo_add_to_screen", TEXTURE_GROUP_OTHER, true);
-		IMaterial *pMatHaloAddToScreen = materials->FindMaterial("dev/compositoradd", TEXTURE_GROUP_OTHER, true);
+		IMaterial *pMatHaloAddToScreen = materials->FindMaterial("ColourBlindRedToPattern", TEXTURE_GROUP_OTHER, true);
 
 		// Do not fade the glows out at all (weight = 1.0)
-		IMaterialVar *pDimVar = pMatHaloAddToScreen->FindVar("$C0_X", NULL);
-		pDimVar->SetFloatValue(1.0f);
+		//IMaterialVar *pDimVar = pMatHaloAddToScreen->FindVar("$C0_X", NULL);
+		//pDimVar->SetFloatValue(1.0f);
 		//pDimVar->SetFloatValue(0.5f);
 
 		// Set stencil state
@@ -358,7 +361,7 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 		stencilState.m_nWriteMask = 0x0; // We're not changing stencil
 		stencilState.m_nTestMask = 0xFF;
 		stencilState.m_nReferenceValue = 0x0;
-		stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;
+		stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;	// is (stencilRef & stencilMask) == (stencilBufferValue & stencilMask)?
 		stencilState.m_PassOp = STENCILOPERATION_KEEP;	// keeps the buffer data
 		stencilState.m_FailOp = STENCILOPERATION_KEEP;	// keeps the buffer data
 		stencilState.m_ZFailOp = STENCILOPERATION_KEEP;	// keeps the buffer data
