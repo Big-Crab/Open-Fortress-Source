@@ -15,8 +15,23 @@ sampler _Sampler_Scratch		: register( s2 ); // Scratch buffer, whichever RT we u
 // Constants
 const float2 _g_TexelSize		: register( c17 );
 const float _g_UVScaling	: register( c18 );
+const float _g_IntensityFactor : register( c19 );
+const float4 _g_SaturationMinima : register( c20 );
+const float4 _g_SaturationMaxima : register( c21 );
 //const float3 _g_DefaultBloodColour	: register (c19);
 //const float3 _g_PoisonColour	: register (c20);
+
+// All components of the HSV vector are [0...1] range, including hue (0...360 -> 0...1)
+float3 rgb2hsv(float3 c)
+{
+	float4 K = float4(0.0f, -1.0f / 3.0f, 2.0f / 3.0f, -1.0f);
+	float4 p = lerp(float4(c.bg, K.wz), float4(c.gb, K.xy), step(c.b, c.g));
+	float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
+	
+	float d = q.x - min(q.w, q.y);
+	float e = 1.0e-10;
+    return float3(abs(q.z + (q.w - q.y) / (6.0f * d + e)), d / (q.x + e), q.x);
+}
 
 // Semantic structures
 struct PS_INPUT
@@ -53,7 +68,14 @@ PS_OUTPUT main( const PS_INPUT In )
 
 	
 	float4 fbSample = tex2D(_Sampler_FB, In.vTexCoord_0);
-	fbSample.rgb *= pattern;	
+	
+	// For a saturation > minimum and < maximum, remap the value.
+	// For anything less than minimum, 0, and anything above the maximum, 1.
+	// the non-pattern index (-1) will probably give NaNs which is fine, because they'll just be 0 in the lerp
+	float saturationFactor = saturate((rgb2hsv(fbSample.rgb).y - _g_SaturationMinima[patternIndex]) / (_g_SaturationMaxima[patternIndex] - _g_SaturationMinima[patternIndex]));
+	
+	// Lerp between the original pixel and the pattern based on the intensity factor
+	fbSample.rgb = lerp(fbSample.rgb, fbSample.rgb * pattern, _g_IntensityFactor * saturationFactor);	
 	
 	// PS Output
 	Out.vColor_0 = float4( fbSample.rgb, fbSample.a );

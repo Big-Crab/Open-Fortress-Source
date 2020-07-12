@@ -17,6 +17,9 @@ SHADER_PARAM(SCRATCHBUFFER, SHADER_PARAM_TYPE_TEXTURE, "_rt_SmallFB1", "")
 SHADER_PARAM(PATTERNTEXTURE, SHADER_PARAM_TYPE_TEXTURE, "effects/colourblind/16x16_Patterns_RGBA", "")
 SHADER_PARAM(UVSCALING, SHADER_PARAM_TYPE_FLOAT, "15.0", "")
 SHADER_PARAM(TEXELSIZE, SHADER_PARAM_TYPE_VEC2, "[0.000520833333 0.000925925926]", "")
+SHADER_PARAM(SATURATIONMAXIMA, SHADER_PARAM_TYPE_VEC4, "[0.9 0.9 0.9 0.9]", "")
+SHADER_PARAM(SATURATIONMINIMA, SHADER_PARAM_TYPE_VEC4, "[0.4 0.4 0.4 0.4]", "")
+SHADER_PARAM(INTENSITYMULTIPLIER, SHADER_PARAM_TYPE_FLOAT, "0.75", "")
 END_SHADER_PARAMS
 
 SHADER_INIT
@@ -92,6 +95,9 @@ SHADER_DRAW
 		pShaderAPI->SetPixelShaderConstant(17, params[TEXELSIZE]->GetVecValue(), true);
 		float uvScaling = params[UVSCALING]->GetFloatValue();
 		pShaderAPI->SetPixelShaderConstant(18, &uvScaling, true);
+		pShaderAPI->SetPixelShaderConstant(19, params[INTENSITYMULTIPLIER]->GetVecValue(), true);
+		pShaderAPI->SetPixelShaderConstant(20, params[SATURATIONMINIMA]->GetVecValue(), true);
+		pShaderAPI->SetPixelShaderConstant(21, params[SATURATIONMAXIMA]->GetVecValue(), true);
 
 		DECLARE_DYNAMIC_VERTEX_SHADER(sdk_screenspaceeffect_vs20);
 		SET_DYNAMIC_VERTEX_SHADER(sdk_screenspaceeffect_vs20);
