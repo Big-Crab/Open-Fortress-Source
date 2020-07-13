@@ -267,13 +267,16 @@ void CTeamPatternObjectManager::ApplyEntityTeamPatternEffects(const CViewSetup *
 //			{
 			ShaderStencilState_t stencilState;
 			stencilState.m_bEnable = true;
-			stencilState.m_nReferenceValue = 2;
+			stencilState.m_nReferenceValue = 2; //default
 			stencilState.m_nTestMask = 0x1;
 			stencilState.m_nWriteMask = 0x3;
 			stencilState.m_CompareFunc = STENCILCOMPARISONFUNCTION_EQUAL;
 			stencilState.m_PassOp = STENCILOPERATION_INCRSAT;	// Increment the stencil-buffer entry, clamping to the maximum value. (I think it's min(++buffer, maxval) ???)
 			stencilState.m_FailOp = STENCILOPERATION_KEEP;		// Does not update the entry in the stencil buffer
-			stencilState.m_ZFailOp = STENCILOPERATION_REPLACE;	// Replace the stencil-buffer entry with a reference value.
+			
+			// default / new
+			//stencilState.m_ZFailOp = STENCILOPERATION_REPLACE;	// Replace the stencil-buffer entry with a reference value.
+			stencilState.m_ZFailOp = STENCILOPERATION_KEEP;	// Do not update the stencil entry on depth fail.
 
 			stencilState.SetStencilState(pRenderContext);
 
