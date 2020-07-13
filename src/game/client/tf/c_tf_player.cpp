@@ -135,6 +135,90 @@ extern ConVar of_jumpsound;
 extern const char *g_aLoadoutConvarNames[];
 extern const char *g_aArsenalConvarNames[];
 
+int C_TFPlayer::ms_nPlayerPatternCounter = CTeamPatternObject::CB_TEAM_NONE;
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_TFPlayer::UpdateTeamPatternEffect(void)
+{
+	DestroyTeamPatternEffect();
+
+	// Create
+	int n_playerTeam = GetTeamNumber();
+	int n_teamColour;
+	switch (n_playerTeam)
+	{
+	case TF_TEAM_RED:
+		n_teamColour = CTeamPatternObject::CB_TEAM_RED;
+		break;
+	case TF_TEAM_BLUE:
+		n_teamColour = CTeamPatternObject::CB_TEAM_BLU;
+		break;
+	case TF_TEAM_MERCENARY:
+		//n_teamColour = random->RandomInt(CTeamPatternObject::CB_TEAM_RED, CTeamPatternObject::CB_TEAM_YLW);
+		n_teamColour = ms_nPlayerPatternCounter;
+		if (++ms_nPlayerPatternCounter > CTeamPatternObject::CB_TEAM_YLW)
+			ms_nPlayerPatternCounter = CTeamPatternObject::CB_TEAM_NONE;
+		break;
+	default:
+		n_teamColour = CTeamPatternObject::CB_TEAM_NONE;
+		break;
+	}
+
+	int patternSlot = 0;
+	m_pTeamPatternEffect[patternSlot] = new CTeamPatternObject(this, n_teamColour);
+	patternSlot++;
+
+	DevMsg("TEAM COLOUR WAS %i \n", n_teamColour);
+
+	for (int i = 0; i < m_hCosmetic.Count(); i++)
+	{
+		if (m_hCosmetic[i])
+		{
+			//if (m_hCosmetic[i]->GetBaseEntity())
+			//{
+				//m_pTeamPatternEffect[i] = new CTeamPatternObject(m_hCosmetic[i]->GetBaseEntity(), n_teamColour);
+				//DevMsg("Added cosmetic %s \n", m_hCosmetic[i]->GetBaseEntity()->GetModelName());
+			//}
+
+			
+			C_BaseEntity *ent;
+			if (m_hCosmetic[i]->GetBaseEntity())
+			{
+				ent = m_hCosmetic[i]->GetBaseEntity();
+			}
+			else// if (m_hCosmetic[i]->GetOwnerEntity())
+			{
+				ent = m_hCosmetic[i]->GetOwnerEntity();
+			}
+			// maybe iter over bodygroups?
+			DevMsg("Added cosmetic %s \n", ent->GetDebugName());
+			m_pTeamPatternEffect[patternSlot] = new CTeamPatternObject(ent, n_teamColour);
+
+			patternSlot++;
+		}
+	}
+
+	m_bColorBlindInitialised = true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_TFPlayer::DestroyTeamPatternEffect(void)
+{
+	for (int i = 0; i < MAX_PATTERN_OBJECTS; i++)
+	{
+		// Destroy
+		if (m_pTeamPatternEffect[i])
+		{
+			delete m_pTeamPatternEffect[i];
+			m_pTeamPatternEffect[i] = NULL;
+		}
+	}
+}
+
 void RefreshDesiredCosmetics( int iClass )
 {
 	if( GetLoadout() )
@@ -2611,6 +2695,9 @@ C_TFPlayer::C_TFPlayer() :
 
 	ListenForGameEvent( "player_jump" );
 
+	m_bColorBlindInitialised = false;
+	PrecacheMaterial("ColourBlindRedToPattern");
+
 	//LoadMapMusic(::filesystem);
 
 	m_blinkTimer.Invalidate();
@@ -2837,7 +2924,13 @@ void C_TFPlayer::OnDataChanged( DataUpdateType_t updateType )
 			InitInvulnerableMaterial();
 			m_bUpdatePlayerAttachments = true;
 			m_bUpdateCosmetics = true;
+			m_bColorBlindInitialised = false;
 		}
+	}
+
+	if (!m_bColorBlindInitialised)
+	{
+		UpdateTeamPatternEffect();
 	}
 
 	UpdateVisibility();
@@ -3479,6 +3572,9 @@ void C_TFPlayer::UpdateWearables( void )
 			}
 		}
 	}
+
+	// Force refresh of team patterns
+	m_bColorBlindInitialised = false;
 }
 //-----------------------------------------------------------------------------
 // Purpose: Is this player an enemy to the local player
@@ -5018,6 +5114,9 @@ void C_TFPlayer::ClientPlayerRespawn( void )
 		RefreshDesiredWeapons( GetPlayerClass()->GetClassIndex() );
 	}
 	
+	// Force refresh of team patterns
+	m_bColorBlindInitialised = false;
+
 	// don't draw the respawn particle in first person or if the client has them disabled
 	if ( of_respawn_particles.GetBool() )
 	{

@@ -165,6 +165,14 @@ public:
 
 	CGlowObject			*m_pGlowEffect;
 
+#define MAX_PATTERN_OBJECTS 8
+	static int		ms_nPlayerPatternCounter;
+	virtual void		UpdateTeamPatternEffect(void);
+	virtual void		DestroyTeamPatternEffect(void);
+	bool				m_bColorBlindInitialised;
+	CTeamPatternObject	*m_pTeamPatternEffect[MAX_PATTERN_OBJECTS];
+	CTeamPatternObject	**GetTeamPatternObject(void){ return m_pTeamPatternEffect; }
+
 	virtual void	GetGlowEffectColor( float *r, float *g, float *b );
 
 	virtual bool	IsOverridingViewmodel( void );
