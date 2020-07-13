@@ -24,6 +24,8 @@
 #undef CBaseCombatCharacter	
 #endif
 
+int C_BaseCombatCharacter::ms_nPlayerPatternCounter = CTeamPatternObject::CB_TEAM_NONE;
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -43,8 +45,8 @@ C_BaseCombatCharacter::C_BaseCombatCharacter()
 #endif // GLOWS_ENABLE
 #else
 	m_bColorBlindInitialised = false;
-	PrecacheMaterial("greyscale");
-	PrecacheMaterial("dofblur");
+	//PrecacheMaterial("greyscale");
+	//PrecacheMaterial("dofblur");
 	PrecacheMaterial("ColourBlindRedToPattern");
 #endif
 }
@@ -210,14 +212,11 @@ void C_BaseCombatCharacter::UpdateTeamPatternEffect(void)
 			n_teamColour = CTeamPatternObject::CB_TEAM_BLU;
 			break;
 		case TF_TEAM_MERCENARY:
-			n_teamColour = random->RandomInt(CTeamPatternObject::CB_TEAM_RED, CTeamPatternObject::CB_TEAM_YLW);
+			//n_teamColour = random->RandomInt(CTeamPatternObject::CB_TEAM_RED, CTeamPatternObject::CB_TEAM_YLW);
+			n_teamColour = ms_nPlayerPatternCounter;
+			if (++ms_nPlayerPatternCounter > CTeamPatternObject::CB_TEAM_YLW)
+				ms_nPlayerPatternCounter = CTeamPatternObject::CB_TEAM_NONE;
 			break;
-//		case TF_TEAM_YELLOW:
-//			n_teamColour = CTeamPatternObject::CB_TEAM_YLW;
-//			break;
-//		case TF_TEAM_GREEN:
-//			n_teamColour = CTeamPatternObject::CB_TEAM_GRN;
-//			break;
 		default:
 			n_teamColour = CTeamPatternObject::CB_TEAM_NONE;
 			break;

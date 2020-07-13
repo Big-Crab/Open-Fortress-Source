@@ -112,6 +112,7 @@ public:
 public:
 
 	float			m_flNextAttack;
+	static int		ms_nPlayerPatternCounter;
 
 protected:
 

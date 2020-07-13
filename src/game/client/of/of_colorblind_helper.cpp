@@ -29,7 +29,9 @@ extern bool g_bDumpRenderTargets; // in viewpostprocess.cpp
 CTeamPatternObjectManager g_TeamPatternObjectManager;
 
 // The 4 "teams" (literally teams in TF2C, teamplay, but in OF DM just a way of dividing up players)
-const float CTeamPatternObjectManager::s_rgflStencilTeams[] = {1.0f, 0.75f, 0.5f, 0.25f};
+//const float CTeamPatternObjectManager::s_rgflStencilTeams[] = {1.0f, 0.75f, 0.5f, 0.25f};
+const float CTeamPatternObjectManager::s_rgflStencilTeams[] = { 1.0f, 0.75f, 0.5f, 0.25f };
+//const float CTeamPatternObjectManager::s_rgflStencilTeams[] = { 128.0f/255.0f, 96.0f/255.0f, 64.0f/255.0f, 32.0f/255.0f};
 
 /*	#############################################################################################
 	#							How the Pattern Effect Works									#
@@ -173,22 +175,11 @@ void CTeamPatternObjectManager::RenderTeamPatternModels(const CViewSetup *pSetup
 		switch (m_TeamPatternObjectDefinitions[i].m_nTeam)
 		{
 		case CTeamPatternObject::CB_TEAM_RED:
-			//vTeamColor = Vector(1.0f, 0.0f, 0.0f);
-			//s_rgflStencilTeams
-			vTeamColor[0] = 1.0f;
-			break;
 		case CTeamPatternObject::CB_TEAM_BLU:
-			//vTeamColor[2] = 1.0f;
-			vTeamColor[0] = 0.75f;
-			break;
-		case CTeamPatternObject::CB_TEAM_GRN:
-			//vTeamColor[1] = 1.0f;
-			vTeamColor[0] = 0.5f;
-			break;
 		case CTeamPatternObject::CB_TEAM_YLW:
-			vTeamColor[0] = 0.25f;
-			//vTeamColor[0] = 1.0f;
-			//vTeamColor[1] = 1.0f;
+		case CTeamPatternObject::CB_TEAM_GRN:
+			// The framebuffers deal in terms of gamma, so we need to convert first
+			vTeamColor[0] = LinearToGamma( s_rgflStencilTeams[m_TeamPatternObjectDefinitions[i].m_nTeam - 1] );
 			break;
 		case CTeamPatternObject::CB_TEAM_NONE:
 			vTeamColor[0] = 0.0f; // no effect
