@@ -56,7 +56,8 @@ PS_OUTPUT main( const PS_INPUT In )
 	
 	// ### Find the pattern index for the current pixel ###
 	// (0 -> -1, 0.25 -> 0, 0.5 -> 1, 0.75 -> 2, 1.0 -> 3)
-	int patternIndex = (int) (ceil((tex2D( _Sampler_Scratch, In.vTexCoord_0 ).r * 4.0f) - 0.01f)) - 1;
+	// int patternIndex = (int) (ceil((tex2D( _Sampler_Scratch, In.vTexCoord_0 ).r * 4.0f) - 0.01f)) - 1;
+	int patternIndex = (int) (round(tex2D( _Sampler_Scratch, In.vTexCoord_0 ).r * 4.0f)) - 1;
 	
 	// Black/No Pattern will be -1, might work? might just give us black
 	float pattern = tex2D( _Sampler_Pattern, scaledUV )[patternIndex];
