@@ -56,6 +56,8 @@ public:
 	DECLARE_NETWORKCLASS(); 
 	DECLARE_PREDICTABLE();
 
+	float						m_flCableFuncStartTime;
+
 private:
 
 	void InitiateHook(CTFPlayer * pPlayer, CBaseEntity *hook);
@@ -63,6 +65,11 @@ private:
 #ifdef GAME_DLL
 	CHandle<CBeam>				pBeam;
 	CNetworkHandle(CBaseEntity, m_hHook);		//server hook
+#define NUM_CABLE_VERTS 250
+	Vector vertices[NUM_CABLE_VERTS];			//new cable effect
+	bool						m_bRopeExists;
+	Vector						m_vCableRight;
+	Vector						m_vCableUp;
 #else
 	EHANDLE						m_hHook;		//client hook relay
 #endif

@@ -26,10 +26,14 @@
 #define HOOK_MODEL			"models/weapons/c_models/c_grapple_proj/c_grapple_proj.mdl"
 #define BOLT_MODEL			"models/weapons/c_models/c_grapple_proj/c_grapple_proj.mdl"
 
-#define BOLT_AIR_VELOCITY	3500
+/*#define BOLT_AIR_VELOCITY	3500
 #define BOLT_WATER_VELOCITY	1500
 #define MAX_ROPE_LENGTH		900.f
-#define HOOK_PULL			720.f
+#define HOOK_PULL			720.f*/
+#define BOLT_AIR_VELOCITY	1000
+#define BOLT_WATER_VELOCITY 1000
+#define MAX_ROPE_LENGTH		9000.0f
+#define HOOK_PULL			300.0f
 
 extern ConVar of_hook_pendulum;
 
@@ -79,6 +83,7 @@ CWeaponGrapple::CWeaponGrapple( void )
 #ifdef GAME_DLL
 	m_hHook			= NULL;
 	pBeam			= NULL;
+	m_bRopeExists	= false;
 #endif
 }
   
@@ -141,7 +146,7 @@ void CWeaponGrapple::PrimaryAttack(void)
 
 	//fire direction
 	Vector vecDir;
-	AngleVectors(angle, &vecDir);
+	AngleVectors(angle, &vecDir, &m_vCableRight, &m_vCableUp);
 	VectorNormalize(vecDir);
 
 	//Gets the position where the hook will hit
@@ -165,6 +170,9 @@ void CWeaponGrapple::PrimaryAttack(void)
 
 	//Initialize the beam
 	DrawBeam(m_hHook->GetAbsOrigin());
+
+	m_bRopeExists = true;
+	m_flCableFuncStartTime = gpGlobals->curtime;
 #endif
 
 	m_flNextPrimaryAttack = gpGlobals->curtime - 1.f;
@@ -195,6 +203,93 @@ void CWeaponGrapple::ItemPostFrame(void)
 		//Set where it ends
 		pBeam->PointEntInit(m_hHook->GetAbsOrigin(), this);
 		pBeam->SetEndAttachment(LookupAttachment("muzzle"));
+	}
+
+	// update new cable effect
+	if (m_bRopeExists)
+	{
+		// hook pos
+		Vector startPoint = m_hHook->GetAbsOrigin();
+		// muzzle pos
+		Vector endPoint = Vector(0, 0, 0);
+		QAngle muzzleAngle;
+		GetAttachment("muzzle", endPoint, muzzleAngle);
+		Vector muzzleForward;
+		AngleVectors(muzzleAngle, &muzzleForward);
+
+		// start -> end
+		Vector cableBaseDir = endPoint - startPoint;
+		// normalized, store length in absCableLength
+		float absCableLength = VectorNormalize(cableBaseDir);
+		float cableStep = absCableLength / NUM_CABLE_VERTS;
+		float cableStepCurrent = cableStep;
+
+		// Remap cableStepCurrent/absCableLength to this
+		const float xEnd = 10.0f;
+		const float S = 2.0f;
+		const float dispScale = 550.0f; // 150
+		const float dispScaleTwang = 500.0f;
+		const float timeScale = 1.5f;
+		const float timeScaleTwang = 20.0f;
+		const float timeScaleTwangScale = 0.4f;
+		const float maxTwang = 0.4f;
+		const float maxTime = 10.0f;
+
+		float t = min((gpGlobals->curtime - m_flCableFuncStartTime) * timeScale, maxTime);
+		float t2 = (gpGlobals->curtime - m_flCableFuncStartTime) * timeScaleTwang;
+		float s2 = maxTwang + ((gpGlobals->curtime - m_flCableFuncStartTime) * timeScaleTwangScale);
+		//float s2 = 0.4f;
+
+		//DevMsg("t was %f\n", t);
+
+		// 0 is always startPoint
+		vertices[0] = startPoint;
+		vertices[NUM_CABLE_VERTS - 1] = endPoint;
+		// Iterate over the vertices and position them along the cable
+		for (int i = 1; i < NUM_CABLE_VERTS-1; i++)
+		{
+			// If attached, twang like a taught wire
+			if (m_iAttached)
+			{
+				// 0...1
+				float x = cableStepCurrent / absCableLength;
+				float displacementTwang = sinf(M_PI_F * x) * sinf(sinf(t2)) * (pow(1.0f - min(s2, 1.0f), 3));
+
+				vertices[i] = startPoint + (cableBaseDir * cableStepCurrent) + (m_vCableUp * displacementTwang * dispScaleTwang);
+			}
+			// If flying, buckle the cable by spiralling outward
+			else
+			{
+				// 0 to xEnd based on distance down the cable we are
+				//float x = (cableStepCurrent / absCableLength) * xEnd;
+				float x = cableStepCurrent / (xEnd * 15.0f);
+
+				float displacement;
+				// if x < S
+				displacement = (sinf(t * x) / (t * x)) * ((t * t) / 25.0f) * min(x, 1.0f);
+				if (x >= S)
+				{
+					displacement /= (x - S + 1);
+				}
+
+				//float spiralProgress = (x / (2.0f*S)) * (M_PI_F * 4.0f);
+				//float spiralProgress = (x / (2.0f*S)) * (M_PI_F * 0.5f);
+				//float spiralProgress = displacement + (x / (2.0f*S)) * (M_PI_F * 0.5f);
+				//float spiralProgress = 2.5f / (t*x);
+				//float spiralProgress = t / (5.0f*x);
+				//float spiralProgress = t / (4.0f* powf(x, 0.25f));
+
+				float spiralProgress = (x * M_PI_F) * t;
+
+				displacement *= dispScale;
+
+				vertices[i] = startPoint + (cableBaseDir * cableStepCurrent) + (sinf(spiralProgress) * m_vCableRight * displacement) + (cosf(spiralProgress) * m_vCableUp * displacement);
+			}
+			cableStepCurrent += cableStep;
+
+			int col = ceil(((float) i / (float) NUM_CABLE_VERTS) * 255.0);
+			DebugDrawLine(vertices[i], vertices[i - 1], col, col, col, false, 0.05f);
+		}
 	}
 #else
 	Hook = m_hHook.Get();
@@ -275,6 +370,8 @@ void CWeaponGrapple::RemoveHook(void)
 	m_hHook->SetTouch(NULL);
 	m_hHook->SetThink(NULL);
 	UTIL_Remove(m_hHook);
+
+	m_bRopeExists = false;
 
 	if (pBeam)
 	{
@@ -570,6 +667,8 @@ void CGrappleHook::HookTouch(CBaseEntity *pOther)
 
 			m_hOwner->NotifyHookAttached();
 			m_hPlayer->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
+
+			m_hOwner->m_flCableFuncStartTime = gpGlobals->curtime;
 		}
 		else
 		{
