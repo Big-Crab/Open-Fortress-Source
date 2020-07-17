@@ -125,6 +125,11 @@ private:
 	int iCentreWheelX;
 	int iCentreWheelY;
 
+	ConVarRef m_rawinput; //for linux
+	bool m_rawinput_stored = true;
+	int lastPosX = 0;
+	int lastPosY = 0;
+
 	// Due to vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY); being delayed by several frames, we must wait for 
 	// it to finish moving the mouse cursor before we check the mouse cursor's position, otherwise with quickswitch it will immediately close
 	bool	bHasCursorBeenInWheel = false;
@@ -209,7 +214,7 @@ ConVar hud_weaponwheel_quickswitch("hud_weaponwheel_quickswitch", "0", FCVAR_ARC
 
 bool bWheelActive = false;
 void IN_WeaponWheelDown()
-{
+{	
 	bWheelActive = true;
 }
 
@@ -224,7 +229,7 @@ ConCommand hud_weaponwheel_off("-weaponwheel", IN_WeaponWheelUp);
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-CHudWeaponWheel::CHudWeaponWheel(const char *pElementName) : CHudElement(pElementName), BaseClass(NULL, "HudWeaponwheel")
+CHudWeaponWheel::CHudWeaponWheel(const char *pElementName) : CHudElement(pElementName), BaseClass(NULL, "HudWeaponwheel"), m_rawinput( "m_rawinput" )
 {
 	Panel *pParent = g_pClientMode->GetViewport();
 	SetParent(pParent);
@@ -342,7 +347,18 @@ void CHudWeaponWheel::CheckMousePos()
 
 	int deltaX = ::inputsystem->GetAnalogDelta( AnalogCode_t::MOUSE_X );
 	int deltaY = ::inputsystem->GetAnalogDelta( AnalogCode_t::MOUSE_Y );
-//	Msg("DELTA: %i|%i \n", deltaX, deltaY);
+	Msg("DELTA: %i|%i \n", deltaX, deltaY);
+
+	/*  This *works* in linux but is super janky and doesnt work if you move the mouse slowly.
+	int valX = ::inputsystem->GetAnalogValue( AnalogCode_t::MOUSE_X );
+	int valY = ::inputsystem->GetAnalogValue( AnalogCode_t::MOUSE_Y );
+
+	deltaX = valX - iCentreScreenX;
+	deltaY = valY - iCentreScreenY;
+	
+	lastPosX = valX;
+	lastPosY = valY;
+	*/
 
 	//::inputsystem->GetRawMouseAccumulators(deltaX, deltaY);
 	//::input->ResetMouse();
@@ -814,7 +830,24 @@ void CHudWeaponWheel::OnTick(void)
 
 	// If weapon wheel active bool has changed, change mouse input capabilities etc
 	if (lastWheel != bWheelActive)
+	{
+		#ifdef LINUX
+		if(bWheelActive)
+		{
+			m_rawinput_stored = m_rawinput.GetBool();
+			DevMsg("Linux workaround: rawinput disabled\n");
+			m_rawinput.SetValue(false);
+		}
+		else
+		{
+			DevMsg("Linux workaround: rawinput enabled\n");
+			m_rawinput.SetValue(m_rawinput_stored);
+		}
+		#endif
 		CheckWheel();
+		
+
+	}
 	lastWheel = bWheelActive;
 
 	if (bWheelActive)

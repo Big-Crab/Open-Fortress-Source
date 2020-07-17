@@ -5,8 +5,8 @@
 //
 //===============================================================================
 
-//#ifndef GLOW_OUTLINE_EFFECT_H
-//#define GLOW_OUTLINE_EFFECT_H
+#ifndef OF_COLORBLIND_HELPER_H
+#define OF_COLORBLIND_HELPER_H
 
 #if defined( COMPILER_MSVC )
 #pragma once
@@ -184,4 +184,4 @@ private:
 
 //#endif // GLOWS_ENABLE
 
-//#endif // GLOW_OUTLINE_EFFECT_H
+#endif // OF_COLORBLIND_HELPER_H
