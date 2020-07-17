@@ -13,27 +13,37 @@
  
 #ifdef CLIENT_DLL
 	#include "c_tf_player.h"
+//#include "materialsystem/imaterial.h"
+#include "materialsystem/imesh.h"
+//#include "../client/enginesprite.h"
+#include "../client/view.h"
+//#include "../client/iviewrender.h"
+//#include "engine/ivmodelinfo.h"
+//#include "materialsystem/imaterialvar.h"
 #else
     #include "tf_player.h"
 	#include "ammodef.h"
 	#include "gamestats.h"
 	#include "soundent.h"
 #endif
- 
+
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
  
 #define HOOK_MODEL			"models/weapons/c_models/c_grapple_proj/c_grapple_proj.mdl"
 #define BOLT_MODEL			"models/weapons/c_models/c_grapple_proj/c_grapple_proj.mdl"
 
-/*#define BOLT_AIR_VELOCITY	3500
+#define BOLT_AIR_VELOCITY	3500
 #define BOLT_WATER_VELOCITY	1500
-#define MAX_ROPE_LENGTH		900.f
-#define HOOK_PULL			720.f*/
-#define BOLT_AIR_VELOCITY	1000
-#define BOLT_WATER_VELOCITY 1000
-#define MAX_ROPE_LENGTH		9000.0f
-#define HOOK_PULL			300.0f
+//#define MAX_ROPE_LENGTH		900.f
+#define HOOK_PULL			720.f
+//#define BOLT_AIR_VELOCITY	1000
+//#define BOLT_WATER_VELOCITY 1000
+#define MAX_ROPE_LENGTH		3000.0f
+//#define HOOK_PULL			300.0f
+
+#define REEL_RATE 250.0f
+#define MIN_ROPE_LENGTH		15.0f
 
 extern ConVar of_hook_pendulum;
 
@@ -79,11 +89,11 @@ CWeaponGrapple::CWeaponGrapple( void )
 	m_bFiresUnderwater	  = true;
 	m_iAttached			  = 0;
 	m_nBulletType		  = -1;
-	
+
 #ifdef GAME_DLL
 	m_hHook			= NULL;
 	pBeam			= NULL;
-	m_bRopeExists	= false;
+	m_bRopeExists = false;
 #endif
 }
   
@@ -168,11 +178,11 @@ void CWeaponGrapple::PrimaryAttack(void)
 
 	m_hHook = pHook;
 
-	//Initialize the beam
-	DrawBeam(m_hHook->GetAbsOrigin());
-
 	m_bRopeExists = true;
 	m_flCableFuncStartTime = gpGlobals->curtime;
+
+	//Initialize the beam
+//	DrawBeam(m_hHook->GetAbsOrigin());
 #endif
 
 	m_flNextPrimaryAttack = gpGlobals->curtime - 1.f;
@@ -181,6 +191,10 @@ void CWeaponGrapple::PrimaryAttack(void)
 	SetWeaponIdleTime(gpGlobals->curtime + SequenceDuration(ACT_VM_PRIMARYATTACK));
 }
 
+#ifndef GAME_DLL
+static IMaterial *g_pBeamWireframeMaterial;
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -188,6 +202,8 @@ void CWeaponGrapple::ItemPostFrame(void)
 {
 	if (!CanAttack())
 		return;
+
+	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
 
 	CBaseEntity *Hook = NULL;
 #ifdef GAME_DLL
@@ -206,7 +222,7 @@ void CWeaponGrapple::ItemPostFrame(void)
 	}
 
 	// update new cable effect
-	if (m_bRopeExists)
+	if (m_bRopeExists && Hook)
 	{
 		// hook pos
 		Vector startPoint = m_hHook->GetAbsOrigin();
@@ -246,7 +262,7 @@ void CWeaponGrapple::ItemPostFrame(void)
 		vertices[0] = startPoint;
 		vertices[NUM_CABLE_VERTS - 1] = endPoint;
 		// Iterate over the vertices and position them along the cable
-		for (int i = 1; i < NUM_CABLE_VERTS-1; i++)
+		for (int i = 1; i < NUM_CABLE_VERTS - 1; i++)
 		{
 			// If attached, twang like a taught wire
 			if (m_iAttached)
@@ -272,13 +288,6 @@ void CWeaponGrapple::ItemPostFrame(void)
 					displacement /= (x - S + 1);
 				}
 
-				//float spiralProgress = (x / (2.0f*S)) * (M_PI_F * 4.0f);
-				//float spiralProgress = (x / (2.0f*S)) * (M_PI_F * 0.5f);
-				//float spiralProgress = displacement + (x / (2.0f*S)) * (M_PI_F * 0.5f);
-				//float spiralProgress = 2.5f / (t*x);
-				//float spiralProgress = t / (5.0f*x);
-				//float spiralProgress = t / (4.0f* powf(x, 0.25f));
-
 				float spiralProgress = (x * M_PI_F) * t;
 
 				displacement *= dispScale;
@@ -287,15 +296,20 @@ void CWeaponGrapple::ItemPostFrame(void)
 			}
 			cableStepCurrent += cableStep;
 
-			int col = ceil(((float) i / (float) NUM_CABLE_VERTS) * 255.0);
+			const Vector offset = m_vCableUp * 2.0f;
+			const Vector offsetH = m_vCableRight * 2.0f;
+			int col = ceil(((float)i / (float)NUM_CABLE_VERTS) * 255.0);
 			DebugDrawLine(vertices[i], vertices[i - 1], col, col, col, false, 0.05f);
+			DebugDrawLine(vertices[i] + offset, vertices[i - 1] + offset, col, col, col, false, 0.05f);
+			DebugDrawLine(vertices[i] - offset, vertices[i - 1] + offset, col, col, col, false, 0.05f);
+			DebugDrawLine(vertices[i] + offsetH, vertices[i - 1] + offsetH, col, col, col, false, 0.05f);
+			DebugDrawLine(vertices[i] - offsetH, vertices[i - 1] + offsetH, col, col, col, false, 0.05f);
 		}
 	}
 #else
 	Hook = m_hHook.Get();
 #endif
 
-	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
 	if (!pPlayer || !pPlayer->IsAlive())
 	{
 		if (Hook)
@@ -371,13 +385,13 @@ void CWeaponGrapple::RemoveHook(void)
 	m_hHook->SetThink(NULL);
 	UTIL_Remove(m_hHook);
 
-	m_bRopeExists = false;
-
 	if (pBeam)
 	{
 		UTIL_Remove(pBeam); //Kill beam
 		pBeam = NULL;
 	}
+
+	m_bRopeExists = false;
 #endif
 
 	CTFPlayer *pPlayer = ToTFPlayer(GetPlayerOwner());
@@ -474,7 +488,7 @@ void CWeaponGrapple::DrawBeam(const Vector &endPos, const float width)
 	//Sets scrollrate of the beam sprite 
 	float scrollOffset = gpGlobals->curtime + 5.5;
 	pBeam->SetScrollRate(scrollOffset);
-	
+
 	UpdateWaterState();
 }
 
