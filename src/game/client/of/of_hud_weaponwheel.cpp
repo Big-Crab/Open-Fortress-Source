@@ -125,10 +125,10 @@ private:
 	int iCentreWheelX;
 	int iCentreWheelY;
 
-	ConVarRef m_rawinput; //for linux
+	//This block of 3 members are for linux fixes
+	ConVarRef m_rawinput;
 	bool m_rawinput_stored = true;
-	int lastPosX = 0;
-	int lastPosY = 0;
+	bool bLinuxMouseFix = false;
 
 	// Due to vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY); being delayed by several frames, we must wait for 
 	// it to finish moving the mouse cursor before we check the mouse cursor's position, otherwise with quickswitch it will immediately close
@@ -347,21 +347,24 @@ void CHudWeaponWheel::CheckMousePos()
 
 	int deltaX = ::inputsystem->GetAnalogDelta( AnalogCode_t::MOUSE_X );
 	int deltaY = ::inputsystem->GetAnalogDelta( AnalogCode_t::MOUSE_Y );
-	Msg("DELTA: %i|%i \n", deltaX, deltaY);
-
-	/*  This *works* in linux but is super janky and doesnt work if you move the mouse slowly.
-	int valX = ::inputsystem->GetAnalogValue( AnalogCode_t::MOUSE_X );
-	int valY = ::inputsystem->GetAnalogValue( AnalogCode_t::MOUSE_Y );
-
-	deltaX = valX - iCentreScreenX;
-	deltaY = valY - iCentreScreenY;
 	
-	lastPosX = valX;
-	lastPosY = valY;
-	*/
+#ifdef LINUX
+	//some awesome Linux only JANK to see if the delta values are valid
+	if(deltaX || deltaY)
+		DevMsg("DELTA: %i|%i \n", deltaX, deltaY);
 
-	//::inputsystem->GetRawMouseAccumulators(deltaX, deltaY);
+	if(abs(deltaX) > 200 || abs(deltaY) > 200)  //super ultra janky.
+	{
+		//as far as I can tell, the player cannot move the mouse bigger than about
+		//20ish delta, so something must be wrong here.  lets reset.
+		DevMsg("BAD DELTA\n");
+		deltaX = 0;
+		deltaY = 0;
+	}
+#endif
 	//::input->ResetMouse();
+
+	
 
 	// the Cursor Limit is the farthest the cursor can go from the centre, the
 	// deadzone is the minimum distance before the graphic snaps to the edge and can select spokes
@@ -388,6 +391,7 @@ void CHudWeaponWheel::CheckMousePos()
 	// If the virtual cursor is outside the deadzone, select the closest panel based on angle
 	if (distance >= deadzone)
 	{
+		//bLinuxMouseFix = true;
 		//if (bHasCursorBeenInWheel)
 		//{
 			float mousePosAsAngle = RAD2DEG(atan2(-(float)y, (float)x)) + 90.0f - pointAngleFromCentre;
@@ -828,22 +832,51 @@ void CHudWeaponWheel::OnTick(void)
 	if (!m_bLerpDone)
 		PerformBlurLerp();
 
+#ifdef LINUX
+	if (bLinuxMouseFix)
+	{
+		int curPosX, curPosY;
+		if(m_rawinput.GetBool())
+			m_rawinput.SetValue(false);
+		else
+		{
+			DevMsg("Attempting to center mos pos\n");	
+			vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY);
+
+			vgui::input()->GetCursorPos(curPosX, curPosY);
+			if(abs(curPosX - iCentreScreenX) < 50 && abs(curPosY - iCentreScreenY) < 50)
+			{ //mouse repositioned successfully!
+				
+				m_rawinput.SetValue(true);
+				bLinuxMouseFix = false;
+			}
+			else
+			{
+				DevMsg("WTF %i|%i\n", curPosX - iCentreScreenX, curPosY - iCentreScreenY);
+			}
+		}
+			
+	}
+#endif
+
 	// If weapon wheel active bool has changed, change mouse input capabilities etc
 	if (lastWheel != bWheelActive)
 	{
-		#ifdef LINUX
+#ifdef LINUX
 		if(bWheelActive)
 		{
 			m_rawinput_stored = m_rawinput.GetBool();
 			DevMsg("Linux workaround: rawinput disabled\n");
-			m_rawinput.SetValue(false);
+			//m_rawinput.SetValue(false);
+			//vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY);
+			bLinuxMouseFix = true;
 		}
 		else
 		{
-			DevMsg("Linux workaround: rawinput enabled\n");
+			DevMsg("Linux workaround: rawinput restored\n");
 			m_rawinput.SetValue(m_rawinput_stored);
 		}
-		#endif
+#endif
 		CheckWheel();
 		
 
@@ -851,7 +884,22 @@ void CHudWeaponWheel::OnTick(void)
 	lastWheel = bWheelActive;
 
 	if (bWheelActive)
-		CheckMousePos();
+	{
+#ifdef LINUX
+		if(!bLinuxMouseFix)
+#endif
+			CheckMousePos();
+
+#ifdef LINUX
+		int curPosX_b, curPosY_b;
+		vgui::input()->GetCursorPos(curPosX_b, curPosY_b);
+		if(curPosX_b == 0 || curPosY_b == 0 || curPosX_b >= (iCentreScreenX * 2) - 1 || curPosY_b >= (iCentreScreenY *2) - 1)
+			bLinuxMouseFix = true;
+#endif
+
+	}
+
+	
 
 	// Scan for changes in the number of weapons we have
 	int weaponsThisTick = 0;
