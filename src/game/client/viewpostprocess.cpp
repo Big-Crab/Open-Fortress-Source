@@ -2704,7 +2704,7 @@ void DoEnginePostProcessing(int x, int y, int w, int h, bool bFlashlightIsOn, bo
 		}
 
 		// test
-		static IMaterial *pgrey = materials->FindMaterial("greyscale", TEXTURE_GROUP_OTHER);
+/*		static IMaterial *pgrey = materials->FindMaterial("greyscale", TEXTURE_GROUP_OTHER);
 		if (pgrey)
 		{
 			UpdateScreenEffectTexture();
@@ -2712,6 +2712,7 @@ void DoEnginePostProcessing(int x, int y, int w, int h, bool bFlashlightIsOn, bo
 				0, 0, w - 1, h - 1,
 				w, h, GetClientWorldEntity()->GetClientRenderable());
 		}
+*/
 	}
 #endif
 
