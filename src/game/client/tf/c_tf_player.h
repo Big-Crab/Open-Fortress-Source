@@ -16,6 +16,7 @@
 #include "c_playerattachedmodel.h"
 #include "iinput.h"
 #include "physpropclientside.h"
+#include "../of/of_colorblind_helper.h"
 
 class C_MuzzleFlashModel;
 class C_BaseObject;
@@ -156,7 +157,7 @@ public:
 	void CreateSaveMeEffect( void );
 	void CreateChattingEffect(void);
 
-	CGlowObject		   *m_pGlowEffect;
+	CGlowObject			*m_pGlowEffect;
 
 	virtual void	GetGlowEffectColor( float *r, float *g, float *b );
 

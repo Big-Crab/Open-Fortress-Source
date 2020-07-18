@@ -57,7 +57,9 @@ $Project "Client (Open Fortress)"
                     }
                 }
             }
-			
+					
+			$File	"of\of_colorblind_helper.h"
+			$File	"of\of_colorblind_helper.cpp"
 			$File	"of\of_hud_weaponwheel.cpp"
 			$File	"of\of_hud_speedometer.cpp"
 			$File "of\of_hud_keydisplay.cpp"
