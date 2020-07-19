@@ -47,8 +47,6 @@
 #include "clienteffectprecachesystem.h"
 #include "glow_outline_effect.h"
 #include "of_discordrpc.h"
-// COLORBLIND OPTION
-#include "../of/of_colorblind_helper.h"
 #if defined( _X360 )
 #include "tf_clientscoreboard.h"
 #endif
@@ -317,7 +315,6 @@ bool ClientModeTFNormal::DoPostScreenSpaceEffects(const CViewSetup *pSetup)
 	if (!IsInFreezeCam())
 	{
 		g_GlowObjectManager.RenderGlowEffects(pSetup, 0);
-		g_TeamPatternObjectManager.RenderTeamPatternEffects(pSetup);
 	}
 
 	return BaseClass::DoPostScreenSpaceEffects(pSetup);

@@ -16,7 +16,6 @@
 #include "c_playerattachedmodel.h"
 #include "iinput.h"
 #include "physpropclientside.h"
-#include "../of/of_colorblind_helper.h"
 
 class C_MuzzleFlashModel;
 class C_BaseObject;

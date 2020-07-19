@@ -19,7 +19,6 @@
 #include "glow_outline_effect.h"
 #endif // GLOWS_ENABLE
 #endif
-#include "of/of_colorblind_helper.h"
 
 class C_BaseCombatWeapon;
 class C_WeaponCombatShield;
@@ -107,7 +106,6 @@ public:
 	bool				IsClientSideGlowEnabled( void ){ return m_bClientSideGlowEnabled; }
 #endif // GLOWS_ENABLE
 #endif
-	CTeamPatternObject	*GetTeamPatternObject(void){ return m_pTeamPatternEffect; }
 	
 public:
 
@@ -120,9 +118,6 @@ protected:
 	virtual void		UpdateGlowEffect( void );
 	virtual void		DestroyGlowEffect( void );
 #endif // GLOWS_ENABLE
-#else
-	virtual void		UpdateTeamPatternEffect( void );
-	virtual void		DestroyTeamPatternEffect( void );
 #endif
 
 	int			m_bloodColor;			// color of blood particless
@@ -142,9 +137,6 @@ private:
 	bool				m_bOldGlowEnabled;
 	CGlowObject			*m_pGlowEffect;
 #endif // GLOWS_ENABLE
-#else
-	bool				m_bColorBlindInitialised;
-	CTeamPatternObject	*m_pTeamPatternEffect;
 #endif
 private:
 	C_BaseCombatCharacter( const C_BaseCombatCharacter & ); // not defined, not accessible

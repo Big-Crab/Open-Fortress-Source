@@ -2694,25 +2694,7 @@ void DoEnginePostProcessing(int x, int y, int w, int h, bool bFlashlightIsOn, bo
 			pRenderContext->DrawScreenSpaceRectangle(pDOFBlurMat, 0, 0, w, h,
 				0, 0, w - 1, h - 1,
 				w, h, GetClientWorldEntity()->GetClientRenderable());
-
-			/*bool bFound = false;
-			IMaterialVar *var = pDOFBlurMat->FindVar("$FOCUSSCALE", &bFound, true);
-			if (bFound)
-			Msg( "$FOCUSSCALE was %f.\n", var->GetFloatValue() );
-			else
-			Msg("dofblur's $FOCUSSCALE was not found!.\n", var->GetFloatValue());*/
 		}
-
-		// test
-/*		static IMaterial *pgrey = materials->FindMaterial("greyscale", TEXTURE_GROUP_OTHER);
-		if (pgrey)
-		{
-			UpdateScreenEffectTexture();
-			pRenderContext->DrawScreenSpaceRectangle(pgrey, 0, 0, w, h,
-				0, 0, w - 1, h - 1,
-				w, h, GetClientWorldEntity()->GetClientRenderable());
-		}
-*/
 	}
 #endif
 
