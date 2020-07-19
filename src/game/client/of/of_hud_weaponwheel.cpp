@@ -835,6 +835,9 @@ void CHudWeaponWheel::OnTick(void)
 #ifdef LINUX
 	if (bLinuxMouseFix)
 	{
+		SetMouseInputEnabled(true);			// Capture the mouse...
+		SetKeyBoardInputEnabled(false);	
+		surface()->SetSoftwareCursor(true);
 		int curPosX, curPosY;
 		if(m_rawinput.GetBool())
 			m_rawinput.SetValue(false);
@@ -869,7 +872,12 @@ void CHudWeaponWheel::OnTick(void)
 			DevMsg("Linux workaround: rawinput disabled\n");
 			//m_rawinput.SetValue(false);
 			//vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY);
-			bLinuxMouseFix = true;
+			//bLinuxMouseFix = true;
+			SetMouseInputEnabled(true);			// Capture the mouse...
+			SetKeyBoardInputEnabled(false);		// ...but not the keyboard!
+			// Replaced the cursor with an $alpha 0 image, since Valve didn't want to give me a way to hide the cursor or prevent mouselook.
+			surface()->SetSoftwareCursor(true);
+
 		}
 		else
 		{
