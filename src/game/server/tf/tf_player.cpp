@@ -5704,6 +5704,9 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 		m_bHadPowerup = true;
 	m_Shared.RemoveAllCond( NULL );
 
+	//remove hook as precaution
+	m_Shared.SetHook(NULL);
+
 	// Reset our model if we were disguised
 	if ( bDisguised )
 	{

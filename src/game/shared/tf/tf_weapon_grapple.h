@@ -20,32 +20,32 @@
 #include "beam_shared.h"
 
 #ifdef CLIENT_DLL
-	#define CWeaponGrapple C_WeaponGrapple
-	#define CTFEternalShotgun C_TFEternalShotgun
+#define CWeaponGrapple C_WeaponGrapple
+#define CTFEternalShotgun C_TFEternalShotgun
 #else
-	#include "props.h"
-	#include "te_effect_dispatch.h"
+#include "props.h"
+#include "te_effect_dispatch.h"
 #endif
 
 //-----------------------------------------------------------------------------
 // CWeaponGrapple
 //-----------------------------------------------------------------------------
 
-class CWeaponGrapple : public CTFWeaponBaseGun       
-{                                                            
-	DECLARE_CLASS( CWeaponGrapple, CTFWeaponBaseGun ); 
+class CWeaponGrapple : public CTFWeaponBaseGun
+{
+	DECLARE_CLASS(CWeaponGrapple, CTFWeaponBaseGun);
 
 public:
 
-	CWeaponGrapple( void );
+	CWeaponGrapple(void);
 
-	void			Precache( void );
-	void			PrimaryAttack( void );
-	bool            CanHolster( void );
-	void            Drop( const Vector &vecVelocity );
-	void			ItemPostFrame( void );
+	void			Precache(void);
+	void			PrimaryAttack(void);
+	bool            CanHolster(void);
+	void            Drop(const Vector &vecVelocity);
+	void			ItemPostFrame(void);
 	void			RemoveHook(void);
-	
+
 
 #ifdef GAME_DLL
 	void			NotifyHookAttached(void);
@@ -53,7 +53,7 @@ public:
 	void			DoImpactEffect(trace_t &tr, int nDamageType);
 #endif
 
-	DECLARE_NETWORKCLASS(); 
+	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
 
 	float						m_flCableFuncStartTime;
@@ -84,31 +84,31 @@ private:
 //-----------------------------------------------------------------------------
 class CGrappleHook : public CBaseCombatCharacter
 {
-    DECLARE_CLASS( CGrappleHook, CBaseCombatCharacter );
+	DECLARE_CLASS(CGrappleHook, CBaseCombatCharacter);
 
 public:
 
 	CGrappleHook(void) {}
-    ~CGrappleHook(void);
-    void Spawn( void );
-    void Precache( void );
-	static CGrappleHook *HookCreate( const Vector &vecOrigin, const QAngle &angAngles, CBaseEntity *pentOwner = NULL );
+	~CGrappleHook(void);
+	void Spawn(void);
+	void Precache(void);
+	static CGrappleHook *HookCreate(const Vector &vecOrigin, const QAngle &angAngles, CBaseEntity *pentOwner = NULL);
 	bool HookLOS();
 
-	bool CreateVPhysics( void );
+	bool CreateVPhysics(void);
 	unsigned int PhysicsSolidMaskForEntity() const;
 	CWeaponGrapple *GetOwner(void) { return m_hOwner; }
-	Class_T Classify( void ) { return CLASS_NONE; }
- 
+	Class_T Classify(void) { return CLASS_NONE; }
+
 protected:
 
-    DECLARE_DATADESC();
- 
+	DECLARE_DATADESC();
+
 private:
 
-	void HookTouch( CBaseEntity *pOther );
-	void FlyThink( void );
-  
+	void HookTouch(CBaseEntity *pOther);
+	void FlyThink(void);
+
 	CWeaponGrapple		*m_hOwner;
 	CTFPlayer			*m_hPlayer;
 };

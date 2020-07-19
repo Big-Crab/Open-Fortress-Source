@@ -158,11 +158,8 @@ void CTFHudMedals::FireGameEvent(IGameEvent *event)
 	}
 	else if (!Q_strcmp("player_death", eventname))
 	{
-		if (event->GetInt("userid") == pIndex) //you dead, funny
-		{
-			died = true;
-		}
-		else if (event->GetInt("attacker") == pIndex) //you killed
+		//you killed
+		if (event->GetInt("attacker") == pIndex)
 		{
 			//Kamikaze
 			if (event->GetBool("kamikaze"))
@@ -229,6 +226,10 @@ void CTFHudMedals::FireGameEvent(IGameEvent *event)
 			else
 				AddMedal(DENIED);
 		}
+
+		//you were killed
+		if (event->GetInt("userid") == pIndex)
+			died = true;
 	}
 }
 

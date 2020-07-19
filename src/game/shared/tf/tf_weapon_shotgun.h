@@ -127,6 +127,7 @@ public:
 	DECLARE_PREDICTABLE();
 
 	CTFEternalShotgun();
+	~CTFEternalShotgun();
 
 	int				GetWeaponID(void) const { return TF_WEAPON_ETERNALSHOTGUN; }
 
@@ -136,28 +137,29 @@ public:
 	void			SecondaryAttack();
 	void			ItemPostFrame();
 	void			RemoveHook(void);
+	CBaseEntity		*GetHookEntity();
 
 	bool			CanHolster(void) const;
+	bool			Holster(CBaseCombatWeapon *pSwitchingTo);
 	void            Drop(const Vector &vecVelocity);
 
 	bool			CanSoftZoom(void) { return false; }
 
 #ifdef GAME_DLL
-	void			NotifyHookAttached(CTFPlayer *hooked = NULL);
+	void			NotifyHookAttached(CBaseEntity *pTarget);
+	bool			HookLOS(Vector hookPos);
 	void   			DrawBeam(const Vector &endPos, const float width = 2.f);
 #endif
 
 private:
 
-	void InitiateHook(CTFPlayer * pPlayer, CBaseEntity *hook);
+	void InitiateHook(CTFPlayer * pPlayer, CBaseEntity *pHook);
 
 #ifdef GAME_DLL
 	CHandle<CBeam>				pBeam;
-	CNetworkHandle(CTFPlayer,	m_hHooked);		//server hook
 	CNetworkHandle(CBaseEntity, m_hHook);		//server hooked player
 #else
-	EHANDLE			m_hHook;					//client hook relay
-	EHANDLE			m_hHooked;					//client hooked player relay
+	EHANDLE						m_hHook;		//client hook relay
 #endif
 
 	CNetworkVar(bool, m_bCanRefire);
@@ -165,22 +167,21 @@ private:
 };
 
 #ifdef GAME_DLL
-class MeatHook : public CBaseCombatCharacter
+class CTFMeatHook : public CBaseCombatCharacter
 {
-	DECLARE_CLASS(MeatHook, CBaseCombatCharacter);
+	DECLARE_CLASS(CTFMeatHook, CBaseCombatCharacter);
 
 public:
 
-	MeatHook(void) {}
-	~MeatHook(void);
+	CTFMeatHook(void) {}
+	~CTFMeatHook(void);
 	void Spawn(void);
 	void Precache(void);
-	static MeatHook *HookCreate(const Vector &vecOrigin, const QAngle &angAngles, CBaseEntity *pentOwner = NULL);
-	CTFSuperShotgun *GetOwner(void) { return m_hOwner; }
-	bool HookLOS();
+	static CTFMeatHook *HookCreate(const Vector &vecOrigin, const QAngle &angAngles, CBaseEntity *pentOwner = NULL);
+	CTFEternalShotgun *GetOwner(void) { return m_hOwner; }
 
-	bool CreateVPhysics(void);
 	unsigned int PhysicsSolidMaskForEntity() const;
+	bool CreateVPhysics(void);
 	Class_T Classify(void) { return CLASS_NONE; }
 
 protected:
@@ -193,7 +194,6 @@ private:
 	void FlyThink(void);
 	
 	CTFEternalShotgun	*m_hOwner;
-	CTFPlayer			*m_hPlayer;
 };
 #endif
 

@@ -33,6 +33,9 @@
 	
 	#define CTFGameRules C_TFGameRules
 	#define CTFGameRulesProxy C_TFGameRulesProxy
+	
+	#define CDuelQueue C_DuelQueue
+	#define CDuelQueueProxy C_DuelQueueProxy
 #else
 
 	extern BOOL no_cease_fire_text;
@@ -106,8 +109,65 @@ public:
 	void	FireTeamplayOutput(void) {m_OutputIsTeamplay.FireOutput(NULL,this);}
 	void	FireGunGameOutput(void) {m_OutputIsGunGame.FireOutput(NULL,this);}
 	void	FireJugOutput(void) {m_OutputIsJug.FireOutput(NULL,this);}
+#else
+	virtual void OnPreDataChanged( DataUpdateType_t updateType );
+	virtual void OnDataChanged( DataUpdateType_t updateType );
 #endif
 };
+
+//The goal of this is keeping track of the duel queue throughtout the matches
+class CDuelQueue : CAutoGameSystem
+{
+public:
+
+	CDuelQueue() : CAutoGameSystem("CDuelQueue") {}
+
+#ifdef CLIENT_DLL
+	DECLARE_CLIENTCLASS_NOBASE(); // This makes datatables able to access our private vars.
+#else
+	DECLARE_SERVERCLASS_NOBASE(); // This makes datatables able to access our private vars.
+#endif
+	
+	virtual bool Init();
+
+	int		GetDuelQueuePos(CBaseEntity *pPlayer);
+	CTFPlayer *GetDueler(int index);
+#ifdef GAME_DLL
+	void 	PlaceIntoDuelQueue(CBaseEntity *pPlayer);
+	void	RemoveFromDuelQueue(CBaseEntity *pPlayer);
+
+	void	IncreaseDuelerWins(CBaseEntity *pPlayer);
+	void	ResetDuelerWins(CBaseEntity *pPlayer);
+	int		GetDuelerWins(CBaseEntity *pPlayer);
+#endif
+
+	// This function is here for our CNetworkVars.
+	inline void NetworkStateChanged()
+	{
+		// Forward the call to the entity that will send the data.
+		CTFGameRulesProxy::NotifyNetworkStateChanged();
+	}
+
+	inline void NetworkStateChanged( void *pVar )
+	{
+		// Forward the call to the entity that will send the data.
+		CTFGameRulesProxy::NotifyNetworkStateChanged();
+	}
+	
+#ifdef CLIENT_DLL
+	virtual void OnPreDataChanged( DataUpdateType_t updateType );
+	virtual void OnDataChanged( DataUpdateType_t updateType );
+#endif
+	
+private:
+
+	CUtlVector<int> m_hDuelQueue;
+#ifdef GAME_DLL
+	int m_iDuelerWins[32];
+#endif
+};
+
+extern CDuelQueue *OFDuelQueue();
 
 class CTFLogicLoadout : public CBaseEntity
 {
@@ -629,15 +689,16 @@ public:
 	void SetRetroMode( int nRetroMode );
 #endif
 
-#ifdef GAME_DLL
 	int		GetDuelQueuePos( CBasePlayer *pPlayer );
-	bool	CheckDuelOvertime();
 	bool	IsDueler( CBasePlayer *pPlayer );
+#ifdef GAME_DLL
+	bool	CheckDuelOvertime();
 	bool	IsRageQuitter(CBasePlayer *pPlayer) { return IsDueler(pPlayer) && !IsInWaitingForPlayers() && State_Get() > GR_STATE_PREGAME; }
 	void 	PlaceIntoDuelQueue( CBasePlayer *pPlayer );
 	void	RemoveFromDuelQueue( CBasePlayer *pPlayer );
 	void	DuelRageQuit( CTFPlayer *pRager );
 	void	ProgressDuelQueues( CTFPlayer *pWinner, CTFPlayer *pLoser, bool rageQuit = false );
+	void	ProgressDuelQueuesTimeLimit();
 #endif
 
 	bool	IsAllClassEnabled( void ) { return m_bAllClass; }

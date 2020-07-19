@@ -325,7 +325,12 @@ void CTFHudDeathNotice::Paint()
 		g_pVGuiLocalize->ConvertANSIToUnicode( msg.Assister.szName, assister, sizeof( assister ) );
 
 		int iVictimTextWide = UTIL_ComputeStringWidth( m_hTextFont, victim ) + xSpacing;
-		int iAssisterTextWide = assister[0] ? UTIL_ComputeStringWidth( m_hTextFont, assister ) + xSpacing : 0;
+		int iPlusTextWide = 0, iAssisterTextWide = 0;
+		if (assister[0])
+		{
+			iPlusTextWide = UTIL_ComputeStringWidth(m_hTextFont, L" + ") + xSpacing; //also account for the " + " space
+			iAssisterTextWide = UTIL_ComputeStringWidth(m_hTextFont, assister) + xSpacing;
+		}
 		int iDeathInfoTextWide = msg.wzInfoText[0] ? UTIL_ComputeStringWidth( m_hTextFont, msg.wzInfoText ) + xSpacing : 0;
 		int iKillerTextWide = killer[0] ? UTIL_ComputeStringWidth( m_hTextFont, killer ) + xSpacing : 0;
 		int iLineTall = m_flLineHeight;
@@ -347,7 +352,7 @@ void CTFHudDeathNotice::Paint()
 			iconTall *= flScale;
 			iconWide *= flScale;
 		}
-		int iTotalWide = iKillerTextWide + iAssisterTextWide + iconWide + iVictimTextWide + iDeathInfoTextWide + ( xMargin * 2 );
+		int iTotalWide = iKillerTextWide + iPlusTextWide + iAssisterTextWide + iconWide + iVictimTextWide + iDeathInfoTextWide + (xMargin * 2);
 		int y = yStart + ( ( iLineTall + m_flLineSpacing ) * i );
 		int yText = y + ( ( iLineTall - iTextTall ) / 2 );
 		int yIcon = y + ( ( iLineTall - iconTall ) / 2 );
@@ -372,21 +377,18 @@ void CTFHudDeathNotice::Paint()
 		if ( killer[0] )
 		{
 			Color clr = TFGameRules()->IsDMGamemode() && !TFGameRules()->IsTeamplay() ? msg.Killer.iColor : GetTeamColor( msg.Killer.iTeam );
-
 			DrawText( x, yText, m_hTextFont, clr, killer );
-
 			x += iKillerTextWide;
 		}
 
 		if ( assister[0] )
 		{
 			// Draw a + between the names
-			Color clr = TFGameRules()->IsDMGamemode() && !TFGameRules()->IsTeamplay() ? msg.Assister.iColor : GetTeamColor( msg.Assister.iTeam );
-
 			DrawText(x, yText, m_hTextFont, GetInfoTextColor( i, msg.bLocalPlayerInvolved ), L" + ");
-			x += 24;
+			x += iPlusTextWide;
 
 			// Draw assister's name
+			Color clr = TFGameRules()->IsDMGamemode() && !TFGameRules()->IsTeamplay() ? msg.Assister.iColor : GetTeamColor(msg.Assister.iTeam);
 			DrawText( x, yText, m_hTextFont, clr, assister );
 			x += iAssisterTextWide;
 		}

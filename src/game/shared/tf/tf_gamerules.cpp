@@ -349,6 +349,42 @@ END_NETWORK_TABLE()
 LINK_ENTITY_TO_CLASS( tf_gamerules, CTFGameRulesProxy );
 IMPLEMENT_NETWORKCLASS_ALIASED( TFGameRulesProxy, DT_TFGameRulesProxy )
 
+//-----------------------------------------------------------------------------
+// Purpose: Networking things for Duel, have to put it here
+// so it doesnt give undefined namespace error in the gamerules proxy
+//-----------------------------------------------------------------------------
+
+BEGIN_NETWORK_TABLE_NOBASE( CDuelQueue, DT_DuelQueue )
+#ifdef CLIENT_DLL
+	RecvPropUtlVector( RECVINFO_UTLVECTOR( m_hDuelQueue ), 32, RecvPropInt(NULL, 0, sizeof(int)) ),
+#else
+	SendPropUtlVector( SENDINFO_UTLVECTOR( m_hDuelQueue ), 32, SendPropInt( NULL, 0, sizeof(int) ) ),
+#endif
+END_NETWORK_TABLE()
+
+#ifdef CLIENT_DLL
+//-----------------------------------------------------------------------------
+// Purpose: Temp For now
+//-----------------------------------------------------------------------------
+void CDuelQueue::OnPreDataChanged( DataUpdateType_t updateType )
+{
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CDuelQueue::OnDataChanged( DataUpdateType_t updateType )
+{
+	if ( updateType == DATA_UPDATE_CREATED )
+	{
+	}
+
+	if ( updateType == DATA_UPDATE_CREATED )
+	{
+	}
+}
+#endif
+
 #ifdef CLIENT_DLL
 	void RecvProxy_TFGameRules( const RecvProp *pProp, void **pOut, void *pData, int objectID )
 	{
@@ -356,8 +392,34 @@ IMPLEMENT_NETWORKCLASS_ALIASED( TFGameRulesProxy, DT_TFGameRulesProxy )
 		Assert( pRules );
 		*pOut = pRules;
 	}
+	void RecvProxy_DuelQueue( const RecvProp *pProp, void **pOut, void *pData, int objectID )
+	{
+		CDuelQueue *pQueue = dynamic_cast<CDuelQueue*>( OFDuelQueue() );
+		Assert( pQueue );
+		*pOut = pQueue;
+	}
 
+	void CTFGameRulesProxy::OnPreDataChanged( DataUpdateType_t updateType )
+	{
+		BaseClass::OnPreDataChanged( updateType );
+		// Reroute data changed calls to the non-entity gamerules 
+		CDuelQueue *pQueue = dynamic_cast<CDuelQueue*>( OFDuelQueue() );
+		Assert( pQueue );
+		pQueue->OnPreDataChanged(updateType);
+	}
+	
+	void CTFGameRulesProxy::OnDataChanged( DataUpdateType_t updateType )
+	{
+		BaseClass::OnDataChanged( updateType );
+		// Reroute data changed calls to the non-entity gamerules 
+		CDuelQueue *pQueue = dynamic_cast<CDuelQueue*>( OFDuelQueue() );
+		Assert( pQueue );
+		pQueue->OnDataChanged(updateType);
+	}
+	
+	
 	BEGIN_RECV_TABLE( CTFGameRulesProxy, DT_TFGameRulesProxy )
+		RecvPropDataTable( "duelqueue_data", 0, 0, &REFERENCE_RECV_TABLE( DT_DuelQueue ), RecvProxy_DuelQueue ),
 		RecvPropDataTable( "tf_gamerules_data", 0, 0, &REFERENCE_RECV_TABLE( DT_TFGameRules ), RecvProxy_TFGameRules )
 	END_RECV_TABLE()
 #else
@@ -369,8 +431,17 @@ IMPLEMENT_NETWORKCLASS_ALIASED( TFGameRulesProxy, DT_TFGameRulesProxy )
 		return pRules;
 	}
 
+	void* SendProxy_DuelQueue( const SendProp *pProp, const void *pStructBase, const void *pData, CSendProxyRecipients *pRecipients, int objectID )
+	{
+		CDuelQueue *pQueue = dynamic_cast<CDuelQueue*>( OFDuelQueue() );
+		Assert( pQueue );
+		pRecipients->SetAllRecipients();
+		return pQueue;
+	}
+
 	BEGIN_SEND_TABLE( CTFGameRulesProxy, DT_TFGameRulesProxy )
-		SendPropDataTable( "tf_gamerules_data", 0, &REFERENCE_SEND_TABLE( DT_TFGameRules ), SendProxy_TFGameRules )
+		SendPropDataTable( "tf_gamerules_data", 0, &REFERENCE_SEND_TABLE( DT_TFGameRules ), SendProxy_TFGameRules ),
+		SendPropDataTable( "duelqueue_data", 0, &REFERENCE_SEND_TABLE( DT_DuelQueue ), SendProxy_DuelQueue )
 	END_SEND_TABLE()
 #endif
 
@@ -1447,37 +1518,13 @@ void CTFGameRules::SetRetroMode( int nRetroMode)
 //-----------------------------------------------------------------------------
 // Purpose: Duel stuff
 //-----------------------------------------------------------------------------
-#ifdef GAME_DLL
-
-//The goal of this is keeping track of the duel queue throughtout the matches
-class CDuelQueue : CAutoGameSystem
-{
-public:
-
-	CDuelQueue() : CAutoGameSystem("CDuelQueue") {}
-
-	virtual bool Init();
-
-	int		GetDuelQueuePos(CBaseEntity *pPlayer);
-	CTFPlayer *GetDueler(int index);
-	void 	PlaceIntoDuelQueue(CBaseEntity *pPlayer);
-	void	RemoveFromDuelQueue(CBaseEntity *pPlayer);
-
-	void	IncreaseDuelerWins(CBaseEntity *pPlayer);
-	void	ResetDuelerWins(CBaseEntity *pPlayer);
-	int		GetDuelerWins(CBaseEntity *pPlayer);
-
-private:
-
-	CUtlVector<int> m_hDuelQueue;
-	int m_iDuelerWins[32];
-};
 
 bool CDuelQueue::Init()
 {
+#ifdef GAME_DLL
 	for (int i = 0; i < 32; i++)
 		m_iDuelerWins[i] = 0;
-
+#endif
 	return true;
 }
 
@@ -1488,9 +1535,12 @@ int CDuelQueue::GetDuelQueuePos(CBaseEntity *pPlayer)
 
 CTFPlayer *CDuelQueue::GetDueler(int index)
 {
+	if( index >= m_hDuelQueue.Count() )
+		return NULL;
+
 	return ToTFPlayer( UTIL_PlayerByIndex (m_hDuelQueue[index] ) );
 }
-
+#ifdef GAME_DLL
 void CDuelQueue::PlaceIntoDuelQueue(CBaseEntity *pPlayer)
 {
 	m_hDuelQueue.AddToTail(pPlayer->entindex());
@@ -1521,8 +1571,13 @@ void CDuelQueue::ResetDuelerWins(CBaseEntity *pPlayer)
 {
 	m_iDuelerWins[pPlayer->entindex()] = 0;
 }
-
+#endif
 CDuelQueue g_pDuelQueue;
+
+CDuelQueue *OFDuelQueue()
+{
+	return &g_pDuelQueue;
+}
 
 //**************************************************************
 //**************************************************************
@@ -1532,14 +1587,22 @@ int CTFGameRules::GetDuelQueuePos( CBasePlayer *pPlayer )
 	return g_pDuelQueue.GetDuelQueuePos( pPlayer );
 }
 
-bool CTFGameRules::CheckDuelOvertime()
-{
-	return g_pDuelQueue.GetDueler(0)->FragCount() == g_pDuelQueue.GetDueler(1)->FragCount();
-}
-
 bool CTFGameRules::IsDueler( CBasePlayer *pPlayer )
 {
 	return GetDuelQueuePos( pPlayer ) < 2;
+}
+
+#ifdef GAME_DLL
+
+bool CTFGameRules::CheckDuelOvertime()
+{
+	CTFPlayer *pDuelerOne = g_pDuelQueue.GetDueler(0);
+	CTFPlayer *pDuelerTwo = g_pDuelQueue.GetDueler(1);
+
+	if (!pDuelerOne || !pDuelerTwo)
+		return false;
+	
+	return g_pDuelQueue.GetDueler(0)->FragCount() == g_pDuelQueue.GetDueler(1)->FragCount();
 }
 
 void CTFGameRules::PlaceIntoDuelQueue( CBasePlayer *pPlayer )
@@ -1564,6 +1627,20 @@ void CTFGameRules::DuelRageQuit( CTFPlayer *pRager )
 	ProgressDuelQueues(g_pDuelQueue.GetDueler(iRagerIndex == 1 ? 0 : 1), pRager, true);
 }
 
+void CTFGameRules::ProgressDuelQueuesTimeLimit()
+{
+	CTFPlayer *pDuelerOne = g_pDuelQueue.GetDueler(0);
+	CTFPlayer *pDuelerTwo = g_pDuelQueue.GetDueler(1);
+
+	if (!pDuelerOne || !pDuelerTwo)
+		return;
+
+	if(pDuelerOne->FragCount() > pDuelerTwo->FragCount())
+		ProgressDuelQueues(pDuelerOne, pDuelerTwo);
+	else
+		ProgressDuelQueues(pDuelerTwo, pDuelerOne);
+}
+
 void CTFGameRules::ProgressDuelQueues(CTFPlayer *pWinner, CTFPlayer *pLoser, bool rageQuit)
 {
 	//Loser gets thrown to the bottom of the queue
@@ -1582,7 +1659,7 @@ void CTFGameRules::ProgressDuelQueues(CTFPlayer *pWinner, CTFPlayer *pLoser, boo
 		g_pDuelQueue.PlaceIntoDuelQueue(pWinner);
 	}
 
-	//Msg("queue has progressed, winner now has positon %d with %d wins and loser position %d\n", GetDuelQueuePos(pWinner), g_pDuelQueue.GetDuelerWins(pWinner), GetDuelQueuePos(pLoser));
+	//Msg("queue has progressed, winner now has positon %d and loser position %d\n", GetDuelQueuePos(pWinner), GetDuelQueuePos(pLoser));
 }
 #endif
 

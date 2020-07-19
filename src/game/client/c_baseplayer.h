@@ -511,6 +511,7 @@ protected:
 	bool			m_IsFootprintOnLeft;
 
 #ifdef OF_CLIENT_DLL
+	bool			m_bNoFootStepsSound;
 	bool			m_bIsCSliding;
 #endif
 

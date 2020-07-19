@@ -6,10 +6,7 @@
 
 #include "fmod_manager.h"
 
-// HUD
-#include <vgui/IScheme.h>
-#include "tf_controls.h"
-#include "hudelement.h"
+#include "saverestore_utlvector.h"
 
 class C_TFMusicPlayer : public C_BaseEntity
 {
@@ -83,32 +80,5 @@ public:
 };
 
 extern C_TFDMMusicManager* DMMusicManager();
-
-class CTFHudNowPlaying : public vgui::EditablePanel, public CHudElement
-{
-private:
-	DECLARE_CLASS_SIMPLE(CTFHudNowPlaying, EditablePanel);
-
-public:
-	CTFHudNowPlaying(const char *pElementName);
-
-	virtual void FireGameEvent(IGameEvent * event);
-	virtual void OnThink();
-	virtual bool ShouldDraw(void);
-	virtual void ApplySchemeSettings( vgui::IScheme *pScheme );
-
-	virtual int GetRenderGroupPriority() { return 70; }
-
-private:
-	float flDrawTime;
-	
-	EditablePanel 	*m_pNameContainer;
-	CTFImagePanel 	*m_pNameBG;
-	CExLabel 		*m_pNameLabel;
-	
-	EditablePanel 	*m_pArtistContainer;
-	CTFImagePanel 	*m_pArtistBG;
-	CExLabel 		*m_pArtistLabel;
-};
 
 #endif //OF_MUSIC_PLAYER_H

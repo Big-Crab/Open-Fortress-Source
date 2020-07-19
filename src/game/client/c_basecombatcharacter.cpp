@@ -29,6 +29,10 @@ C_BaseCombatCharacter::C_BaseCombatCharacter()
 	{
 		m_iAmmo.Set( i, 0 );
 	}
+
+	PrecacheMaterial("effects/poison/toxicoverlay");
+	PrecacheMaterial("greyscale");
+	PrecacheMaterial("dofblur");
 	
 #ifndef OF_CLIENT_DLL
 #ifdef GLOWS_ENABLE

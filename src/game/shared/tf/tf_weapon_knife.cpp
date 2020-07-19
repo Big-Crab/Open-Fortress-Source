@@ -49,6 +49,17 @@ END_PREDICTION_DATA()
 LINK_ENTITY_TO_CLASS( tfc_weapon_knife, CTFCKnife );
 //PRECACHE_WEAPON_REGISTER( tfc_weapon_knife );
 
+IMPLEMENT_NETWORKCLASS_ALIASED(TFCombatKnife, DT_TFCombatWeaponKnife)
+
+BEGIN_NETWORK_TABLE(CTFCombatKnife, DT_TFCombatWeaponKnife)
+END_NETWORK_TABLE()
+
+BEGIN_PREDICTION_DATA(CTFCombatKnife)
+END_PREDICTION_DATA()
+
+LINK_ENTITY_TO_CLASS(tf_weapon_combatknife, CTFCombatKnife);
+//PRECACHE_WEAPON_REGISTER( tf_weapon_combatknife );
+
 //=============================================================================
 //
 // Weapon Knife functions.

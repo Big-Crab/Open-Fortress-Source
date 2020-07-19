@@ -10,9 +10,9 @@
 #include "cbase.h"
 #include "in_buttons.h"
 #include "tf_weapon_grapple.h"
- 
+
 #ifdef CLIENT_DLL
-	#include "c_tf_player.h"
+#include "c_tf_player.h"
 //#include "materialsystem/imaterial.h"
 #include "materialsystem/imesh.h"
 //#include "../client/enginesprite.h"
@@ -21,15 +21,15 @@
 //#include "engine/ivmodelinfo.h"
 //#include "materialsystem/imaterialvar.h"
 #else
-    #include "tf_player.h"
-	#include "ammodef.h"
-	#include "gamestats.h"
-	#include "soundent.h"
+#include "tf_player.h"
+#include "ammodef.h"
+#include "gamestats.h"
+#include "soundent.h"
 #endif
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
- 
+
 #define HOOK_MODEL			"models/weapons/c_models/c_grapple_proj/c_grapple_proj.mdl"
 #define BOLT_MODEL			"models/weapons/c_models/c_grapple_proj/c_grapple_proj.mdl"
 
@@ -52,67 +52,67 @@ extern ConVar of_hook_pendulum;
 #undef CWeaponGrapple
 
 IMPLEMENT_CLIENTCLASS_DT(C_WeaponGrapple, DT_WeaponGrapple, CWeaponGrapple)
-	RecvPropInt(RECVINFO(m_iAttached)),
-	RecvPropInt(RECVINFO(m_nBulletType)),
-	RecvPropEHandle(RECVINFO(m_hHook)),
+RecvPropInt(RECVINFO(m_iAttached)),
+RecvPropInt(RECVINFO(m_nBulletType)),
+RecvPropEHandle(RECVINFO(m_hHook)),
 END_NETWORK_TABLE()
 
 #define CWeaponGrapple C_WeaponGrapple
 
 #else
 IMPLEMENT_SERVERCLASS_ST(CWeaponGrapple, DT_WeaponGrapple)
-	SendPropInt( SENDINFO( m_iAttached ) ),
-	SendPropInt( SENDINFO ( m_nBulletType ) ),
-	SendPropEHandle( SENDINFO( m_hHook ) ),
+SendPropInt(SENDINFO(m_iAttached)),
+SendPropInt(SENDINFO(m_nBulletType)),
+SendPropEHandle(SENDINFO(m_hHook)),
 END_NETWORK_TABLE()
 #endif
 
 #ifdef CLIENT_DLL
-BEGIN_PREDICTION_DATA( CWeaponGrapple )
-	DEFINE_PRED_FIELD( m_iAttached, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+BEGIN_PREDICTION_DATA(CWeaponGrapple)
+DEFINE_PRED_FIELD(m_iAttached, FIELD_INTEGER, FTYPEDESC_INSENDTABLE),
 END_PREDICTION_DATA()
 #endif
- 
-LINK_ENTITY_TO_CLASS( tf_weapon_grapple, CWeaponGrapple );
+
+LINK_ENTITY_TO_CLASS(tf_weapon_grapple, CWeaponGrapple);
 
 
 //**************************************************************************
 //GRAPPLING WEAPON
- 
+
 //-----------------------------------------------------------------------------
 // Purpose: Constructor
 //-----------------------------------------------------------------------------
-CWeaponGrapple::CWeaponGrapple( void )
+CWeaponGrapple::CWeaponGrapple(void)
 {
 	m_flNextPrimaryAttack = 0.f;
-	m_bReloadsSingly	  = true;
-	m_bFiresUnderwater	  = true;
-	m_iAttached			  = 0;
-	m_nBulletType		  = -1;
+	m_bReloadsSingly = true;
+	m_bFiresUnderwater = true;
+	m_iAttached = 0;
+	m_nBulletType = -1;
 
 #ifdef GAME_DLL
-	m_hHook			= NULL;
-	pBeam			= NULL;
+	m_hHook = NULL;
+	pBeam = NULL;
 	m_bRopeExists = false;
 #endif
 }
-  
+
 //-----------------------------------------------------------------------------
 // Purpose: Precache
 //-----------------------------------------------------------------------------
-void CWeaponGrapple::Precache( void )
+void CWeaponGrapple::Precache(void)
 {
 #ifdef GAME_DLL
-	UTIL_PrecacheOther( "grapple_hook" );
+	UTIL_PrecacheOther("grapple_hook");
 #endif
- 
-	PrecacheModel( "cable/cable_red.vmt" );
- 	PrecacheModel( "cable/cable_blue.vmt" );
-	PrecacheModel( "cable/cable_purple.vmt" );
+
+	PrecacheModel("cable/cable_red.vmt");
+	PrecacheModel("cable/cable_blue.vmt");
+	PrecacheModel("cable/cable_purple.vmt");
 
 	BaseClass::Precache();
 }
- 
+
 void CWeaponGrapple::PrimaryAttack(void)
 {
 	// Can't have an active hook out
@@ -126,26 +126,26 @@ void CWeaponGrapple::PrimaryAttack(void)
 #ifdef GAME_DLL
 	gamestats->Event_WeaponFired(pPlayer, true, GetClassname());
 
-	bool bCenter = m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_bCenterfireProjectile;
+	bool bCenter = m_pWeaponInfo->GetWeaponData(m_iWeaponMode).m_bCenterfireProjectile;
 	int iQuakeCvar = 0;
 
-	if ( !pPlayer->IsFakeClient() )
-		iQuakeCvar = V_atoi( engine->GetClientConVarValue(pPlayer->entindex(), "viewmodel_centered") );
+	if (!pPlayer->IsFakeClient())
+		iQuakeCvar = V_atoi(engine->GetClientConVarValue(pPlayer->entindex(), "viewmodel_centered"));
 
 	//Obligatory for MP so the sound can be played
 	CDisablePredictionFiltering disabler;
-	WeaponSound( SINGLE );
+	WeaponSound(SINGLE);
 
-	SendWeaponAnim( ACT_VM_PRIMARYATTACK );
-	pPlayer->DoAnimationEvent( PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_GRAPPLE_FIRE_START );
+	SendWeaponAnim(ACT_VM_PRIMARYATTACK);
+	pPlayer->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM_GESTURE, ACT_GRAPPLE_FIRE_START);
 
-	pPlayer->SetMuzzleFlashTime( gpGlobals->curtime + 0.5 );
+	pPlayer->SetMuzzleFlashTime(gpGlobals->curtime + 0.5);
 
-	CSoundEnt::InsertSound( SOUND_COMBAT, GetAbsOrigin(), 600, 0.2, GetOwner() );
+	CSoundEnt::InsertSound(SOUND_COMBAT, GetAbsOrigin(), 600, 0.2, GetOwner());
 
 	Vector vecSrc;
 	Vector vecOffset(30.f, 4.f, -6.0f);
-	if ( bCenter || iQuakeCvar )
+	if (bCenter || iQuakeCvar)
 	{
 		vecOffset.x = 12.0f; //forward backwards
 		vecOffset.y = 0.0f; // left right
@@ -160,11 +160,11 @@ void CWeaponGrapple::PrimaryAttack(void)
 	VectorNormalize(vecDir);
 
 	//Gets the position where the hook will hit
-	Vector vecEnd = vecSrc + (vecDir * MAX_TRACE_LENGTH);	
+	Vector vecEnd = vecSrc + (vecDir * MAX_TRACE_LENGTH);
 
 	//Traces a line between the two vectors
 	trace_t tr;
-	UTIL_TraceLine( vecSrc, vecEnd, MASK_SHOT, pPlayer, COLLISION_GROUP_NONE, &tr);
+	UTIL_TraceLine(vecSrc, vecEnd, MASK_SHOT, pPlayer, COLLISION_GROUP_NONE, &tr);
 
 	//A hook that is not fired out of your face, what a mindblowing concept!
 	CGrappleHook *pHook = CGrappleHook::HookCreate(vecSrc, angle, this);
@@ -182,7 +182,7 @@ void CWeaponGrapple::PrimaryAttack(void)
 	m_flCableFuncStartTime = gpGlobals->curtime;
 
 	//Initialize the beam
-//	DrawBeam(m_hHook->GetAbsOrigin());
+	//	DrawBeam(m_hHook->GetAbsOrigin());
 #endif
 
 	m_flNextPrimaryAttack = gpGlobals->curtime - 1.f;
@@ -245,7 +245,8 @@ void CWeaponGrapple::ItemPostFrame(void)
 		const float S = 2.0f;
 		const float dispScale = 550.0f; // 150
 		const float dispScaleTwang = 500.0f;
-		const float timeScale = 1.5f;
+		//const float timeScale = 1.5f;
+		const float timeScale = 2.5f;
 		const float timeScaleTwang = 20.0f;
 		const float timeScaleTwangScale = 0.4f;
 		const float maxTwang = 0.4f;
@@ -407,7 +408,7 @@ void CWeaponGrapple::RemoveHook(void)
 	m_flNextPrimaryAttack = gpGlobals->curtime + 1.f;
 	m_iAttached = 0;
 }
- 
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -429,7 +430,7 @@ bool CWeaponGrapple::CanHolster(void)
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CWeaponGrapple::Drop( const Vector &vecVelocity )
+void CWeaponGrapple::Drop(const Vector &vecVelocity)
 {
 	CBaseEntity *Hook = NULL;
 #ifdef GAME_DLL
@@ -440,8 +441,8 @@ void CWeaponGrapple::Drop( const Vector &vecVelocity )
 
 	if (Hook)
 		return;
- 
-	BaseClass::Drop( vecVelocity );
+
+	BaseClass::Drop(vecVelocity);
 }
 
 #ifdef GAME_DLL
@@ -462,11 +463,11 @@ void CWeaponGrapple::NotifyHookAttached(void)
 void CWeaponGrapple::DrawBeam(const Vector &endPos, const float width)
 {
 	//Draw the main beam shaft
-	CBasePlayer *pPlayer = ToBasePlayer( GetOwner() );
+	CBasePlayer *pPlayer = ToBasePlayer(GetOwner());
 
-	if ( !pPlayer )
+	if (!pPlayer)
 		return;
-	
+
 	//Pick cable color
 	if (pPlayer->GetTeamNumber() == TF_TEAM_RED)
 		pBeam = CBeam::BeamCreate("cable/cable_red.vmt", width);
@@ -476,7 +477,7 @@ void CWeaponGrapple::DrawBeam(const Vector &endPos, const float width)
 		pBeam = CBeam::BeamCreate("cable/cable_purple.vmt", width);
 
 	//Set where it ends
-	pBeam->PointEntInit( endPos, this );
+	pBeam->PointEntInit(endPos, this);
 	pBeam->SetEndAttachment(LookupAttachment("muzzle"));
 
 	pBeam->SetWidth(width);
@@ -497,14 +498,14 @@ void CWeaponGrapple::DrawBeam(const Vector &endPos, const float width)
 // Input  : &tr - used to figure out where to do the effect
 //          nDamageType - ???
 //-----------------------------------------------------------------------------
-void CWeaponGrapple::DoImpactEffect( trace_t &tr, int nDamageType )
+void CWeaponGrapple::DoImpactEffect(trace_t &tr, int nDamageType)
 {
-	if ( !(tr.surface.flags & SURF_SKY) )
+	if (!(tr.surface.flags & SURF_SKY))
 	{
-		CPVSFilter filter( tr.endpos );
-		te->GaussExplosion( filter, 0.0f, tr.endpos, tr.plane.normal, 0 );
+		CPVSFilter filter(tr.endpos);
+		te->GaussExplosion(filter, 0.0f, tr.endpos, tr.plane.normal, 0);
 		m_nBulletType = GetAmmoDef()->Index("GaussEnergy");
-		UTIL_ImpactTrace( &tr, m_nBulletType );
+		UTIL_ImpactTrace(&tr, m_nBulletType);
 	}
 }
 
@@ -518,10 +519,10 @@ void CWeaponGrapple::DoImpactEffect( trace_t &tr, int nDamageType )
 LINK_ENTITY_TO_CLASS(grapple_hook, CGrappleHook);
 
 BEGIN_DATADESC(CGrappleHook)
-	DEFINE_THINKFUNC(FlyThink),
-	DEFINE_FUNCTION(HookTouch),
-	DEFINE_FIELD(m_hPlayer, FIELD_EHANDLE),
-	DEFINE_FIELD(m_hOwner, FIELD_EHANDLE),
+DEFINE_THINKFUNC(FlyThink),
+DEFINE_FUNCTION(HookTouch),
+DEFINE_FIELD(m_hPlayer, FIELD_EHANDLE),
+DEFINE_FIELD(m_hOwner, FIELD_EHANDLE),
 END_DATADESC()
 
 CGrappleHook *CGrappleHook::HookCreate(const Vector &vecOrigin, const QAngle &angAngles, CBaseEntity *pentOwner)
@@ -609,7 +610,7 @@ void CGrappleHook::Precache(void)
 //-----------------------------------------------------------------------------
 void CGrappleHook::FlyThink(void)
 {
-	if(!m_hOwner)
+	if (!m_hOwner)
 	{
 		SetThink(NULL);
 		SetTouch(NULL);

@@ -20,6 +20,7 @@
 #include "c_of_music_player.h"
 #include "basemodelpanel.h"
 #include "filesystem.h"
+#include <vgui_controls/Label.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
