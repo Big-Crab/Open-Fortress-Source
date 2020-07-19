@@ -98,6 +98,7 @@ void C_BaseCombatCharacter::OnDataChanged( DataUpdateType_t updateType )
 		UpdateGlowEffect();
 	}
 #endif // GLOWS_ENABLE
+#endif
 }
 
 //-----------------------------------------------------------------------------
