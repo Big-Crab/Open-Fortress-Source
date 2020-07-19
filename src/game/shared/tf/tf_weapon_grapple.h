@@ -21,9 +21,7 @@
 
 #ifdef CLIENT_DLL
 #define CWeaponGrapple C_WeaponGrapple
-#define CTFEternalShotgun C_TFEternalShotgun
 #else
-#include "props.h"
 #include "te_effect_dispatch.h"
 #endif
 
@@ -41,22 +39,23 @@ public:
 
 	void			Precache(void);
 	void			PrimaryAttack(void);
-	bool            CanHolster(void);
+	bool            CanHolster(void) const;
+	bool			Holster(CBaseCombatWeapon *pSwitchingTo);
 	void            Drop(const Vector &vecVelocity);
 	void			ItemPostFrame(void);
 	void			RemoveHook(void);
-
+	CBaseEntity		*GetHookEntity();
+	bool			HookLOS();
 
 #ifdef GAME_DLL
 	void			NotifyHookAttached(void);
 	void   			DrawBeam(const Vector &endPos, const float width = 2.f);
 	void			DoImpactEffect(trace_t &tr, int nDamageType);
 #endif
+	float m_flCableFuncStartTime;
 
 	DECLARE_NETWORKCLASS();
 	DECLARE_PREDICTABLE();
-
-	float						m_flCableFuncStartTime;
 
 private:
 
@@ -93,10 +92,9 @@ public:
 	void Spawn(void);
 	void Precache(void);
 	static CGrappleHook *HookCreate(const Vector &vecOrigin, const QAngle &angAngles, CBaseEntity *pentOwner = NULL);
-	bool HookLOS();
 
-	bool CreateVPhysics(void);
 	unsigned int PhysicsSolidMaskForEntity() const;
+	bool CreateVPhysics(void);
 	CWeaponGrapple *GetOwner(void) { return m_hOwner; }
 	Class_T Classify(void) { return CLASS_NONE; }
 
@@ -110,7 +108,6 @@ private:
 	void FlyThink(void);
 
 	CWeaponGrapple		*m_hOwner;
-	CTFPlayer			*m_hPlayer;
 };
 #endif
 
