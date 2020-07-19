@@ -129,7 +129,7 @@ private:
 	ConVarRef m_rawinput;
 	bool m_rawinput_stored = true;
 	bool bLinuxMouseFix = false;
-
+	
 	// Due to vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY); being delayed by several frames, we must wait for 
 	// it to finish moving the mouse cursor before we check the mouse cursor's position, otherwise with quickswitch it will immediately close
 	bool	bHasCursorBeenInWheel = false;
@@ -211,6 +211,8 @@ extern ConVar hud_fastswitch;
 
 ConVar hud_weaponwheel_quickswitch("hud_weaponwheel_quickswitch", "0", FCVAR_ARCHIVE, "Weapon wheel selects as soon as the mouse leaves the centre circle, instead of when the weapon wheel key is lifted.");
 //ConVar hud_weaponwheel_cursormode("hud_weaponwheel_cursormode", "0", FCVAR_ARCHIVE, "0: The WeaponWheel will select a slot based on the direction of your mouse movement. 1: The WeaponWheel will have a small cursor that snaps to the edge that selects slots (try both!)");
+
+ConVar hud_weaponwheel_dofblur("hud_weaponwheel_dofblur", "1", FCVAR_ARCHIVE, "Enables depth-of-field blur while the weapon wheel is active.");
 
 bool bWheelActive = false;
 void IN_WeaponWheelDown()
@@ -829,7 +831,7 @@ void CHudWeaponWheel::OnTick(void)
 	SetPaintBackgroundEnabled(false);
 
 	// If we've still lerping to be done, do it!
-	if (!m_bLerpDone)
+	if (!m_bLerpDone && hud_weaponwheel_dofblur.GetBool())
 		PerformBlurLerp();
 
 #ifdef LINUX
@@ -965,11 +967,14 @@ void CHudWeaponWheel::CheckWheel()
 		// On Windows, this should still let us start at iCentreScreenXY
 		// vgui::input()->GetCursorPos(iCentreWheelX, iCentreWheelY);
 
-		SetDOFBlurEnabled(true);
+		if (hud_weaponwheel_dofblur.GetBool())
+		{
+			SetDOFBlurEnabled(true);
 
-		// this var is just used to decide the lerp direction, it doesn't toggle it on/off
-		m_bBlurEnabled = true;
-		SetBlurLerpTimer(m_flBlurLerpTimeOn);
+			// this var is just used to decide the lerp direction, it doesn't toggle it on/off
+			m_bBlurEnabled = true;
+			SetBlurLerpTimer(m_flBlurLerpTimeOn);
+		}
 	}
 	else
 	{
