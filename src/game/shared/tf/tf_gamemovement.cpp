@@ -57,6 +57,8 @@ ConVar 	of_jumpsound("of_jumpsound", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE | FCVA
 #define TF_WATERJUMP_FORWARD  30
 #define TF_WATERJUMP_UP       300
 
+#define HOOK_REEL_IN			100
+
 static ConVar sv_autoladderdismount("sv_autoladderdismount", "1", FCVAR_REPLICATED, "Automatically dismount from ladders when you reach the end (don't have to +USE).");
 static ConVar sv_ladderautomountdot("sv_ladderautomountdot", "0.4", FCVAR_REPLICATED, "When auto-mounting a ladder by looking up its axis, this is the tolerance for looking now directly along the ladder axis.");
 
@@ -1708,7 +1710,7 @@ void CTFGameMovement::GrapplingMove(const CBaseEntity *hook, bool InWater)
 		VectorNormalize(dir);
 		mv->m_vecVelocity = dir * pullVel;
 	}
-	else
+	/*else
 	{
 		Vector projRopeVec = hook->GetAbsOrigin() - (playerCenter + mv->m_vecVelocity * gpGlobals->frametime); //projected rope vector
 
@@ -1724,6 +1726,33 @@ void CTFGameMovement::GrapplingMove(const CBaseEntity *hook, bool InWater)
 			VectorNormalize(dir);
 			mv->m_vecVelocity = dir * mv->m_vecVelocity.Length();
 		}
+	}*/
+	else
+	{
+		//Get current and projected rope vectors
+		Vector ropeVec = hook->GetAbsOrigin() - playerCenter;
+		Vector projRopeVec = ropeVec - mv->m_vecVelocity * gpGlobals->frametime;
+
+		//Adjust rope length
+		m_pTFPlayer->m_Shared.SetHookProperty( min( m_pTFPlayer->m_Shared.GetHookProperty(), ropeVec.Length() ) );
+
+		//if the projected rope is longer than it should be
+		float flRopeLength = m_pTFPlayer->m_Shared.GetHookProperty();
+		if (projRopeVec.Length() > flRopeLength)
+		{
+			VectorNormalize(projRopeVec);
+			projRopeVec *= m_pTFPlayer->m_Shared.GetHookProperty(); //get the vector of the rope with allowed length
+
+			//find the necessary velocity player needs to have to get from its current position
+			//to the allowed rope length position
+			Vector dir = (hook->GetAbsOrigin() - projRopeVec) - playerCenter;
+			VectorNormalize(dir);
+			mv->m_vecVelocity = dir * mv->m_vecVelocity.Length();
+		}
+
+		//Add a small pull velocity
+		VectorNormalize(ropeVec);
+		mv->m_vecVelocity += (HOOK_REEL_IN * gpGlobals->frametime) * ropeVec;
 	}
 
 	//Regular stuff
