@@ -17,7 +17,7 @@
 //-----------------------------------------------------------------------------
 class CTFProjectile_Syringe : public CTFBaseProjectile
 {
-	DECLARE_CLASS( CTFProjectile_Syringe, CTFBaseProjectile );
+	DECLARE_CLASS(CTFProjectile_Syringe, CTFBaseProjectile);
 
 public:
 
@@ -25,12 +25,12 @@ public:
 	~CTFProjectile_Syringe();
 
 	// Creation.
-	static CTFProjectile_Syringe *Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false );	
+	static CTFProjectile_Syringe *Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false);
 
-	virtual const char *GetProjectileModelName( void );
-	virtual float GetGravity( void );
+	virtual const char *GetProjectileModelName(void);
+	virtual float GetGravity(void);
 
-	static float	GetInitialVelocity( void ) { return 1000.0; }
+	static float	GetInitialVelocity(void) { return 1000.0; }
 };
 
 //-----------------------------------------------------------------------------
@@ -38,6 +38,8 @@ public:
 //-----------------------------------------------------------------------------
 class CTFProjectile_Nail : public CTFBaseProjectile
 {
+#define NAIL_SPEED 2000.0f
+
 	DECLARE_CLASS(CTFProjectile_Nail, CTFBaseProjectile);
 
 public:
@@ -51,7 +53,7 @@ public:
 	virtual const char *GetProjectileModelName(void);
 	virtual float GetGravity(void);
 
-	static float	GetInitialVelocity(void) { return 1000.0; }
+	static float	GetInitialVelocity(void) { return NAIL_SPEED; }
 };
 
 //-----------------------------------------------------------------------------
@@ -65,11 +67,15 @@ public:
 	CTFProjectile_Tranq();
 	~CTFProjectile_Tranq();
 
-	// Creation.
+	// Creation. 
 	static CTFProjectile_Tranq *Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL, CBaseEntity *pScorer = NULL, int bCritical = false);
 
 	virtual const char *GetProjectileModelName(void);
 	virtual float GetGravity(void);
+
+#ifdef GAME_DLL
+	virtual void ProjectileTouch(CBaseEntity *pOther);
+#endif
 
 	static float	GetInitialVelocity(void) { return 1000.0; }
 };

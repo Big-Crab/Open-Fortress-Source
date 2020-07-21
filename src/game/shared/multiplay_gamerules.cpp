@@ -802,7 +802,7 @@ ConVarRef suitcharger( "sk_suitcharger" );
 
 		// Did the player kill himself?
 		if ( pVictim == pScorer )  
-		{			
+		{
 			if ( UseSuicidePenalty() )
 			{
 				// Players lose a frag for killing themselves

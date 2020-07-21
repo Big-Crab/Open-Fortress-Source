@@ -28,7 +28,7 @@
 
 #define BOLT_AIR_VELOCITY	3500
 #define BOLT_WATER_VELOCITY	1500
-#define MAX_ROPE_LENGTH		900.f
+#define MAX_ROPE_LENGTH		1500.f
 #define HOOK_PULL			720.f
 
 extern ConVar of_hook_pendulum;
@@ -73,6 +73,7 @@ CWeaponGrapple::CWeaponGrapple( void )
 #ifdef GAME_DLL
 	m_hHook			= NULL;
 	pBeam			= NULL;
+	m_bWasOnGround  = false;
 #endif
 }
   
@@ -175,11 +176,17 @@ void CWeaponGrapple::ItemPostFrame(void)
 	if (!CanAttack())
 		return;
 
-	CBaseEntity *Hook = GetHookEntity();
-#ifdef GAME_DLL
-	if (Hook && m_iAttached && !HookLOS())
-		RemoveHook();
+	CBaseEntity *pHook = GetHookEntity();
 
+	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
+	if (!pPlayer || !pPlayer->IsAlive())
+	{
+		if (pHook)
+			RemoveHook();
+		return;
+	}
+
+#ifdef GAME_DLL
 	//Update the beam depending on the hook position
 	if (pBeam && !m_iAttached)
 	{
@@ -187,27 +194,33 @@ void CWeaponGrapple::ItemPostFrame(void)
 		pBeam->PointEntInit(m_hHook->GetAbsOrigin(), this);
 		pBeam->SetEndAttachment(LookupAttachment("muzzle"));
 	}
-#endif
 
-	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
-	if (!pPlayer || !pPlayer->IsAlive())
+	//set pull start animation whenever player was on the ground and now isn't
+	if (pHook && m_iAttached)
 	{
-		if (Hook)
-			RemoveHook();
-		return;
+		if (pPlayer->GetGroundEntity())
+		{
+			m_bWasOnGround = true;
+		}
+		else if (m_bWasOnGround)
+		{
+			pPlayer->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
+			m_bWasOnGround = false;
+		}
 	}
+#endif
 
 	if (pPlayer->m_nButtons & IN_ATTACK)
 	{
 		if (m_flNextPrimaryAttack < gpGlobals->curtime)
 			PrimaryAttack();
 
-		if (Hook && m_iAttached) //hook is attached to a surface
+		if (pHook && m_iAttached) //hook is attached to a surface
 		{
-			if ((Hook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 100.f)	//player is very close to the attached hook
+			if ( (pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 72.f )	//player is very close to the attached hook
 				RemoveHook();
 			else if (m_iAttached == 2) //notify player how it should behave
-				InitiateHook(pPlayer, Hook);
+				InitiateHook(pPlayer, pHook);
 		}
 	}
 	else if (m_iAttached)
@@ -268,6 +281,8 @@ void CWeaponGrapple::RemoveHook(void)
 		UTIL_Remove(pBeam); //Kill beam
 		pBeam = NULL;
 	}
+
+	m_bWasOnGround = false;
 #endif
 
 	CTFPlayer *pPlayer = ToTFPlayer(GetPlayerOwner());
@@ -280,7 +295,7 @@ void CWeaponGrapple::RemoveHook(void)
 
 	m_hHook = NULL;
 	SendWeaponAnim(ACT_VM_IDLE); //ACT_VM_RELOAD
-	m_flNextPrimaryAttack = gpGlobals->curtime + 1.f;
+	m_flNextPrimaryAttack = gpGlobals->curtime + 0.4f;
 	m_iAttached = 0;
 }
 
@@ -464,7 +479,6 @@ bool CGrappleHook::CreateVPhysics(void)
 {
 	// Create the object in the physics system
 	VPhysicsInitNormal(SOLID_BBOX, FSOLID_NOT_STANDABLE, false);
-
 	return true;
 }
 
@@ -518,7 +532,7 @@ void CGrappleHook::FlyThink(void)
 		return;
 	}
 
-	if ((GetAbsOrigin() - m_hOwner->GetAbsOrigin()).Length() >= MAX_ROPE_LENGTH)
+	if ( (GetAbsOrigin() - m_hOwner->GetAbsOrigin()).Length() >= MAX_ROPE_LENGTH || !m_hOwner->HookLOS() )
 	{
 		m_hOwner->RemoveHook();
 		return;
@@ -533,7 +547,7 @@ void CGrappleHook::FlyThink(void)
 //-----------------------------------------------------------------------------
 void CGrappleHook::HookTouch(CBaseEntity *pOther)
 {
-	if (!pOther->IsSolid() || pOther->IsSolidFlagSet(FSOLID_VOLUME_CONTENTS) || !GetOwnerEntity() || !m_hOwner->HookLOS())
+	if (!pOther->IsSolid() || pOther->IsSolidFlagSet(FSOLID_VOLUME_CONTENTS) || !GetOwnerEntity())
 	{
 		m_hOwner->RemoveHook();
 		return;
@@ -566,7 +580,11 @@ void CGrappleHook::HookTouch(CBaseEntity *pOther)
 			
 			CTFPlayer *pOwner = (CTFPlayer *)GetOwnerEntity();
 			pOwner->SetPhysicsFlag(PFLAG_VPHYSICS_MOTIONCONTROLLER, true);
-			pOwner->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
+
+			if (!pOwner->GetGroundEntity())
+				pOwner->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
+			else
+				m_hOwner->m_bWasOnGround = true;
 		}
 		else
 		{

@@ -17,8 +17,8 @@ public:
 	string_t m_iszPickupSound = MAKE_STRING("HealthKitMega.Touch");
 
 	void Precache(void);
-	virtual bool RemoveIfDuel() { return false; }
 	virtual bool DoPowerupEffect( CTFPlayer *pTFPlayer );
+	bool ITEM_GiveTFMegaHealth(CBasePlayer *pPlayer);
 
 	virtual bool   IsMega(void) { return true; }
 

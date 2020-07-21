@@ -235,6 +235,7 @@ CTFEternalShotgun::CTFEternalShotgun(void)
 #ifdef GAME_DLL
 	m_hHook = NULL;
 	pBeam = NULL;
+	m_bWasOnGround = false;
 #endif
 }
 
@@ -287,6 +288,13 @@ void CTFEternalShotgun::ItemPostFrame()
 {
 	CBaseEntity *pHook = GetHookEntity();
 
+	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
+	if (!pPlayer || !pPlayer->IsAlive() || (m_iAttached && ToTFPlayer(pHook) && !ToTFPlayer(pHook)->IsAlive()))
+	{
+		RemoveHook();
+		return;
+	}
+
 #ifdef GAME_DLL
 	if (pHook)
 	{
@@ -301,24 +309,31 @@ void CTFEternalShotgun::ItemPostFrame()
 			pBeam->SetEndAttachment(LookupAttachment("muzzle"));
 		}
 
-		//Invalidate hook if it is not in sight
-		if (m_iAttached && !HookLOS(hookPos))
-			RemoveHook();
+		if(m_iAttached)
+		{
+			//set pull start animation whenever player was on the ground and now isn't
+			if (pPlayer->GetGroundEntity())
+			{
+				m_bWasOnGround = true;
+			}
+			else if (m_bWasOnGround)
+			{
+				pPlayer->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
+				m_bWasOnGround = false;
+			}
+
+			//Invalidate hook if it is not in sight
+			if (!HookLOS(hookPos))
+				RemoveHook();
+		}
 	}
 #endif
-
-	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
-	if (!pPlayer || !pPlayer->IsAlive() || ( m_iAttached && ToTFPlayer(pHook) && !ToTFPlayer(pHook)->IsAlive() ) )
-	{
-		RemoveHook();
-		return;
-	}
 
 	if(pHook)
 	{
 		if (m_iAttached) //hook is attached to something
 		{
-			if ((pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 100.f)
+			if ((pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 72.f)
 				RemoveHook();
 			else if (m_iAttached == 2) //notify player how it should behave
 				InitiateHook(pPlayer, pHook);
@@ -483,6 +498,8 @@ void CTFEternalShotgun::RemoveHook(void)
 		UTIL_Remove(pBeam);
 		pBeam = NULL;
 	}
+
+	m_bWasOnGround = false;
 #endif
 
 	CTFPlayer *pPlayer = ToTFPlayer(GetPlayerOwner());
@@ -658,7 +675,7 @@ void CTFMeatHook::FlyThink(void)
 		return;
 	}
 
-	if ((GetAbsOrigin() - m_hOwner->GetAbsOrigin()).Length() >= MAX_ROPE_LENGTH)
+	if ((GetAbsOrigin() - m_hOwner->GetAbsOrigin()).Length() >= MAX_ROPE_LENGTH || !m_hOwner->HookLOS(GetAbsOrigin()))
 	{
 		m_hOwner->RemoveHook();
 		return;
@@ -669,7 +686,7 @@ void CTFMeatHook::FlyThink(void)
 
 void CTFMeatHook::HookTouch(CBaseEntity *pOther)
 {
-	if (pOther == m_hOwner || !pOther->IsPlayer() || pOther->IsSolidFlagSet(FSOLID_VOLUME_CONTENTS) || !m_hOwner->HookLOS(GetAbsOrigin()) || !GetOwnerEntity())
+	if (pOther == m_hOwner || !pOther->IsPlayer() || pOther->IsSolidFlagSet(FSOLID_VOLUME_CONTENTS) || !GetOwnerEntity())
 	{
 		m_hOwner->RemoveHook();
 		return;
@@ -688,7 +705,11 @@ void CTFMeatHook::HookTouch(CBaseEntity *pOther)
 
 	CTFPlayer *pOwner = (CTFPlayer *)GetOwnerEntity();
 	pOwner->SetPhysicsFlag(PFLAG_VPHYSICS_MOTIONCONTROLLER, true);
-	pOwner->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
+
+	if (!pOwner->GetGroundEntity())
+		pOwner->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
+	else
+		m_hOwner->m_bWasOnGround = true;
 
 	CTFPlayer *pHooked = ToTFPlayer(pOther);
 	m_hOwner->NotifyHookAttached(pHooked);

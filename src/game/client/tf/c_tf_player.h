@@ -170,6 +170,8 @@ public:
 
 	void			StartBurningSound( void );
 	void			StopBurningSound( void );
+	void			StartTranqSound(void);
+	void			StopTranqSound(void);
 	void			OnAddTeleported( void );
 	void			OnRemoveTeleported( void );
 	
@@ -396,10 +398,8 @@ public:
 	float				m_flBurnEffectStartTime;
 	float				m_flBurnEffectEndTime;
 
-	// Poison
-	CNewParticleEffect	*m_pPoisonEffect;
-	float				m_flPoisonEffectStartTime;
-	float				m_flPoisonEffectEndTime;
+	//Tranq
+	CSoundPatch			*m_pTranqSound;
 
 	CNewParticleEffect	*m_pDisguisingEffect;
 	float m_flDisguiseEffectStartTime;

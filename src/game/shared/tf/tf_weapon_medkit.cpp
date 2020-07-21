@@ -184,6 +184,8 @@ float CTFMedkit::GetMeleeDamage( CBaseEntity *pTarget, int &iCustomDamage )
 					pTFPlayer->m_Shared.RemoveCond(TF_COND_BURNING);
 				if(pTFPlayer->m_Shared.InCond(TF_COND_POISON))
 					pTFPlayer->m_Shared.RemoveCond(TF_COND_POISON);
+				if (pTFPlayer->m_Shared.InCond(TF_COND_TRANQ))
+					pTFPlayer->m_Shared.RemoveCond(TF_COND_TRANQ);
 #endif
 			}
 		}

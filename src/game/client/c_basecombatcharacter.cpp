@@ -29,15 +29,16 @@
 //-----------------------------------------------------------------------------
 C_BaseCombatCharacter::C_BaseCombatCharacter()
 {
-	for ( int i=0; i < m_iAmmo.Count(); i++ )
+	for ( int i = 0; i < m_iAmmo.Count(); i++ )
 	{
 		m_iAmmo.Set( i, 0 );
 	}
 
-	PrecacheMaterial("effects/poison/toxicoverlay");
-	PrecacheMaterial("greyscale");
-	PrecacheMaterial("dofblur");
-	
+	PrecacheMaterial( "effects/poison/toxicoverlay" );
+	PrecacheMaterial( "greyscale" );
+	PrecacheMaterial( "dofblur" );
+
+
 #ifndef OF_CLIENT_DLL
 #ifdef GLOWS_ENABLE
 	m_pGlowEffect = NULL;
@@ -76,7 +77,7 @@ int	C_BaseCombatCharacter::GetAmmoCount( char *szName ) const
 void C_BaseCombatCharacter::OnPreDataChanged( DataUpdateType_t updateType )
 {
 	BaseClass::OnPreDataChanged( updateType );
-	
+
 #ifndef OF_CLIENT_DLL	
 #ifdef GLOWS_ENABLE
 	m_bOldGlowEnabled = m_bGlowEnabled;
@@ -90,7 +91,7 @@ void C_BaseCombatCharacter::OnPreDataChanged( DataUpdateType_t updateType )
 void C_BaseCombatCharacter::OnDataChanged( DataUpdateType_t updateType )
 {
 	BaseClass::OnDataChanged( updateType );
-	
+
 #ifndef OF_CLIENT_DLL
 #ifdef GLOWS_ENABLE
 	if ( m_bOldGlowEnabled != m_bGlowEnabled )
@@ -181,26 +182,26 @@ void C_BaseCombatCharacter::DestroyGlowEffect( void )
 #endif // GLOWS_ENABLE
 #endif
 
-IMPLEMENT_CLIENTCLASS(C_BaseCombatCharacter, DT_BaseCombatCharacter, CBaseCombatCharacter);
+IMPLEMENT_CLIENTCLASS( C_BaseCombatCharacter, DT_BaseCombatCharacter, CBaseCombatCharacter );
 
 // Only send active weapon index to local player
 BEGIN_RECV_TABLE_NOBASE( C_BaseCombatCharacter, DT_BCCLocalPlayerExclusive )
-	RecvPropTime( RECVINFO( m_flNextAttack ) ),
+RecvPropTime( RECVINFO( m_flNextAttack ) ),
 END_RECV_TABLE();
 
 
-BEGIN_RECV_TABLE(C_BaseCombatCharacter, DT_BaseCombatCharacter)
-	RecvPropDataTable( "bcc_localdata", 0, 0, &REFERENCE_RECV_TABLE(DT_BCCLocalPlayerExclusive) ),
-	RecvPropEHandle( RECVINFO( m_hActiveWeapon ) ),
-	RecvPropArray3( RECVINFO_ARRAY(m_hMyWeapons), RecvPropEHandle( RECVINFO( m_hMyWeapons[0] ) ) ),
+BEGIN_RECV_TABLE( C_BaseCombatCharacter, DT_BaseCombatCharacter )
+RecvPropDataTable( "bcc_localdata", 0, 0, &REFERENCE_RECV_TABLE( DT_BCCLocalPlayerExclusive ) ),
+RecvPropEHandle( RECVINFO( m_hActiveWeapon ) ),
+RecvPropArray3( RECVINFO_ARRAY( m_hMyWeapons ), RecvPropEHandle( RECVINFO( m_hMyWeapons[0] ) ) ),
 #ifndef OF_CLIENT_DLL
 #ifdef GLOWS_ENABLE
-	RecvPropBool( RECVINFO( m_bGlowEnabled ) ),
+RecvPropBool( RECVINFO( m_bGlowEnabled ) ),
 #endif // GLOWS_ENABLE
 #endif
 
 #ifdef INVASION_CLIENT_DLL
-	RecvPropInt( RECVINFO( m_iPowerups ) ),
+RecvPropInt( RECVINFO( m_iPowerups ) ),
 #endif
 
 END_RECV_TABLE()
@@ -208,9 +209,9 @@ END_RECV_TABLE()
 
 BEGIN_PREDICTION_DATA( C_BaseCombatCharacter )
 
-	DEFINE_PRED_ARRAY( m_iAmmo, FIELD_INTEGER,  MAX_AMMO_TYPES, FTYPEDESC_INSENDTABLE ),
-	DEFINE_PRED_FIELD( m_flNextAttack, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
-	DEFINE_PRED_FIELD( m_hActiveWeapon, FIELD_EHANDLE, FTYPEDESC_INSENDTABLE ),
-	DEFINE_PRED_ARRAY( m_hMyWeapons, FIELD_EHANDLE, MAX_WEAPONS, FTYPEDESC_INSENDTABLE ),
+DEFINE_PRED_ARRAY( m_iAmmo, FIELD_INTEGER, MAX_AMMO_TYPES, FTYPEDESC_INSENDTABLE ),
+DEFINE_PRED_FIELD( m_flNextAttack, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
+DEFINE_PRED_FIELD( m_hActiveWeapon, FIELD_EHANDLE, FTYPEDESC_INSENDTABLE ),
+DEFINE_PRED_ARRAY( m_hMyWeapons, FIELD_EHANDLE, MAX_WEAPONS, FTYPEDESC_INSENDTABLE ),
 
 END_PREDICTION_DATA()

@@ -1723,6 +1723,8 @@ void CTFGameMovement::GrapplingMove(CBaseEntity *hook, bool inWater)
 	//***************************************
 	//Hook Pull
 
+	SetGroundEntity(NULL);
+
 	Vector playerCenter = mv->GetAbsOrigin();
 	playerCenter += (m_pTFPlayer->EyePosition() - playerCenter) * 0.5;
 	bool bMeatHook = ToTFPlayer(hook) != NULL;
@@ -1731,7 +1733,6 @@ void CTFGameMovement::GrapplingMove(CBaseEntity *hook, bool inWater)
 
 	if (bMeatHook || !of_hook_pendulum.GetBool())
 	{
-		SetGroundEntity(NULL);
 		player->m_bNoFootStepsSound = true;
 		
 		Vector hookCenter = hook->GetAbsOrigin();

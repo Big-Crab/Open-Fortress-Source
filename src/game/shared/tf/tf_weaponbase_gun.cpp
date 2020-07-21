@@ -740,9 +740,13 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 	GetProjectileFireSetup( pPlayer, vecOffset , &vecSrc, &angForward );
 	
 	// Add some spread
-	float flSpread = 1.5;
-	angForward.x += RandomFloat( -flSpread, flSpread );
-	angForward.y += RandomFloat( -flSpread, flSpread );
+	if (iSpecificNail != TF_PROJECTILE_TRANQ)
+	{
+		// Add some spread
+		float flSpread = 1.5;
+		angForward.x += RandomFloat(-flSpread, flSpread);
+		angForward.y += RandomFloat(-flSpread, flSpread);
+	}
 
 	CTFBaseProjectile *pProjectile = NULL;
 	switch( iSpecificNail )

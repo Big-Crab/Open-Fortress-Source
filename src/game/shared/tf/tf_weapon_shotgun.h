@@ -149,6 +149,8 @@ public:
 	void			NotifyHookAttached(CBaseEntity *pTarget);
 	bool			HookLOS(Vector hookPos);
 	void   			DrawBeam(const Vector &endPos, const float width = 2.f);
+
+	bool			m_bWasOnGround;
 #endif
 
 private:

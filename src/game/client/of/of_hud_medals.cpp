@@ -75,6 +75,7 @@ bool CTFHudMedals::ShouldDraw(void)
 
 	if (!pPlayer || !TFGameRules()->IsDMGamemode() || !medalsQueue.Size())
 		return false;
+
 	return CHudElement::ShouldDraw();
 }
 
@@ -128,7 +129,7 @@ void CTFHudMedals::OnThink(void)
 
 void CTFHudMedals::FireGameEvent(IGameEvent *event)
 {
-	if (!event || TFGameRules()->IsInWaitingForPlayers())
+	if (!event || TFGameRules()->IsInWaitingForPlayers() || TFGameRules()->State_Get() <= GR_STATE_PREGAME)
 		return;
 
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
