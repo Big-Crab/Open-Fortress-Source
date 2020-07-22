@@ -915,10 +915,10 @@ void CHudWeaponWheel::OnTick(void)
 			CheckMousePos();
 
 #ifdef LINUX
-		//see if mouse is hitting the edges of the screen.  set bLinuxMouseFix on if so.
+		//see if mouse is more than halfway past the center of the screen.  set bLinuxMouseFix on if so.
 		int curPosX_b, curPosY_b;
 		vgui::input()->GetCursorPos(curPosX_b, curPosY_b);
-		if(curPosX_b == 0 || curPosY_b == 0 || curPosX_b >= (iCentreScreenX * 2) - 1 || curPosY_b >= (iCentreScreenY *2) - 1)
+		if(curPosX_b < (iCentreScreenX / 2) || curPosY_b < (iCentreScreenY / 2) || curPosX_b > (iCentreScreenX * 1.5f)  || curPosY_b > (iCentreScreenY *1.5f))
 			bLinuxMouseFix = true;
 #endif
 
