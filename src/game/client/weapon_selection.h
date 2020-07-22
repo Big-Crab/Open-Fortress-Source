@@ -35,8 +35,8 @@ public:
 	virtual void Init( void );
 	virtual void VidInit( void );
 	virtual void ProcessInput();
-	virtual void Reset(void);
-	virtual void OnThink(void);
+	virtual void Reset( void );
+	virtual void OnThink( void );
 
 	virtual void OpenSelection( void );
 	virtual void HideSelection( void );
@@ -88,12 +88,12 @@ public:
 	// these functions are exposed as virtual so that the tf_hints system can redraw the weapon selection
 	virtual void DrawWList( C_BasePlayer *pPlayer, C_BaseCombatWeapon *pSelectedWeapon, bool drawOutline = false, int ora = 0, int og = 0, int ob = 0, int oa = 0 ) {}
 	virtual bool ComputeRect( C_BasePlayer *pPlayer, C_BaseCombatWeapon *pSelectedWeapon, wrect_t *outrect ) { return false; }
-	
+
 	virtual int	KeyInput( int down, ButtonCode_t keynum, const char *pszCurrentBinding );
 
 protected:
 	// returns true if there is a weapon currently visible to select
-	virtual bool IsWeaponSelectable()	{ return IsInSelectionMode(); }
+	virtual bool IsWeaponSelectable() { return IsInSelectionMode(); }
 
 	bool	CanBeSelectedInHUD( C_BaseCombatWeapon *pWeapon );
 

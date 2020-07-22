@@ -27,12 +27,14 @@
 #include "iclientmode.h"
 #include "tf_imagepanel.h"
 #include <vgui_controls/Controls.h>
-
+#include "of_hud_weaponwheel.h"
 #include "iinput.h"
 #include "vgui/Cursor.h"
 #include "cdll_client_int.h"
 #include "cdll_util.h"
 #include "inputsystem/iinputsystem.h"
+#include "in_buttons.h"
+#include "IGameUIFuncs.h"
 
 // For the DOF blur
 #include "viewpostprocess.h"
@@ -214,15 +216,37 @@ ConVar hud_weaponwheel_quickswitch( "hud_weaponwheel_quickswitch", "0", FCVAR_AR
 
 ConVar hud_weaponwheel_dofblur( "hud_weaponwheel_dofblur", "1", FCVAR_ARCHIVE, "Enables depth-of-field blur while the weapon wheel is active." );
 
+ConVar hud_weaponwheel_holdtime( "hud_weaponwheel_holdtime", "0.5", FCVAR_ARCHIVE, "The amount of time the lastinv key (Default: Q) must be held to open the weapon wheel" );
+
+
+bool	m_bLastInvHeld;
+bool	m_bWeaponWheelOpen;
+float	m_flLastInvHoldTimer;
 bool bWheelActive = false;
 void IN_WeaponWheelDown()
 {
 	bWheelActive = true;
+	m_bWeaponWheelOpen = true;
 }
 
 void IN_WeaponWheelUp()
 {
 	bWheelActive = false;
+	m_bWeaponWheelOpen = false;
+}
+
+
+void LastInvHeld( bool down )
+{
+	if ( down )
+	{
+		m_flLastInvHoldTimer = gpGlobals->curtime + hud_weaponwheel_holdtime.GetFloat();
+	}
+	else
+	{
+		IN_WeaponWheelUp();
+	}
+	m_bLastInvHeld = down;
 }
 
 ConCommand hud_weaponwheel_on( "+weaponwheel", IN_WeaponWheelDown );
@@ -825,6 +849,37 @@ void CHudWeaponWheel::OnTick( void )
 	if ( !pPlayer )
 		return;
 
+	// Check lastinv held status
+	if ( m_bLastInvHeld )
+	{
+		if ( gpGlobals->curtime >= m_flLastInvHoldTimer && !m_bWeaponWheelOpen )
+		{
+			IN_WeaponWheelDown();
+		}
+
+
+		const char* m_pszKeyName = engine->Key_LookupBinding( "lastinv" );
+		bool isdown = g_pInputSystem->IsButtonDown( g_pInputSystem->StringToButtonCode( m_pszKeyName ) );
+
+		// If the lastinv key is no longer held...
+		if ( !isdown )
+		{
+			// ...and if the weapon wheel is open, just close the weapon wheel
+			if ( m_bWeaponWheelOpen )
+			{
+				IN_WeaponWheelUp();
+			}
+			// ...and the weapon wheel isn't open, select the last weapon
+			else
+			{
+				CBaseHudWeaponSelection *hudSelection = CBaseHudWeaponSelection::GetInstance();
+				hudSelection->SwitchToLastWeapon();
+			}
+
+			m_bLastInvHeld = false;
+		}
+	}
+
 	// attempt to tell the darkening overlay to go away
 	SetPaintBackgroundEnabled( false );
 
@@ -833,301 +888,254 @@ void CHudWeaponWheel::OnTick( void )
 		PerformBlurLerp();
 
 #ifdef LINUX
-	<<<<<< < HEAD
-		if ( bLinuxMouseFix )
-		{
-			SetMouseInputEnabled( true );			// Capture the mouse...
-			SetKeyBoardInputEnabled( false );
-			surface()->SetSoftwareCursor( true );
-			int curPosX, curPosY;
-			if ( m_rawinput.GetBool() )
-				m_rawinput.SetValue( false );
+	//Linux fixes by Fenteale: here is the main part of the linux fix.  ill add comments to say whats goin on best I can
+	if ( bLinuxMouseFix )  //this is set TRUE whenever the mouse needs to be repositioned by code elsewhere
+	{
+		//not sure if these 3 lines are needed, but its working now so I dont wanna mess with it.
+		SetMouseInputEnabled( true );
+		SetKeyBoardInputEnabled( false );
+		surface()->SetSoftwareCursor( true );
+		int curPosX, curPosY;
+		/*
+		Here is the root of the issue:
+		With mouse raw input ENABLED: the mouse cannot be repositioned by the engine, and the delta does
+			not change when the cursor hits the sides of the screen
+		With mouse raw input DISABLED: the mouse CAN be repositioned, but the delta values returned by
+			::inputsystem->GetAnalogDelta are incorrect.
+
+		So we gotta force switching between the two modes depending what we need.  To add MORE jank into the mix,
+		the engine needs one frame before the change in m_rawinput is registered.  This might add one frame when
+		switching modes where input is ignored, but I cannot for the life of me find any other way.
+		*/
+		if ( m_rawinput.GetBool() )
+			m_rawinput.SetValue( false ); //first time through the loop: set m_rawinput off
+		else
+		{ //second time through the loop:
+			DevMsg( "Attempting to center mos pos\n" );
+			vgui::input()->SetCursorPos( iCentreScreenX, iCentreScreenY ); //center mouse pos
+
+			vgui::input()->GetCursorPos( curPosX, curPosY );
+			if ( abs( curPosX - iCentreScreenX ) < 50 && abs( curPosY - iCentreScreenY ) < 50 )
+			{ //mouse repositioned successfully!
+				m_rawinput.SetValue( true );  //so we can force re-enable raw mouse input and continue on
+				bLinuxMouseFix = false;
+			}
 			else
 			{
-				DevMsg( "Attempting to center mos pos\n" );
-				vgui::input()->SetCursorPos( iCentreScreenX, iCentreScreenY );
-				====== =
-					//Linux fixes by Fenteale: here is the main part of the linux fix.  ill add comments to say whats goin on best I can
-					if ( bLinuxMouseFix )  //this is set TRUE whenever the mouse needs to be repositioned by code elsewhere
-					{
-						//not sure if these 3 lines are needed, but its working now so I dont wanna mess with it.
-						SetMouseInputEnabled( true );
-						SetKeyBoardInputEnabled( false );
-						surface()->SetSoftwareCursor( true );
-						int curPosX, curPosY;
-						/*
-						Here is the root of the issue:
-						With mouse raw input ENABLED: the mouse cannot be repositioned by the engine, and the delta does
-							not change when the cursor hits the sides of the screen
-						With mouse raw input DISABLED: the mouse CAN be repositioned, but the delta values returned by
-							::inputsystem->GetAnalogDelta are incorrect.
+				DevMsg( "WTF %i|%i\n", curPosX - iCentreScreenX, curPosY - iCentreScreenY );
+				//Mouse position is NOT in the center after resetting it?
+			}
+		}
 
-						So we gotta force switching between the two modes depending what we need.  To add MORE jank into the mix,
-						the engine needs one frame before the change in m_rawinput is registered.  This might add one frame when
-						switching modes where input is ignored, but I cannot for the life of me find any other way.
-						*/
-						if ( m_rawinput.GetBool() )
-							m_rawinput.SetValue( false ); //first time through the loop: set m_rawinput off
-						else
-						{ //second time through the loop:
-							DevMsg( "Attempting to center mos pos\n" );
-							vgui::input()->SetCursorPos( iCentreScreenX, iCentreScreenY ); //center mouse pos
-							>>>>>> > 7ee3a09c6f8d9454cb3ba059d2b98cf11c4a4ce9
-
-								vgui::input()->GetCursorPos( curPosX, curPosY );
-							if ( abs( curPosX - iCentreScreenX ) < 50 && abs( curPosY - iCentreScreenY ) < 50 )
-							{ //mouse repositioned successfully!
-
-								<<<<<< < HEAD
-									m_rawinput.SetValue( true );
-								====== =
-									m_rawinput.SetValue( true );  //so we can force re-enable raw mouse input and continue on
-								>>>>>> > 7ee3a09c6f8d9454cb3ba059d2b98cf11c4a4ce9
-									bLinuxMouseFix = false;
-							}
-							else
-							{
-								DevMsg( "WTF %i|%i\n", curPosX - iCentreScreenX, curPosY - iCentreScreenY );
-								<<<<<<< HEAD
-									====== =
-									//Mouse position is NOT in the center after resetting it?
-									>>>>>> > 7ee3a09c6f8d9454cb3ba059d2b98cf11c4a4ce9
-							}
-						}
-
-					}
+	}
 #endif
 
-				// If weapon wheel active bool has changed, change mouse input capabilities etc
-				if ( lastWheel != bWheelActive )
+	// If weapon wheel active bool has changed, change mouse input capabilities etc
+	if ( lastWheel != bWheelActive )
+	{
+#ifdef LINUX
+
+		if ( bWheelActive ) //if it was just activated
+		{
+			m_rawinput_stored = m_rawinput.GetBool(); //store the user's settings for rawinput to restore later
+			//DevMsg("Linux workaround: rawinput disabled\n");
+
+			//bLinuxMouseFix = true; //used to have this enabled which would reset the mouse pos as soon as the weapon wheel was brought up,
+			//but this caused the player's aim to occasionally snap around upon activation.
+
+			//these next few lines I'm not sure if they are needed but its working well right now so
+			//I dont want to touch it.
+			SetMouseInputEnabled( true );
+			SetKeyBoardInputEnabled( false );
+			surface()->SetSoftwareCursor( true );
+
+		}
+		else //if its closing
+		{
+			//DevMsg("Linux workaround: rawinput restored\n");
+			m_rawinput.SetValue( m_rawinput_stored );
+		}
+#endif
+		CheckWheel();
+
+
+	}
+	lastWheel = bWheelActive;
+
+	if ( bWheelActive )
+	{
+#ifdef LINUX
+		if ( !bLinuxMouseFix )  //if mouse position reset is not pending
+#endif
+			CheckMousePos();
+
+#ifdef LINUX
+
+		//see if mouse is more than halfway past the center of the screen.  set bLinuxMouseFix on if so.
+		int curPosX_b, curPosY_b;
+		vgui::input()->GetCursorPos( curPosX_b, curPosY_b );
+		if ( curPosX_b < ( iCentreScreenX / 2 ) || curPosY_b < ( iCentreScreenY / 2 ) || curPosX_b >( iCentreScreenX * 1.5f ) || curPosY_b >( iCentreScreenY *1.5f ) )
+			bLinuxMouseFix = true;
+#endif
+
+	}
+
+
+
+	// Scan for changes in the number of weapons we have
+	int weaponsThisTick = 0;
+	CBaseHudWeaponSelection *weaponSelect = GetHudWeaponSelection();
+	if ( weaponSelect )
+	{
+		for ( int slot = 0; slot < numberOfSegments; slot++ )
+		{
+			for ( int bucket = 0; bucket < MAX_WEAPON_POSITIONS; bucket++ )
+			{
+				if ( weaponSelect->GetWeaponInSlot( slot, bucket ) )
+					weaponsThisTick++;
+			}
+		}
+
+		// If there is a discrepancy, check the weapons and their icons again
+		if ( weaponsThisTick != iNumberOfWeaponsEquipped )
+		{
+			RefreshEquippedWeapons();
+			iNumberOfWeaponsEquipped = weaponsThisTick;
+		}
+
+		// Update the current weapon's segment to reflect what we have equipped
+		CTFWeaponBase *pSelectedWeapon = pPlayer->GetActiveTFWeapon();
+		if ( pSelectedWeapon )
+		{
+			// or is it meant to be +/-1
+			segments[pSelectedWeapon->GetSlot()].bucketSelected = pSelectedWeapon->GetPosition();
+		}
+	}
+}
+
+void CHudWeaponWheel::CheckWheel()
+{
+	if ( bWheelActive )
+	{
+		// This is safe to do every frame/opening of the wheel
+		RefreshCentre();
+
+		// THIS IS NOT. Doing so will reset the player's chosen weapons constantly. We do not want to do this.
+		// If we do that, each slot will revert back to the same weapon every frame, forgetting what the player selected in that slot.
+
+		if ( bLayoutInvalidated )
+		{
+			RefreshWheelVerts();
+			RefreshEquippedWeapons();
+		}
+
+		// Call this when the player's equipped weapons change. This is done in ::OnTick and ONLY when the player picks up a new weapon/drops one.
+		//RefreshEquippedWeapons();
+
+		bHasCursorBeenInWheel = false;
+
+		//		Activate();
+		SetMouseInputEnabled( true );			// Capture the mouse...
+		SetKeyBoardInputEnabled( false );		// ...but not the keyboard!
+		// Replaced the cursor with an $alpha 0 image, since Valve didn't want to give me a way to hide the cursor or prevent mouselook.
+		surface()->SetSoftwareCursor( true );
+
+		//		vgui::input()->SetCursorPos(iCentreWheelX, iCentreWheelY);
+
+				// since Linux can't snap to centre :( we just start the weapon wheel wherever their mouse is
+				// On Windows, this should still let us start at iCentreScreenXY
+				// vgui::input()->GetCursorPos(iCentreWheelX, iCentreWheelY);
+
+		if ( hud_weaponwheel_dofblur.GetBool() )
+		{
+			SetDOFBlurEnabled( true );
+
+			// this var is just used to decide the lerp direction, it doesn't toggle it on/off
+			m_bBlurEnabled = true;
+			SetBlurLerpTimer( m_flBlurLerpTimeOn );
+		}
+	}
+	else
+	{
+		// Switch to the one the mouse is over
+		if ( useHighlighted )
+		{
+			// Select it and close
+			WeaponSelected( slotSelected, segments[slotSelected].bucketSelected );
+		}
+		SetMouseInputEnabled( false );
+		SetVisible( false );
+
+		surface()->SetSoftwareCursor( false );
+
+		m_bBlurEnabled = false;
+		SetBlurLerpTimer( m_flBlurLerpTimeOff );
+	}
+
+	SetDOFBlurDistance( m_flDOFBlurDistance );
+}
+
+
+void CHudWeaponWheel::OnMouseWheeled( int delta )
+{
+	// Simplify it to +1 or -1
+	delta /= abs( delta );
+
+	if ( bWheelActive )
+	{
+		C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+		if ( !pPlayer )
+			return;
+
+		if ( slotSelected >= 0 )
+		{
+			// proper forward and backward cycling
+			CBaseHudWeaponSelection *pHUDSelection = CBaseHudWeaponSelection::GetInstance();
+			// How many weapons are there in the slot we've selected?
+			int wepsCurrentlyInSlot = 0;
+			int lastValidIndex = -1;
+			int currentBucket = segments[slotSelected].bucketSelected;
+			for ( int i = 0; i < MAX_WEAPON_POSITIONS; i++ )
+			{
+				if ( pHUDSelection->GetWeaponInSlot( slotSelected, i ) )
 				{
-#ifdef LINUX
-					<<<<<< < HEAD
-						if ( bWheelActive )
-						{
-							m_rawinput_stored = m_rawinput.GetBool();
-							DevMsg( "Linux workaround: rawinput disabled\n" );
-							//m_rawinput.SetValue(false);
-							//vgui::input()->SetCursorPos(iCentreScreenX, iCentreScreenY);
-							//bLinuxMouseFix = true;
-							SetMouseInputEnabled( true );			// Capture the mouse...
-							SetKeyBoardInputEnabled( false );		// ...but not the keyboard!
-							// Replaced the cursor with an $alpha 0 image, since Valve didn't want to give me a way to hide the cursor or prevent mouselook.
-							surface()->SetSoftwareCursor( true );
+					wepsCurrentlyInSlot++;
+					lastValidIndex = i;
+				}
+			}
 
-						}
-						else
-						{
-							DevMsg( "Linux workaround: rawinput restored\n" );
-							====== =
-								if ( bWheelActive ) //if it was just activated
-								{
-									m_rawinput_stored = m_rawinput.GetBool(); //store the user's settings for rawinput to restore later
-									//DevMsg("Linux workaround: rawinput disabled\n");
-
-									//bLinuxMouseFix = true; //used to have this enabled which would reset the mouse pos as soon as the weapon wheel was brought up,
-									//but this caused the player's aim to occasionally snap around upon activation.
-
-									//these next few lines I'm not sure if they are needed but its working well right now so
-									//I dont want to touch it.
-									SetMouseInputEnabled( true );
-									SetKeyBoardInputEnabled( false );
-									surface()->SetSoftwareCursor( true );
-
-								}
-								else //if its closing
-								{
-									//DevMsg("Linux workaround: rawinput restored\n");
-									>>>>>> > 7ee3a09c6f8d9454cb3ba059d2b98cf11c4a4ce9
-										m_rawinput.SetValue( m_rawinput_stored );
-								}
-#endif
-							CheckWheel();
-
-
-						}
-					lastWheel = bWheelActive;
-
-					if ( bWheelActive )
-					{
-#ifdef LINUX
-						<<<<<<< HEAD
-							if ( !bLinuxMouseFix )
-								====== =
-								if ( !bLinuxMouseFix )  //if mouse position reset is not pending
-									>>>>>> > 7ee3a09c6f8d9454cb3ba059d2b98cf11c4a4ce9
-#endif
-									CheckMousePos();
-
-#ifdef LINUX
-						<<<<<<< HEAD
-							====== =
-							//see if mouse is hitting the edges of the screen.  set bLinuxMouseFix on if so.
-							>>>>>> > 7ee3a09c6f8d9454cb3ba059d2b98cf11c4a4ce9
-							int curPosX_b, curPosY_b;
-						vgui::input()->GetCursorPos( curPosX_b, curPosY_b );
-						if ( curPosX_b == 0 || curPosY_b == 0 || curPosX_b >= ( iCentreScreenX * 2 ) - 1 || curPosY_b >= ( iCentreScreenY * 2 ) - 1 )
-							bLinuxMouseFix = true;
-#endif
-
-					}
-
-
-
-					// Scan for changes in the number of weapons we have
-					int weaponsThisTick = 0;
-					CBaseHudWeaponSelection *weaponSelect = GetHudWeaponSelection();
-					if ( weaponSelect )
-					{
-						for ( int slot = 0; slot < numberOfSegments; slot++ )
-						{
-							for ( int bucket = 0; bucket < MAX_WEAPON_POSITIONS; bucket++ )
-							{
-								if ( weaponSelect->GetWeaponInSlot( slot, bucket ) )
-									weaponsThisTick++;
-							}
-						}
-
-						// If there is a discrepancy, check the weapons and their icons again
-						if ( weaponsThisTick != iNumberOfWeaponsEquipped )
-						{
-							RefreshEquippedWeapons();
-							iNumberOfWeaponsEquipped = weaponsThisTick;
-						}
-
-						// Update the current weapon's segment to reflect what we have equipped
-						CTFWeaponBase *pSelectedWeapon = pPlayer->GetActiveTFWeapon();
-						if ( pSelectedWeapon )
-						{
-							// or is it meant to be +/-1
-							segments[pSelectedWeapon->GetSlot()].bucketSelected = pSelectedWeapon->GetPosition();
-						}
-					}
-					}
-
-				void CHudWeaponWheel::CheckWheel()
+			if ( wepsCurrentlyInSlot > 0 )
+			{
+				int iterations = 0;
+				int bucket = currentBucket; // e.g. bucket 4 - 1 = 3
+				// Keep going in the direction of delta until we find a valid weapon (+1 = forwards, -1 = backwards)
+				while ( iterations < MAX_WEAPON_POSITIONS )
 				{
-					if ( bWheelActive )
-					{
-						// This is safe to do every frame/opening of the wheel
-						RefreshCentre();
+					bucket += delta;
 
-						// THIS IS NOT. Doing so will reset the player's chosen weapons constantly. We do not want to do this.
-						// If we do that, each slot will revert back to the same weapon every frame, forgetting what the player selected in that slot.
+					// wrap it around
+					if ( bucket > lastValidIndex )
+						bucket = 0;
+					if ( bucket < 0 )
+						bucket = lastValidIndex;
 
-						if ( bLayoutInvalidated )
-						{
-							RefreshWheelVerts();
-							RefreshEquippedWeapons();
-						}
+					if ( pHUDSelection->GetWeaponInSlot( slotSelected, bucket ) )
+						break;
 
-						// Call this when the player's equipped weapons change. This is done in ::OnTick and ONLY when the player picks up a new weapon/drops one.
-						//RefreshEquippedWeapons();
-
-						bHasCursorBeenInWheel = false;
-
-						//		Activate();
-						SetMouseInputEnabled( true );			// Capture the mouse...
-						SetKeyBoardInputEnabled( false );		// ...but not the keyboard!
-						// Replaced the cursor with an $alpha 0 image, since Valve didn't want to give me a way to hide the cursor or prevent mouselook.
-						surface()->SetSoftwareCursor( true );
-
-						//		vgui::input()->SetCursorPos(iCentreWheelX, iCentreWheelY);
-
-								// since Linux can't snap to centre :( we just start the weapon wheel wherever their mouse is
-								// On Windows, this should still let us start at iCentreScreenXY
-								// vgui::input()->GetCursorPos(iCentreWheelX, iCentreWheelY);
-
-						if ( hud_weaponwheel_dofblur.GetBool() )
-						{
-							SetDOFBlurEnabled( true );
-
-							// this var is just used to decide the lerp direction, it doesn't toggle it on/off
-							m_bBlurEnabled = true;
-							SetBlurLerpTimer( m_flBlurLerpTimeOn );
-						}
-					}
-					else
-					{
-						// Switch to the one the mouse is over
-						if ( useHighlighted )
-						{
-							// Select it and close
-							WeaponSelected( slotSelected, segments[slotSelected].bucketSelected );
-						}
-						SetMouseInputEnabled( false );
-						SetVisible( false );
-
-						surface()->SetSoftwareCursor( false );
-
-						m_bBlurEnabled = false;
-						SetBlurLerpTimer( m_flBlurLerpTimeOff );
-					}
-
-					SetDOFBlurDistance( m_flDOFBlurDistance );
+					iterations++;
 				}
 
-
-				void CHudWeaponWheel::OnMouseWheeled( int delta )
+				// Used to stop being able to cycle slots with 1 weapon
+				if ( segments[slotSelected].bucketSelected != bucket )
 				{
-					// Simplify it to +1 or -1
-					delta /= abs( delta );
-
-					if ( bWheelActive )
-					{
-						C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-						if ( !pPlayer )
-							return;
-
-						if ( slotSelected >= 0 )
-						{
-							// proper forward and backward cycling
-							CBaseHudWeaponSelection *pHUDSelection = CBaseHudWeaponSelection::GetInstance();
-							// How many weapons are there in the slot we've selected?
-							int wepsCurrentlyInSlot = 0;
-							int lastValidIndex = -1;
-							int currentBucket = segments[slotSelected].bucketSelected;
-							for ( int i = 0; i < MAX_WEAPON_POSITIONS; i++ )
-							{
-								if ( pHUDSelection->GetWeaponInSlot( slotSelected, i ) )
-								{
-									wepsCurrentlyInSlot++;
-									lastValidIndex = i;
-								}
-							}
-
-							if ( wepsCurrentlyInSlot > 0 )
-							{
-								int iterations = 0;
-								int bucket = currentBucket; // e.g. bucket 4 - 1 = 3
-								// Keep going in the direction of delta until we find a valid weapon (+1 = forwards, -1 = backwards)
-								while ( iterations < MAX_WEAPON_POSITIONS )
-								{
-									bucket += delta;
-
-									// wrap it around
-									if ( bucket > lastValidIndex )
-										bucket = 0;
-									if ( bucket < 0 )
-										bucket = lastValidIndex;
-
-									if ( pHUDSelection->GetWeaponInSlot( slotSelected, bucket ) )
-										break;
-
-									iterations++;
-								}
-
-								// Used to stop being able to cycle slots with 1 weapon
-								if ( segments[slotSelected].bucketSelected != bucket )
-								{
-									WeaponSelected( slotSelected, bucket, false );
-									segments[slotSelected].bucketSelected = bucket;
-								}
-							}
-
-							// We only need to disable selecting the highlighted one if the player actually changes a slot's weapon
-							if ( wepsCurrentlyInSlot > 1 )
-								useHighlighted = false;
-						}
-					}
+					WeaponSelected( slotSelected, bucket, false );
+					segments[slotSelected].bucketSelected = bucket;
 				}
+			}
+
+			// We only need to disable selecting the highlighted one if the player actually changes a slot's weapon
+			if ( wepsCurrentlyInSlot > 1 )
+				useHighlighted = false;
+		}
+	}
+}

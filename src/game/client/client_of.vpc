@@ -59,6 +59,7 @@ $Project "Client (Open Fortress)"
             }
 					
 			$File	"of\of_hud_weaponwheel.cpp"
+			$File	"of\of_hud_weaponwheel.h"
 			$File	"of\of_hud_speedometer.cpp"
 			$File "of\of_hud_keydisplay.cpp"
 			$File	"of\of_hud_account.cpp"
