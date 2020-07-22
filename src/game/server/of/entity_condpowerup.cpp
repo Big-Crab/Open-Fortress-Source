@@ -14,6 +14,8 @@
 
 #include "tier0/memdbgon.h"
 
+ConVar of_duel_powerup_timers("of_duel_powerup_timers", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Enables powerup timers in duel gamemode");
+
 extern ConVar of_powerups;
 
 //-----------------------------------------------------------------------------
@@ -62,16 +64,9 @@ CCondPowerup::CCondPowerup()
 
 void CCondPowerup::Spawn( void )
 {
-	//Remove
+	//disable outline
 	if (TFGameRules()->IsDuelGamemode())
-	{
-		//Most powerups need to be removed in duel mode
-		if (RemoveIfDuel())
-			UTIL_Remove(this);
-
-		//those that do not need to be removed must have outline turned off
 		m_bDisableShowOutline = true;
-	}
 
 	Precache();
 
@@ -117,18 +112,22 @@ bool CCondPowerup::MyTouch( CBasePlayer *pPlayer )
 
 		if( bSuccess )
 		{
-			if ( TeamplayRoundBasedRules() )
+			//in duel diffuse sound like a normal pickup (same for respawn)
+			if ( TFGameRules()->IsDuelGamemode() )
 			{
-				if ( strcmp( GetPowerupPickupLine(), "None" ) || strcmp( GetPowerupPickupLineSelf(), "None" ) )
-					TeamplayRoundBasedRules()->BroadcastSoundFFA( pTFPlayer->entindex(), GetPowerupPickupLineSelf(), GetPowerupPickupLine() );
-				
-				if ( strcmp( GetPowerupPickupSound(), "None" ) )
-					TeamplayRoundBasedRules()->BroadcastSound( TEAM_UNASSIGNED, GetPowerupPickupSound(), false );
-				else
-					TeamplayRoundBasedRules()->BroadcastSound( TEAM_UNASSIGNED, STRING( m_iszPickupSound ), false );
-				
+				EmitSound( STRING( m_iszPickupSound ) );
 			}
-			m_nRenderFX = kRenderFxDistort;
+			else if ( TeamplayRoundBasedRules() )
+			{
+				if ( Q_strcmp(GetPowerupPickupLine(), "None") || Q_strcmp(GetPowerupPickupLineSelf(), "None") )
+					TeamplayRoundBasedRules()->BroadcastSoundFFA( pTFPlayer->entindex(), GetPowerupPickupLineSelf(), GetPowerupPickupLine() );
+
+				const char *pickupSound = GetPowerupPickupSound();
+				if ( Q_strcmp(pickupSound, "None") )
+					TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, pickupSound, false);
+				else
+					TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, STRING( m_iszPickupSound ), false);
+			}
 		}
 	}
 
@@ -140,8 +139,7 @@ bool CCondPowerup::MyTouch( CBasePlayer *pPlayer )
 //-----------------------------------------------------------------------------
 bool CCondPowerup::DoPowerupEffect( CTFPlayer *pTFPlayer )
 {
-	// oh boy...
-	// HACK: can't update all the maps with the old conditions, therefore this has to be remapped!
+	// Old maps compatibility
 	switch ( m_iCondition )
 	{
 		case TF_COND_STEALTHED:
@@ -160,6 +158,7 @@ bool CCondPowerup::DoPowerupEffect( CTFPlayer *pTFPlayer )
 			m_iCondition = TF_COND_BERSERK;
 			break;
 		case 15:
+		case TF_COND_SHIELD_DUEL:
 			m_iCondition = TF_COND_SHIELD;
 			break;
 	}	
@@ -199,29 +198,53 @@ bool CCondPowerup::DoPowerupEffect( CTFPlayer *pTFPlayer )
 	return true;
 }
 
-CBaseEntity* CCondPowerup::Respawn( void )
+CBaseEntity *CCondPowerup::Respawn( void )
 {
 	CBaseEntity *ret = BaseClass::Respawn();
-	m_nRenderFX = kRenderFxDistort;
 	m_flRespawnTick = GetNextThink();
+
+	//In duel mode don't show the respawn timers, unless the convar allows it
+	if ( TFGameRules()->IsDuelGamemode() && !of_duel_powerup_timers.GetBool() )
+	{
+		m_nRenderFX = kRenderFxNone;
+		AddEffects( EF_NODRAW );
+	}
+	else
+	{
+		m_nRenderFX = kRenderFxDistort;
+	}
+
 	return ret;
 }
 
 void CCondPowerup::Materialize( void )
 {
+	//Making powerup visible at the respawn time (duel only)
+	//Removing the glitchy effect (all cases)
 	if ( !IsDisabled() )
 	{
-		// changing from invisible state to visible.
 		m_nRenderFX = kRenderFxNone;
 		RemoveEffects( EF_NODRAW );
 	}
+
 	m_OnRespawn.FireOutput( this, this );
-	if ( TeamplayRoundBasedRules() && TeamplayRoundBasedRules()->State_Get() != GR_STATE_PREROUND && strcmp(GetPowerupRespawnLine(), "None" ) )
-		TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, GetPowerupRespawnLine() );
-	else if ( TeamplayRoundBasedRules() && TeamplayRoundBasedRules()->State_Get() != GR_STATE_PREROUND )
-		TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, STRING ( m_iszSpawnSound ), false );
+
+	if (TFGameRules()->IsDuelGamemode())
+	{
+		EmitSound( STRING( m_iszSpawnSound ) );
+	}
+	else if (TeamplayRoundBasedRules() && TeamplayRoundBasedRules()->State_Get() != GR_STATE_PREROUND)
+	{
+		const char *respawnSound = GetPowerupRespawnLine();
+		if ( Q_strcmp(respawnSound, "None") )
+			TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, respawnSound);
+		else
+			TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, STRING(m_iszSpawnSound), false);
+	}
+
 	m_bRespawning = false;
 	bInitialDelay = false;
+
 	SetTouch( &CItem::ItemTouch );
 }
 

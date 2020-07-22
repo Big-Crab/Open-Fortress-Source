@@ -62,7 +62,8 @@ ConVar 	of_jumpsound("of_jumpsound", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE | FCVA
 #define TF_WATERJUMP_FORWARD		30
 #define TF_WATERJUMP_UP				300
 #define USE_DISMOUNT_SPEED			100
-#define HOOK_REEL_IN				150.f
+#define HOOK_REEL_IN				300.f
+#define MEAT_HOOK_AIRCONTROL		150.f
 
 extern ConVar of_zombie_lunge_delay;
 
@@ -78,6 +79,7 @@ struct NearbyDismount_t
 class CTFGameMovement : public CGameMovement
 {
 public:
+
 	DECLARE_CLASS(CTFGameMovement, CGameMovement);
 
 	CTFGameMovement();
@@ -109,7 +111,9 @@ public:
 	virtual bool GameHasLadders() const;
 	virtual void SetGroundEntity(trace_t *pm);
 	virtual void PlayerRoughLandingEffects(float fvol);
+
 protected:
+
 	virtual void CheckWaterJump(void);
 	void		 FullWalkMoveUnderwater();
 	virtual void HandleDuckingSpeedCrop();
@@ -122,7 +126,7 @@ private:
 	void		AirDash(bool meatHook = false);
 	void		PreventBunnyJumping();
 	void		CheckRamp(float *flMul, int rampMode);
-	void		CheckCSlideSound(bool CSliding);
+	void		CheckFootStepsSound(bool CSliding, const CBaseEntity *hook);
 
 private:
 
@@ -1626,10 +1630,10 @@ void CTFGameMovement::FullWalkMove()
 
 	bool cSliding = false;
 	bool cSlideOn = of_cslide.GetBool();
-	CBaseEntity *Hook = m_pTFPlayer->m_Shared.GetHook();
-	if (Hook)
+	CBaseEntity *pHook = m_pTFPlayer->m_Shared.GetHook();
+	if (pHook)
 	{
-		GrapplingMove(Hook);
+		GrapplingMove(pHook);
 	}
 	else
 	{
@@ -1685,23 +1689,32 @@ void CTFGameMovement::FullWalkMove()
 	CheckVelocity();
 
 	//Cslide sound turn on/off
-	CheckCSlideSound(cSliding);
+	CheckFootStepsSound(cSliding, pHook);
 }
 
-void CTFGameMovement::CheckCSlideSound(bool CSliding)
+void CTFGameMovement::CheckFootStepsSound(bool CSliding, const CBaseEntity *hook)
 {
+	if (hook)
+		return;
+
 	if (CSliding) //always go here if cslide is happening
 	{
-		if (!player->m_bIsCSliding)
+#ifdef CLIENT_DLL
+		player->m_bIsCSliding = true; //this is only needed for the client speedometer
+#endif
+		if (!player->m_bNoFootStepsSound)
 		{
 			player->EmitSound("Player.Slide");
-			player->m_bIsCSliding = true;
+			player->m_bNoFootStepsSound = true;
 		}
 	}
-	else if (player->m_bIsCSliding)
+	else if (player->m_bNoFootStepsSound) //re-enable footsteps when walking on ground
 	{
-		player->StopSound("Player.Slide");
+#ifdef CLIENT_DLL
 		player->m_bIsCSliding = false;
+#endif
+		player->StopSound("Player.Slide");
+		player->m_bNoFootStepsSound = false;
 	}
 }
 
@@ -1710,49 +1723,82 @@ void CTFGameMovement::GrapplingMove(CBaseEntity *hook, bool inWater)
 	//***************************************
 	//Hook Pull
 
+	SetGroundEntity(NULL);
+
 	Vector playerCenter = mv->GetAbsOrigin();
 	playerCenter += (m_pTFPlayer->EyePosition() - playerCenter) * 0.5;
 	bool bMeatHook = ToTFPlayer(hook) != NULL;
 
+	float flHookProp = m_pTFPlayer->m_Shared.GetHookProperty();
+
 	if (bMeatHook || !of_hook_pendulum.GetBool())
 	{
-		SetGroundEntity(NULL);
+		player->m_bNoFootStepsSound = true;
 		
 		Vector hookCenter = hook->GetAbsOrigin();
 		hookCenter += (hook->EyePosition() - hookCenter) * 0.5;
 		Vector dir = hookCenter - playerCenter;
 		VectorNormalize(dir);
 		float flWaterMoveMulti = inWater ? 0.75f : 1.f;
-
-		mv->m_vecVelocity = dir * m_pTFPlayer->m_Shared.GetHookProperty() * flWaterMoveMulti;
+		mv->m_vecVelocity = dir * flHookProp * flWaterMoveMulti;
 
 		if (bMeatHook)
 		{
 			//***************************************
 			//Player inputs
 
+			// Get the movement angles.
 			Vector vecForward, vecRight, vecUp;
 			AngleVectors(mv->m_vecViewAngles, &vecForward, &vecRight, &vecUp);
-			//No forwardmove allowed
+			vecForward.z = 0.0f;
 			vecRight.z = 0.0f;
+			VectorNormalize(vecForward);
 			VectorNormalize(vecRight);
 
-			// Find the direction,velocity in the x,y plane.
+			// Copy movement amounts
+			float flForwardMove = mv->m_flForwardMove;
 			float flSideMove = mv->m_flSideMove;
-			Vector vecWishDirection(vecRight.x * flSideMove, vecRight.y * flSideMove, 0.0f);
-			VectorAdd(mv->m_vecVelocity, 2.f * vecWishDirection * flWaterMoveMulti, mv->m_vecVelocity);
+
+			// Find the direction,velocity in the x,y plane.
+			Vector vecWishDirection(vecForward.x * flForwardMove + vecRight.x * flSideMove,
+									vecForward.y * flForwardMove + vecRight.y * flSideMove,
+									0.0f);
+			vecWishDirection *= MEAT_HOOK_AIRCONTROL;
+
+			Vector normWishDir = vecWishDirection;
+			VectorNormalize(normWishDir);
+			Vector normVecVel = Vector(mv->m_vecVelocity.x, mv->m_vecVelocity.y, 0.f);
+			VectorNormalize(normVecVel);
+			float dot = DotProduct(normVecVel, normWishDir);
+
+			if (dot >= 0)
+			{
+				mv->m_vecVelocity += vecWishDirection * gpGlobals->frametime * flWaterMoveMulti;
+				VectorNormalize(mv->m_vecVelocity);
+				mv->m_vecVelocity *= flHookProp;
+			}
+			else
+			{
+				dot = max(0.f, 1.f + dot);
+				mv->m_vecVelocity += vecWishDirection * gpGlobals->frametime * dot * flWaterMoveMulti;
+			}
 		}
 	}
 	else
 	{
-		Vector projRopeVec = hook->GetAbsOrigin() - (playerCenter + mv->m_vecVelocity * gpGlobals->frametime); //projected rope vector
+		//Get current and projected rope vectors
+		Vector ropeVec = hook->GetAbsOrigin() - playerCenter;
+		Vector projRopeVec = ropeVec - mv->m_vecVelocity * gpGlobals->frametime;
+
+		//Adjust rope length
+		m_pTFPlayer->m_Shared.SetHookProperty( min( flHookProp, ropeVec.Length() ) );
 
 		//if the projected rope is longer than it should be
-		float flRopeLength = m_pTFPlayer->m_Shared.GetHookProperty();
+		float flRopeLength = flHookProp;
 		if (projRopeVec.Length() > flRopeLength)
 		{
 			VectorNormalize(projRopeVec);
-			projRopeVec *= m_pTFPlayer->m_Shared.GetHookProperty(); //get the vector of the rope with allowed length
+			projRopeVec *= flHookProp; //get the vector of the rope with allowed length
 
 			//find the necessary velocity player needs to have to get from its current position
 			//to the allowed rope length position
@@ -1761,7 +1807,9 @@ void CTFGameMovement::GrapplingMove(CBaseEntity *hook, bool inWater)
 			mv->m_vecVelocity = dir * mv->m_vecVelocity.Length();
 		}
 
-		m_pTFPlayer->m_Shared.SetHookProperty( flRopeLength - HOOK_REEL_IN * gpGlobals->frametime );
+		//Add a small pull velocity
+		VectorNormalize(ropeVec);
+		mv->m_vecVelocity += (HOOK_REEL_IN * gpGlobals->frametime) * ropeVec;
 	}
 
 	//***************************************

@@ -1478,6 +1478,9 @@ void CTFPlayer::Regenerate( void )
 
 	if (m_Shared.InCond(TF_COND_POISON))
 		m_Shared.RemoveCond(TF_COND_POISON);
+
+	if (m_Shared.InCond(TF_COND_TRANQ))
+		m_Shared.RemoveCond(TF_COND_TRANQ);
 }
 
 //-----------------------------------------------------------------------------
@@ -5652,11 +5655,12 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	CBaseEntity *pInflictor = info.GetInflictor();
 	CTFPlayer *pPlayerAttacker = NULL;
 
-	if ( info.GetAttacker() && info.GetAttacker()->IsPlayer() )
+	//Medal shenanigans
+	if ( pAttacker && pAttacker->IsPlayer() )
 	{
 		pPlayerAttacker = ToTFPlayer( info.GetAttacker() );
 
-		if (pPlayerAttacker != this)
+		if ( pPlayerAttacker != this )
 		{
 			//Powerup Massacre
 			pPlayerAttacker->m_iPowerupKills += m_Shared.InPowerupCond() ? 1 : 0; //count kills while holding powerup
@@ -5671,27 +5675,6 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 			pPlayerAttacker->m_iSpreeKills++;
 		}
 	}
-	
-	/* undone for medals system
-	CTFWeaponBaseMelee *pWeapon = dynamic_cast<CTFWeaponBaseMelee*>(info.GetWeapon());
-
-	if ( pWeapon && TFGameRules() && TFGameRules()->IsDMGamemode() && !TFGameRules()->DontCountKills() )
-	{
-		if( pWeapon->GetTFWpnData().m_bHolyShit )
-		{
-			if( random->RandomInt( 1, 4 ) == 3 )
-			{
-				TeamplayRoundBasedRules()->BroadcastSoundFFA( info.GetAttacker()->entindex(), "HolyShit" ); 
-				TeamplayRoundBasedRules()->BroadcastSoundFFA( entindex(), "HolyShit" ); 
-			}
-		}
-		else
-		{
-			TeamplayRoundBasedRules()->BroadcastSoundFFA( info.GetAttacker()->entindex(), "Humiliation" ); 
-			TeamplayRoundBasedRules()->BroadcastSoundFFA( entindex(), "Humiliation" ); 			
-		}
-	}
-	*/
 	
 	bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED );
 	// we want the ragdoll to burn if the player was burning and was not a pryo (who only burns momentarily)

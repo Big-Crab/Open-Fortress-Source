@@ -287,9 +287,16 @@ void CTFEternalShotgun::ItemPostFrame()
 {
 	CBaseEntity *pHook = GetHookEntity();
 
-#ifdef GAME_DLL
+	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
+	if (!pPlayer || !pPlayer->IsAlive() || (m_iAttached && ToTFPlayer(pHook) && !ToTFPlayer(pHook)->IsAlive()))
+	{
+		RemoveHook();
+		return;
+	}
+
 	if (pHook)
 	{
+#ifdef GAME_DLL
 		Vector hookPos = pHook->GetAbsOrigin();
 		hookPos += (pHook->EyePosition() - hookPos) * 0.75; //looks better than 0.5 on hooked players
 
@@ -300,25 +307,15 @@ void CTFEternalShotgun::ItemPostFrame()
 			pBeam->PointEntInit(hookPos, this);
 			pBeam->SetEndAttachment(LookupAttachment("muzzle"));
 		}
-
-		//Invalidate hook if it is not in sight
-		if (m_iAttached && !HookLOS(hookPos))
-			RemoveHook();
-	}
 #endif
-
-	CTFPlayer *pPlayer = ToTFPlayer(GetOwner());
-	if (!pPlayer || !pPlayer->IsAlive() || ( m_iAttached && ToTFPlayer(pHook) && !ToTFPlayer(pHook)->IsAlive() ) )
-	{
-		RemoveHook();
-		return;
-	}
-
-	if(pHook)
-	{
-		if (m_iAttached) //hook is attached to something
+		
+		if(m_iAttached)
 		{
-			if ((pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 100.f)
+#ifdef GAME_DLL
+			if ( !HookLOS(hookPos) || ( pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin() ).Length() <= 72.f )
+#else
+			if ((pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 72.f)
+#endif
 				RemoveHook();
 			else if (m_iAttached == 2) //notify player how it should behave
 				InitiateHook(pPlayer, pHook);
@@ -658,7 +655,7 @@ void CTFMeatHook::FlyThink(void)
 		return;
 	}
 
-	if ((GetAbsOrigin() - m_hOwner->GetAbsOrigin()).Length() >= MAX_ROPE_LENGTH)
+	if ((GetAbsOrigin() - m_hOwner->GetAbsOrigin()).Length() >= MAX_ROPE_LENGTH || !m_hOwner->HookLOS(GetAbsOrigin()))
 	{
 		m_hOwner->RemoveHook();
 		return;
@@ -669,7 +666,7 @@ void CTFMeatHook::FlyThink(void)
 
 void CTFMeatHook::HookTouch(CBaseEntity *pOther)
 {
-	if (pOther == m_hOwner || !pOther->IsPlayer() || pOther->IsSolidFlagSet(FSOLID_VOLUME_CONTENTS) || !m_hOwner->HookLOS(GetAbsOrigin()) || !GetOwnerEntity())
+	if (pOther == m_hOwner || !pOther->IsPlayer() || pOther->IsSolidFlagSet(FSOLID_VOLUME_CONTENTS) || !GetOwnerEntity())
 	{
 		m_hOwner->RemoveHook();
 		return;
@@ -688,6 +685,7 @@ void CTFMeatHook::HookTouch(CBaseEntity *pOther)
 
 	CTFPlayer *pOwner = (CTFPlayer *)GetOwnerEntity();
 	pOwner->SetPhysicsFlag(PFLAG_VPHYSICS_MOTIONCONTROLLER, true);
+
 	pOwner->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
 
 	CTFPlayer *pHooked = ToTFPlayer(pOther);

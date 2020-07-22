@@ -56,6 +56,10 @@ public:
 	DECLARE_NETWORKCLASS(); 
 	DECLARE_PREDICTABLE();
 
+#ifdef GAME_DLL
+	bool m_bWasOnGround;
+#endif
+
 private:
 
 	void InitiateHook(CTFPlayer * pPlayer, CBaseEntity *hook);
@@ -66,7 +70,6 @@ private:
 #else
 	EHANDLE						m_hHook;		//client hook relay
 #endif
-
 	CNetworkVar(int, m_iAttached);
 	CNetworkVar(int, m_nBulletType);
 };

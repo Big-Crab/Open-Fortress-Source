@@ -542,7 +542,7 @@ public:
 
 	virtual bool  FlPlayerFallDeathDoesScreenFade( CBasePlayer *pl ) { return false; }
 
-	virtual bool UseSuicidePenalty() { return false; }
+	virtual bool UseSuicidePenalty() { return IsDuelGamemode() ? true : false; }
 
 	int		GetPreviousRoundWinners( void ) { return m_iPreviousRoundWinners; }
 

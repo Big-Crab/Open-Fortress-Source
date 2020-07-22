@@ -19,6 +19,8 @@
 #define TF_WALK_SPEED			75.0f
 #define TF_CROUCHWALK_SPEED		110.0f
 
+extern ConVar of_hook_pendulum;
+
 /*
 acttable_t m_acttableGrapple[] = 
 {
@@ -533,7 +535,7 @@ bool CTFPlayerAnimState::HandleMoving( Activity &idealActivity )
 	}
 
 	// grappling state
-	if ( m_pTFPlayer->m_Shared.GetHook() )
+	if ( m_pTFPlayer->m_Shared.GetHook() && !( of_hook_pendulum.GetBool() && m_pTFPlayer->GetGroundEntity() ) )
 	{
 		idealActivity = ACT_GRAPPLE_PULL_IDLE;
 		return true;
