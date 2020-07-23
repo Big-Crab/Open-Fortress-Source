@@ -7,31 +7,15 @@
 #include "cbase.h"
 #include "tf_weaponbase_gun.h"
 #include "tf_fx_shared.h"
-#include "effect_dispatch_data.h"
-#include "takedamageinfo.h"
 #include "tf_projectile_nail.h"
 #include "in_buttons.h"
-#include "tf_gamerules.h"
 #include "of_projectile_bfg.h"
 #include "tf_weapon_grenade_pipebomb.h"
 #include "tf_weapon_rocketlauncher.h"
 
-#if !defined( CLIENT_DLL )	// Server specific.
-
-	#include "tf_gamestats.h"
-	#include "tf_player.h"
-	#include "tf_fx.h"
-	#include "te_effect_dispatch.h"
-
-	#include "tf_projectile_rocket.h"
-	#include "te.h"
-	#include "of_projectile_tripmine.h"
-
-#else	// Client specific.
-
-	#include "c_tf_player.h"
-	#include "c_te_effect_dispatch.h"
-
+#ifdef GAME_DLL
+#include "tf_gamestats.h"
+#include "of_projectile_tripmine.h"
 #endif
 
 //=============================================================================
@@ -43,17 +27,17 @@ IMPLEMENT_NETWORKCLASS_ALIASED( TFWeaponBaseGun, DT_TFWeaponBaseGun )
 BEGIN_NETWORK_TABLE( CTFWeaponBaseGun, DT_TFWeaponBaseGun )
 // Client specific.
 #ifdef CLIENT_DLL
-	RecvPropTime( RECVINFO( m_flAccurateAtTick ) ),
+RecvPropTime( RECVINFO( m_flAccurateAtTick ) ),
 // Server specific.
 #else
-	SendPropTime( SENDINFO( m_flAccurateAtTick ) ),
+SendPropTime( SENDINFO( m_flAccurateAtTick ) ),
 #endif
 END_NETWORK_TABLE()
 
 BEGIN_PREDICTION_DATA( CTFWeaponBaseGun )
 #if defined( CLIENT_DLL )
-	DEFINE_FIELD( m_flChargeBeginTime, FIELD_FLOAT ),
-	DEFINE_FIELD( m_flAccurateAtTick, FIELD_FLOAT ),
+DEFINE_FIELD( m_flChargeBeginTime, FIELD_FLOAT ),
+DEFINE_FIELD( m_flAccurateAtTick, FIELD_FLOAT ),
 #endif
 END_PREDICTION_DATA()
 
@@ -95,7 +79,7 @@ bool CTFWeaponBaseGun::Reload( void )
 	if ( InBurst() )
 		return false;
 
-	return BaseClass::Reload( );
+	return BaseClass::Reload();
 }
 
 
@@ -109,9 +93,9 @@ void CTFWeaponBaseGun::BurstFire( void )
 	if ( m_iClip1 <= 0 )
 	{
 		if ( FiresInBursts() )
-		m_iShotsDue = 0;
+			m_iShotsDue = 0;
 		if ( LoadsManualy() )
-		m_bInBarrage = false;
+			m_bInBarrage = false;
 		return;
 	}
 	BaseClass::BurstFire();
@@ -122,8 +106,12 @@ void CTFWeaponBaseGun::BurstFire( void )
 //
 //
 //-----------------------------------------------------------------------------
-void CTFWeaponBaseGun::BeginBurstFire(void)
+void CTFWeaponBaseGun::BeginBurstFire( void )
 {
+	//Ivory: Otherwise animations and sounds play even if gun cannot shoot
+	if ( !CanAttack() )
+		return;
+
 	BaseClass::BeginBurstFire();
 }
 
@@ -136,16 +124,16 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 	CTFPlayer *pPlayer = ToTFPlayer( GetPlayerOwner() );
 	if ( !pPlayer )
 		return;
-	
+
 	if ( !CanAttack() )
-		return;	
-	
+		return;
+
 	// Check for ammunition.
-	
+
 	if ( m_iClip1 <= 0 && m_iClip1 != -1 )
 	{
 		if ( FiresInBursts() )
-		m_iShotsDue = 0;
+			m_iShotsDue = 0;
 		if ( LoadsManualy() )
 		{
 			m_bInBarrage = false;
@@ -167,11 +155,11 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 			SendWeaponAnim( ACT_VM_CHARGEUP );
 			return;
 		}
-	}	
+	}
 	if ( !FiresInBursts() && !LoadsManualy() )
 	{
 		// Are we capable of firing again?
-		if ( m_flNextPrimaryAttack > gpGlobals->curtime  )
+		if ( m_flNextPrimaryAttack > gpGlobals->curtime )
 			return;
 	}
 	else if ( ( FiresInBursts() && m_iShotsDue == 0 ) || ( LoadsManualy() && !InBarrage() ) )
@@ -179,7 +167,7 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 
 	CalcIsAttackCritical();
 
-#ifndef CLIENT_DLL
+#ifdef GAME_DLL
 	pPlayer->RemoveInvisibility();
 	pPlayer->RemoveDisguise();
 	pPlayer->m_Shared.RemoveCond( TF_COND_SPAWNPROTECT );
@@ -195,9 +183,9 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 	// Set the weapon mode.
 	m_iWeaponMode = TF_WEAPON_PRIMARY_MODE;
 
-	if (PrimaryAttackSwapsActivities())
+	if ( PrimaryAttackSwapsActivities() )
 	{
-		if (!m_bSwapFire)
+		if ( !m_bSwapFire )
 			DoViewModelAnimation();
 		else
 		{
@@ -205,7 +193,7 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 			float flSpeedMultiplier = 1.0f;
 			if ( pPlayer->m_Shared.InCond( TF_COND_HASTE ) )
 				flSpeedMultiplier = of_haste_fire_multiplier.GetFloat();
-			
+
 			CBaseViewModel *vm = pPlayer->GetViewModel( m_nViewModelIndex );
 			if ( vm )
 			{
@@ -224,16 +212,16 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 
 	//fire line tracer to determine if projectile will hit a player, needed for Impressive medal
 #ifdef GAME_DLL
-	if (WeaponID_IsSniperRifle(GetWeaponID()))
+	if ( WeaponID_IsSniperRifle( GetWeaponID() ) )
 	{
 		Vector vecSrc = pPlayer->Weapon_ShootPosition();
 
 		trace_t tr;
-		UTIL_TraceLine(vecSrc, vecSrc + pPlayer->GetAutoaimVector(0) * GetTFWpnData().m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_flRange, MASK_ALL, pPlayer, COLLISION_GROUP_NONE, &tr);
+		UTIL_TraceLine( vecSrc, vecSrc + pPlayer->GetAutoaimVector( 0 ) * GetTFWpnData().m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_flRange, MASK_ALL, pPlayer, COLLISION_GROUP_NONE, &tr );
 
-		if (tr.m_pEnt)
+		if ( tr.m_pEnt )
 		{
-			if (tr.m_pEnt->IsPlayer())
+			if ( tr.m_pEnt->IsPlayer() )
 				pPlayer->m_iImpressiveCount++;
 			else
 				pPlayer->m_iImpressiveCount = 0;
@@ -242,19 +230,19 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 #endif
 
 	FireProjectile( pPlayer );
-	
+
 	m_iDamageIncrease += m_pWeaponInfo->m_iContinuousFireDamageIncrease;
 	m_flBlastRadiusIncrease += m_pWeaponInfo->m_flContinuousFireBlastRadiusIncrease;
 
 	// Set next attack times.
 	if ( GetTFWpnData().m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_flBurstFireDelay == 0 )
 	{
-		if( Clip1() <= 0 && ReserveAmmo() <= 0 ) // Stikynote
+		if ( Clip1() <= 0 && ReserveAmmo() <= 0 ) // Stikynote
 			m_flNextPrimaryAttack = gpGlobals->curtime + m_pWeaponInfo->m_flLastShotDelay;
 		else
 			m_flNextPrimaryAttack = gpGlobals->curtime + GetFireRate();
 	}
-	
+
 	m_flAccurateAtTick = gpGlobals->curtime + 1.25;
 
 	// Don't push out secondary attack, because our secondary fire
@@ -271,42 +259,42 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 	{
 		SetWeaponIdleTime( gpGlobals->curtime + SequenceDuration() );
 	}
-	
+
 	if ( !InBarrage() && !InBurst() )
-		m_bWindingUp = false;	
+		m_bWindingUp = false;
 
 	// Check the reload mode and behave appropriately.
 	if ( m_bReloadsSingly )
 	{
 		m_iReloadMode.Set( TF_RELOAD_START );
 	}
-}	
+}
 
 void CTFWeaponBaseGun::ItemPostFrame( void )
 {
-	CTFPlayer *pOwner = ToTFPlayer( GetPlayerOwner( ) );
+	CTFPlayer *pOwner = ToTFPlayer( GetPlayerOwner() );
 	if ( !pOwner )
 		return;
-	
-	if ( LoadsManualy() &&  m_iClip1 <= 0 )
+
+	if ( LoadsManualy() && m_iClip1 <= 0 )
 	{
 		m_bInBarrage = false;
 	}
-	
+
 	if ( InBarrage() )
 	{
-        // If it's firing the clip don't let them repress attack to reload
-        pOwner->m_nButtons &= ~IN_ATTACK;
+		// If it's firing the clip don't let them repress attack to reload
+		pOwner->m_nButtons &= ~IN_ATTACK;
 		pOwner->m_nButtons &= ~IN_RELOAD;
 		AbortReload();
 	}
-	
-    // Try to fire if there's ammo in the clip and we're not holding the button
-    m_bInBarrage = LoadsManualy() && m_iClip1 > 0 && !( pOwner->m_nButtons & IN_ATTACK ) && !( pOwner->m_nButtons & IN_RELOAD );
+
+	// Try to fire if there's ammo in the clip and we're not holding the button
+	m_bInBarrage = LoadsManualy() && m_iClip1 > 0 && !( pOwner->m_nButtons & IN_ATTACK ) && !( pOwner->m_nButtons & IN_RELOAD );
 
 	if ( LoadsManualy() )
 	{
-		if( !InBarrage() )
+		if ( !InBarrage() )
 		{
 			if ( CanReload() && ( pOwner->m_nButtons & IN_ATTACK ) )
 			{
@@ -322,7 +310,7 @@ void CTFWeaponBaseGun::ItemPostFrame( void )
 			// Fake the attack key
 			if ( InBurst() && m_flNextShotTime < gpGlobals->curtime )
 				BurstFire();
-			
+
 			if ( m_flNextPrimaryAttack < gpGlobals->curtime && m_iClip1 > 0 )
 				BeginBurstFire();
 		}
@@ -331,7 +319,8 @@ void CTFWeaponBaseGun::ItemPostFrame( void )
 			BurstFire();
 		}
 	}
-	else {
+	else
+	{
 		if ( InBurst() && m_flNextShotTime < gpGlobals->curtime )
 			BurstFire();
 
@@ -340,8 +329,8 @@ void CTFWeaponBaseGun::ItemPostFrame( void )
 			BeginBurstFire();
 		}
 	}
-	BaseClass::ItemPostFrame();	
-	
+	BaseClass::ItemPostFrame();
+
 }
 
 bool CTFWeaponBaseGun::FiresInBursts( void )
@@ -363,8 +352,8 @@ void CTFWeaponBaseGun::SecondaryAttack( void )
 	if ( !pPlayer )
 		return;
 
-	pPlayer->DoClassSpecialSkill();	
-	
+	pPlayer->DoClassSpecialSkill();
+
 	m_bInAttack2 = true;
 
 	m_flNextSecondaryAttack = gpGlobals->curtime + 0.5;
@@ -377,7 +366,7 @@ CBaseEntity *CTFWeaponBaseGun::FireProjectile( CTFPlayer *pPlayer )
 
 	CTFWeaponBase *pWeapon = pPlayer->GetActiveTFWeapon();
 
-	switch( iProjectile )
+	switch ( iProjectile )
 	{
 	case TF_PROJECTILE_BULLET:
 		FireBullet( pPlayer );
@@ -440,29 +429,29 @@ CBaseEntity *CTFWeaponBaseGun::FireProjectile( CTFPlayer *pPlayer )
 
 	if ( m_iClip1 != -1 )
 	{
-		if ( !of_noreload.GetBool() || ReserveAmmo() <= 0 || ( pWeapon && (pWeapon->GetWeaponID() == TF_WEAPON_SUPERSHOTGUN) ) )
+		if ( !of_noreload.GetBool() || ReserveAmmo() <= 0 || ( pWeapon && ( pWeapon->GetWeaponID() == TF_WEAPON_SUPERSHOTGUN || pWeapon->GetWeaponID() == TF_WEAPON_ETERNALSHOTGUN ) ) )
 		{
 			m_iClip1 -= m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_iAmmoPerShot;
 		}
 		else
 		{
-			if ( !of_infiniteammo.GetBool() ) 
-					m_iReserveAmmo -= 1;
+			if ( !of_infiniteammo.GetBool() )
+				m_iReserveAmmo -= 1;
 		}
-		
+
 	}
 	else
 	{
 		if ( m_iWeaponMode == TF_WEAPON_PRIMARY_MODE )
 		{
-			if ( !of_infiniteammo.GetBool() ) 
+			if ( !of_infiniteammo.GetBool() )
 				m_iReserveAmmo -= m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_iAmmoPerShot;
 		}
 		else
 		{
-			if ( !of_infiniteammo.GetBool() ) 
+			if ( !of_infiniteammo.GetBool() )
 				pPlayer->RemoveAmmo( m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_iAmmoPerShot, m_iSecondaryAmmoType );
-				
+
 		}
 	}
 
@@ -497,8 +486,8 @@ void CTFWeaponBaseGun::FireBullet( CTFPlayer *pPlayer )
 	if ( GetWeaponID() != TF_WEAPON_LIGHTNING_GUN )
 		PlayWeaponShootSound();
 
-	bool bFirstShot =  m_flAccurateAtTick < gpGlobals->curtime;
-	
+	bool bFirstShot = m_flAccurateAtTick < gpGlobals->curtime;
+
 	FX_FireBullets(
 		pPlayer->entindex(),
 		pPlayer->Weapon_ShootPosition(),
@@ -549,7 +538,7 @@ void CTFWeaponBaseGun::GetProjectileFireSetup( CTFPlayer *pPlayer, Vector vecOff
 	Vector vecShootPos = pPlayer->Weapon_ShootPosition();
 
 	// Estimate end point
-	Vector endPos = vecShootPos + vecForward * 2000;	
+	Vector endPos = vecShootPos + vecForward * 2000;
 
 	// Trace forward and find what's in front of us, and aim at that
 	trace_t tr;
@@ -562,13 +551,13 @@ void CTFWeaponBaseGun::GetProjectileFireSetup( CTFPlayer *pPlayer, Vector vecOff
 	else
 	{
 		int team = pPlayer->GetTeamNumber();
-		if ( team == TF_TEAM_MERCENARY ) team = 0;		
+		if ( team == TF_TEAM_MERCENARY ) team = 0;
 		CTraceFilterIgnoreTeammates filter( pPlayer, COLLISION_GROUP_NONE, team );
 		UTIL_TraceLine( vecShootPos, endPos, MASK_SOLID, &filter, &tr );
 	}
 
 	// Offset actual start point
-	*vecSrc = vecShootPos + (vecForward * vecOffset.x) + (vecRight * vecOffset.y) + (vecUp * vecOffset.z);
+	*vecSrc = vecShootPos + ( vecForward * vecOffset.x ) + ( vecRight * vecOffset.y ) + ( vecUp * vecOffset.z );
 
 	// Find angles that will get us to our desired end point
 	// Only use the trace end if it wasn't too close, which results
@@ -594,7 +583,7 @@ void CTFWeaponBaseGun::GetProjectileAirblastSetup( CTFPlayer *pPlayer, Vector ve
 	Vector vecShootPos = pPlayer->Weapon_ShootPosition();
 
 	// Estimate end point
-	Vector endPos = vecShootPos + vecForward * 2000;	
+	Vector endPos = vecShootPos + vecForward * 2000;
 
 	// Trace forward and find what's in front of us, and aim at that
 	trace_t tr;
@@ -607,7 +596,7 @@ void CTFWeaponBaseGun::GetProjectileAirblastSetup( CTFPlayer *pPlayer, Vector ve
 	else
 	{
 		int team = pPlayer->GetTeamNumber();
-		if ( team == TF_TEAM_MERCENARY ) team = 0;		
+		if ( team == TF_TEAM_MERCENARY ) team = 0;
 		CTraceFilterIgnoreTeammates filter( pPlayer, COLLISION_GROUP_NONE, team );
 		UTIL_TraceLine( vecShootPos, endPos, MASK_SOLID, &filter, &tr );
 	}
@@ -636,31 +625,23 @@ CBaseEntity *CTFWeaponBaseGun::FireCoom( CTFPlayer *pPlayer )
 
 	// Server only - create the rocket.
 #ifdef GAME_DLL
-	
+
 	bool bCenter = m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_bCenterfireProjectile;
 
 	int iQuakeCvar = 0;
-	
+
 	if ( !pPlayer->IsFakeClient() )
-		iQuakeCvar = V_atoi( engine->GetClientConVarValue(pPlayer->entindex(), "viewmodel_centered") );
+		iQuakeCvar = V_atoi( engine->GetClientConVarValue( pPlayer->entindex(), "viewmodel_centered" ) );
 
 	Vector vecSrc;
 	QAngle angForward;
-	Vector vecOffset( 23.5f, 12.0f, -3.0f );	
+	Vector vecOffset( 23.5f, 12.0f, -3.0f );
 
 	if ( bCenter || iQuakeCvar )
 	{
 		vecOffset.x = 12.0f; //forward backwards
 		vecOffset.y = 0.0f; // left right
 		vecOffset.z = -8.0f; //up down
-	}
-	
-	if ( pPlayer->GetFlags() & FL_DUCKING )
-	{
-		if ( bCenter || iQuakeCvar )
-			vecOffset.z = 0.0f;
-		else
-			vecOffset.z = 8.0f;
 	}
 	GetProjectileFireSetup( pPlayer, vecOffset, &vecSrc, &angForward, false );
 
@@ -687,17 +668,17 @@ CBaseEntity *CTFWeaponBaseGun::FireRocket( CTFPlayer *pPlayer )
 
 	// Server only - create the rocket.
 #ifdef GAME_DLL
-	
+
 	bool bCenter = m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_bCenterfireProjectile;
 
 	int iQuakeCvar = 0;
-	
+
 	if ( !pPlayer->IsFakeClient() )
-		iQuakeCvar = V_atoi( engine->GetClientConVarValue( pPlayer->entindex(), "viewmodel_centered") );
+		iQuakeCvar = V_atoi( engine->GetClientConVarValue( pPlayer->entindex(), "viewmodel_centered" ) );
 
 	Vector vecSrc;
 	QAngle angForward;
-	Vector vecOffset( 23.5f, 12.0f, -3.0f );	
+	Vector vecOffset( 23.5f, 12.0f, -3.0f );
 
 	if ( bCenter || iQuakeCvar )
 	{
@@ -705,25 +686,18 @@ CBaseEntity *CTFWeaponBaseGun::FireRocket( CTFPlayer *pPlayer )
 		vecOffset.y = 0.0f; // left right
 		vecOffset.z = -8.0f; //up down
 	}
-	
-	if ( pPlayer->GetFlags() & FL_DUCKING )
-	{
-		if ( bCenter || iQuakeCvar )
-			vecOffset.z = 0.0f;
-		else
-			vecOffset.z = 8.0f;
-	}
+
 	GetProjectileFireSetup( pPlayer, vecOffset, &vecSrc, &angForward, false );
 
 	CTFProjectile_Rocket *pProjectile = CTFProjectile_Rocket::Create( this, vecSrc, angForward, pPlayer, pPlayer );
 	if ( pProjectile )
 	{
-		CTFSuperRocketLauncher *pQuad = dynamic_cast<CTFSuperRocketLauncher*>(this);
-		if( pQuad && pQuad->m_bHoming )
+		CTFSuperRocketLauncher *pQuad = dynamic_cast<CTFSuperRocketLauncher*>( this );
+		if ( pQuad && pQuad->m_bHoming )
 		{
-			if( !pQuad->m_hTargetDot )
+			if ( !pQuad->m_hTargetDot )
 				pQuad->CreateTargetDot();
-			pProjectile->SetHomingTarget( pQuad->m_hTargetDot );		
+			pProjectile->SetHomingTarget( pQuad->m_hTargetDot );
 		}
 		pProjectile->SetCritical( IsCurrentAttackACrit() );
 		pProjectile->SetDamage( GetProjectileDamage() );
@@ -745,52 +719,56 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 
 	Vector vecSrc;
 	QAngle angForward;
-	Vector vecOffset( 16,6,-8 );
-	
+	Vector vecOffset( 16, 6, -8 );
+
 	int iQuakeCvar = 0;
-	
+
 #ifdef GAME_DLL
 	if ( !pPlayer->IsFakeClient() )
-		iQuakeCvar = V_atoi( engine->GetClientConVarValue(pPlayer->entindex(), "viewmodel_centered") );	
+		iQuakeCvar = V_atoi( engine->GetClientConVarValue( pPlayer->entindex(), "viewmodel_centered" ) );
 #else
 	extern ConVar viewmodel_centered;
-	iQuakeCvar = V_atoi(viewmodel_centered.GetString());
+	iQuakeCvar = V_atoi( viewmodel_centered.GetString() );
 #endif	
 
 	if ( iQuakeCvar )
 	{
 		vecOffset.x = 12.0f; //forward backwards
 		vecOffset.y = 0.0f; // left right
-		vecOffset.z = -8.0f; //up down
+		vecOffset.z = -8.0f;
 	}
-	
-	GetProjectileFireSetup( pPlayer, vecOffset , &vecSrc, &angForward );
-	
+
+	GetProjectileFireSetup( pPlayer, vecOffset, &vecSrc, &angForward );
+
 	// Add some spread
-	float flSpread = 1.5;
-	angForward.x += RandomFloat( -flSpread, flSpread );
-	angForward.y += RandomFloat( -flSpread, flSpread );
+	if ( iSpecificNail != TF_PROJECTILE_TRANQ )
+	{
+		// Add some spread
+		float flSpread = 1.5;
+		angForward.x += RandomFloat( -flSpread, flSpread );
+		angForward.y += RandomFloat( -flSpread, flSpread );
+	}
 
 	CTFBaseProjectile *pProjectile = NULL;
 	CTFProjectile_Nail* pProjectileNail = NULL;
 	bool bWasNail = false;
-	switch( iSpecificNail )
+	switch ( iSpecificNail )
 	{
 	case TF_PROJECTILE_SYRINGE:
 		pProjectile = CTFProjectile_Syringe::Create( vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit() );
 		break;
 
 	case TF_PROJECTILE_TRANQ:
-		pProjectile = CTFProjectile_Tranq::Create(vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit());
+		pProjectile = CTFProjectile_Tranq::Create( vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit() );
 		break;
-		
-    case TF_PROJECTILE_NAIL:
-		pProjectileNail = CTFProjectile_Nail::Create(vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit());
+
+	case TF_PROJECTILE_NAIL:
+		pProjectileNail = CTFProjectile_Nail::Create( vecSrc, angForward, pPlayer, pPlayer, IsCurrentAttackACrit() );
 		pProjectile = pProjectileNail;
 		bWasNail = true;
-		break;	
+		break;
 	default:
-		Assert(0);
+		Assert( 0 );
 	}
 
 	if ( pProjectile )
@@ -798,16 +776,21 @@ CBaseEntity *CTFWeaponBaseGun::FireNail( CTFPlayer *pPlayer, int iSpecificNail )
 		pProjectile->SetWeaponID( GetWeaponID() );
 		pProjectile->SetCritical( IsCurrentAttackACrit() );
 #ifdef GAME_DLL
-		if (bWasNail)
+		if ( bWasNail )
 		{
+			// Let it know what gun fired it (allows RadiusDamage to parse BlastJumpDamageForce correctly)
+			pProjectileNail->SetWeapon( this );
 			// Plasmagun splash damage maximum in Q3 is 1/3 of the base damage, so that's what's used here
-			pProjectileNail->SetExplosionRadius(GetDamageRadius());
-			pProjectileNail->SetExplosionDamage(Ceil2Int( GetDamage() / 3.0f ));
+			pProjectileNail->SetExplosionRadius( GetDamageRadius() );
+			pProjectileNail->SetExplosionDamage( Ceil2Int( GetDamage() / 3.0f ) );
+			//pProjectileNail->Set
+			//m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_nBlastJumpDamageForce;
+			pProjectileNail->SetExplosionForce( GetTFWpnData().m_nBlastJumpDamageForce );
 		}
 		pProjectile->SetDamage( GetProjectileDamage() );
 #endif
 	}
-	
+
 	return pProjectile;
 }
 
@@ -825,15 +808,15 @@ CBaseEntity *CTFWeaponBaseGun::FirePipeBomb( CTFPlayer *pPlayer, bool bRemoteDet
 
 	// Create grenades here!!
 	Vector vecSrc = pPlayer->Weapon_ShootPosition();
-	
+
 	bool bCenter = m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_bCenterfireProjectile;
 
 	int iQuakeCvar = 0;
-	
-	if ( !pPlayer->IsFakeClient() )
-		iQuakeCvar = V_atoi( engine->GetClientConVarValue(pPlayer->entindex(), "viewmodel_centered") );
 
-	Vector vecOffset( 16.0f, 8.0f, -6.0f );	
+	if ( !pPlayer->IsFakeClient() )
+		iQuakeCvar = V_atoi( engine->GetClientConVarValue( pPlayer->entindex(), "viewmodel_centered" ) );
+
+	Vector vecOffset( 16.0f, 8.0f, -6.0f );
 
 	if ( bCenter || iQuakeCvar )
 	{
@@ -841,23 +824,15 @@ CBaseEntity *CTFWeaponBaseGun::FirePipeBomb( CTFPlayer *pPlayer, bool bRemoteDet
 		vecOffset.y = 0.0f; // left right
 		vecOffset.z = -8.0f; //up down
 	}
-	
-	if ( pPlayer->GetFlags() & FL_DUCKING )
-	{
-		if ( bCenter || iQuakeCvar )
-			vecOffset.z = 0.0f;
-		else
-			vecOffset.z = 8.0f;
-	}
-	
-	vecSrc +=  vecForward * vecOffset.x + vecRight * vecOffset.y + vecUp * vecOffset.z;
-	
-	Vector vecVelocity = ( vecForward * GetProjectileSpeed() ) + ( vecUp * 200.0f ) + ( random->RandomFloat( -10.0f, 10.0f ) * vecRight ) +		
+
+	vecSrc += vecForward * vecOffset.x + vecRight * vecOffset.y + vecUp * vecOffset.z;
+
+	Vector vecVelocity = ( vecForward * GetProjectileSpeed() ) + ( vecUp * 200.0f ) + ( random->RandomFloat( -10.0f, 10.0f ) * vecRight ) +
 		( random->RandomFloat( -10.0f, 10.0f ) * vecUp );
 
-	CTFGrenadePipebombProjectile *pProjectile = CTFGrenadePipebombProjectile::Create( vecSrc, pPlayer->EyeAngles(), vecVelocity, 
-		AngularImpulse( 600, random->RandomInt( -1200, 1200 ), 0 ),
-		pPlayer, GetTFWpnData(), bRemoteDetonate, this );
+	CTFGrenadePipebombProjectile *pProjectile = CTFGrenadePipebombProjectile::Create( vecSrc, pPlayer->EyeAngles(), vecVelocity,
+																					  AngularImpulse( 600, random->RandomInt( -1200, 1200 ), 0 ),
+																					  pPlayer, GetTFWpnData(), bRemoteDetonate, this );
 
 
 	if ( pProjectile )
@@ -886,15 +861,15 @@ CBaseEntity *CTFWeaponBaseGun::FirePipeBombDM( CTFPlayer *pPlayer, bool bRemoteD
 
 	// Create grenades here!!
 	Vector vecSrc = pPlayer->Weapon_ShootPosition();
-	
+
 	bool bCenter = m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_bCenterfireProjectile;
 
 	int iQuakeCvar = 0;
-	
-	if ( !pPlayer->IsFakeClient() )
-		iQuakeCvar = V_atoi( engine->GetClientConVarValue(pPlayer->entindex(), "viewmodel_centered") );
 
-	Vector vecOffset( 16.0f, 8.0f, -6.0f );	
+	if ( !pPlayer->IsFakeClient() )
+		iQuakeCvar = V_atoi( engine->GetClientConVarValue( pPlayer->entindex(), "viewmodel_centered" ) );
+
+	Vector vecOffset( 16.0f, 8.0f, -6.0f );
 
 	if ( bCenter || iQuakeCvar )
 	{
@@ -902,22 +877,14 @@ CBaseEntity *CTFWeaponBaseGun::FirePipeBombDM( CTFPlayer *pPlayer, bool bRemoteD
 		vecOffset.y = 0.0f; // left right
 		vecOffset.z = -8.0f; //up down
 	}
-	
-	if ( pPlayer->GetFlags() & FL_DUCKING )
-	{
-		if ( bCenter || iQuakeCvar )
-			vecOffset.z = 0.0f;
-		else
-			vecOffset.z = 8.0f;
-	}
-	
-	vecSrc +=  vecForward * vecOffset.x + vecRight * vecOffset.y + vecUp * vecOffset.z;
+
+	vecSrc += vecForward * vecOffset.x + vecRight * vecOffset.y + vecUp * vecOffset.z;
 
 	Vector vecVelocity = ( vecForward * GetProjectileSpeed() ) + ( vecUp * 200.0f ) + vecRight;
 
 	CTFGrenadePipebombProjectile *pProjectile = CTFGrenadePipebombProjectile::Create( vecSrc, pPlayer->EyeAngles(), vecVelocity,
-		AngularImpulse( 0, 0, 0 ),
-		pPlayer, GetTFWpnData(), bRemoteDetonate, this );
+																					  AngularImpulse( 0, 0, 0 ),
+																					  pPlayer, GetTFWpnData(), bRemoteDetonate, this );
 
 	if ( pProjectile )
 	{
@@ -940,12 +907,12 @@ CBaseEntity *CTFWeaponBaseGun::FireTripmine( CTFPlayer *pPlayer )
 {
 	PlayWeaponShootSound();
 
-#ifndef CLIENT_DLL
+#ifdef GAME_DLL
 
 	CTripmineGrenade *pProjectile = NULL;
 
-	Vector vecAiming	= pPlayer->GetAutoaimVector( 0 );
-	Vector vecSrc		= pPlayer->Weapon_ShootPosition( );
+	Vector vecAiming = pPlayer->GetAutoaimVector( 0 );
+	Vector vecSrc = pPlayer->Weapon_ShootPosition();
 
 	trace_t tr;
 
@@ -959,14 +926,14 @@ CBaseEntity *CTFWeaponBaseGun::FireTripmine( CTFPlayer *pPlayer )
 
 		pProjectile = CTripmineGrenade::Create( this, tr.endpos + tr.plane.normal * 2, angles, pPlayer );
 
-		if (pProjectile)
+		if ( pProjectile )
 		{
 			const CTFWeaponInfo *pInfo = &GetTFWpnData();
 
-			if (pInfo)
+			if ( pInfo )
 			{
-				pProjectile->SetDamageRadius(GetDamageRadius());
-				pProjectile->SetDamage(GetDamage());
+				pProjectile->SetDamageRadius( GetDamageRadius() );
+				pProjectile->SetDamage( GetDamage() );
 			}
 		}
 	}
@@ -976,7 +943,7 @@ CBaseEntity *CTFWeaponBaseGun::FireTripmine( CTFPlayer *pPlayer )
 #else
 	return NULL;
 #endif
-	
+
 }
 
 //-----------------------------------------------------------------------------
@@ -988,30 +955,22 @@ CBaseEntity *CTFWeaponBaseGun::FireIncendRocket( CTFPlayer *pPlayer )
 
 	// Server only - create the rocket.
 #ifdef GAME_DLL
-	
+
 //	bool bCenter = m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_bCenterfireProjectile;
 
 	int iQuakeCvar = 0;
-	
+
 	if ( !pPlayer->IsFakeClient() )
-		iQuakeCvar = V_atoi( engine->GetClientConVarValue(pPlayer->entindex(), "viewmodel_centered") );
+		iQuakeCvar = V_atoi( engine->GetClientConVarValue( pPlayer->entindex(), "viewmodel_centered" ) );
 
 	Vector vecSrc;
 	QAngle angForward;
-	Vector vecOffset( 23.5f, 12.0f, -3.0f );	
+	Vector vecOffset( 23.5f, 12.0f, -3.0f );
 	if ( iQuakeCvar )
 	{
 		vecOffset.x = 12.0f; //forward backwards
 		vecOffset.y = 0.0f; // left right
 		vecOffset.z = -8.0f; //up down
-	}
-	
-	if ( pPlayer->GetFlags() & FL_DUCKING )
-	{
-		if ( iQuakeCvar )
-			vecOffset.z = 0.0f;
-		else
-			vecOffset.z = 8.0f;
 	}
 	GetProjectileFireSetup( pPlayer, vecOffset, &vecSrc, &angForward, false );
 
@@ -1034,7 +993,7 @@ CBaseEntity *CTFWeaponBaseGun::FireIncendRocket( CTFPlayer *pPlayer )
 //-----------------------------------------------------------------------------
 void CTFWeaponBaseGun::PlayWeaponShootSound( void )
 {
-	if (IsCurrentAttackACrit() )
+	if ( IsCurrentAttackACrit() )
 	{
 		WeaponSound( BURST );
 	}
@@ -1075,10 +1034,10 @@ float CTFWeaponBaseGun::GetProjectileDamage( void )
 //-----------------------------------------------------------------------------
 bool CTFWeaponBaseGun::Holster( CBaseCombatWeapon *pSwitchingTo )
 {
-// Server specific.
-	
+	// Server specific.
+
 	m_bWindingUp = false;
-	
+
 #if !defined( CLIENT_DLL )
 
 	// Make sure to zoom out before we holster the weapon.
@@ -1100,7 +1059,7 @@ void CTFWeaponBaseGun::DoFireEffects()
 		return;
 
 	// Muzzle flash on weapon.
-	
+
 	bool bMuzzleFlash = true;
 
 	/*
@@ -1129,7 +1088,7 @@ void CTFWeaponBaseGun::ToggleZoom( void )
 	CBasePlayer *pPlayer = GetPlayerOwner();
 	if ( pPlayer )
 	{
-		if( pPlayer->GetFOV() >= 65 )
+		if ( pPlayer->GetFOV() >= 65 )
 		{
 			ZoomIn();
 		}
@@ -1198,14 +1157,14 @@ void CTFWeaponBaseGun::DoViewModelAnimation( void )
 	else
 		act = ( IsCurrentAttackACrit() && GetTFWpnData().m_bUsesCritAnimation ) ? ACT_VM_PRIMARYATTACK_CRIT : ACT_VM_PRIMARYATTACK;
 	SendWeaponAnim( act );
-	
+
 	CTFPlayer *pPlayer = ToTFPlayer( GetOwner() );
-	if( !pPlayer )
+	if ( !pPlayer )
 		return;
 	float flSpeedMultiplier = 1.0f;
 	if ( pPlayer->m_Shared.InCond( TF_COND_HASTE ) )
 		flSpeedMultiplier = of_haste_fire_multiplier.GetFloat();
-	
+
 	CBaseViewModel *vm = pPlayer->GetViewModel( m_nViewModelIndex );
 	if ( vm )
 	{

@@ -5,6 +5,7 @@
 //=============================================================================
 #include "cbase.h"
 #include "tf_projectile_nail.h"
+#include "tf_shareddefs.h"
 
 #ifdef CLIENT_DLL
 #include "c_basetempentity.h"
@@ -15,6 +16,10 @@
 #include "cliententitylist.h"
 #endif
 
+#ifdef GAME_DLL
+#include "tf_player.h"
+#endif
+
 //=============================================================================
 //
 // TF Syringe Projectile functions (Server specific).
@@ -23,16 +28,16 @@
 #define SYRINGE_DISPATCH_EFFECT		"ClientProjectile_Syringe"
 #define SYRINGE_GRAVITY	0.3f
 
-LINK_ENTITY_TO_CLASS(tf_projectile_syringe, CTFProjectile_Syringe);
-PRECACHE_REGISTER(tf_projectile_syringe);
+LINK_ENTITY_TO_CLASS( tf_projectile_syringe, CTFProjectile_Syringe );
+PRECACHE_REGISTER( tf_projectile_syringe );
 
 short g_sModelIndexSyringe;
-void PrecacheSyringe(void *pUser)
+void PrecacheSyringe( void *pUser )
 {
-	g_sModelIndexSyringe = modelinfo->GetModelIndex(SYRINGE_MODEL);
+	g_sModelIndexSyringe = modelinfo->GetModelIndex( SYRINGE_MODEL );
 }
 
-PRECACHE_REGISTER_FN(PrecacheSyringe);
+PRECACHE_REGISTER_FN( PrecacheSyringe );
 
 CTFProjectile_Syringe::CTFProjectile_Syringe()
 {
@@ -45,15 +50,15 @@ CTFProjectile_Syringe::~CTFProjectile_Syringe()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-CTFProjectile_Syringe *CTFProjectile_Syringe::Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical)
+CTFProjectile_Syringe *CTFProjectile_Syringe::Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical )
 {
-	return static_cast<CTFProjectile_Syringe*>(CTFBaseProjectile::Create("tf_projectile_syringe", vecOrigin, vecAngles, pOwner, CTFProjectile_Syringe::GetInitialVelocity(), g_sModelIndexSyringe, SYRINGE_DISPATCH_EFFECT, pScorer, bCritical));
+	return static_cast<CTFProjectile_Syringe*>( CTFBaseProjectile::Create( "tf_projectile_syringe", vecOrigin, vecAngles, pOwner, CTFProjectile_Syringe::GetInitialVelocity(), g_sModelIndexSyringe, SYRINGE_DISPATCH_EFFECT, pScorer, bCritical ) );
 }
 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-const char *CTFProjectile_Syringe::GetProjectileModelName(void)
+const char *CTFProjectile_Syringe::GetProjectileModelName( void )
 {
 	return SYRINGE_MODEL;
 }
@@ -61,7 +66,7 @@ const char *CTFProjectile_Syringe::GetProjectileModelName(void)
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-float CTFProjectile_Syringe::GetGravity(void)
+float CTFProjectile_Syringe::GetGravity( void )
 {
 	return SYRINGE_GRAVITY;
 }
@@ -72,48 +77,48 @@ float CTFProjectile_Syringe::GetGravity(void)
 // Purpose: 
 // Output : const char
 //-----------------------------------------------------------------------------
-const char *GetSyringeTrailParticleName(int iTeamNumber, bool bCritical)
+const char *GetSyringeTrailParticleName( int iTeamNumber, bool bCritical )
 {
-	if (iTeamNumber == TF_TEAM_BLUE)
+	if ( iTeamNumber == TF_TEAM_BLUE )
 	{
-		return (bCritical ? "nailtrails_medic_blue_crit" : "nailtrails_medic_blue");
+		return ( bCritical ? "nailtrails_medic_blue_crit" : "nailtrails_medic_blue" );
 	}
-	else if (iTeamNumber == TF_TEAM_RED)
+	else if ( iTeamNumber == TF_TEAM_RED )
 	{
-		return (bCritical ? "nailtrails_medic_red_crit" : "nailtrails_medic_red");
+		return ( bCritical ? "nailtrails_medic_red_crit" : "nailtrails_medic_red" );
 	}
 	else
 	{
-		return (bCritical ? "nailtrails_medic_dm_crit" : "nailtrails_medic_dm");
+		return ( bCritical ? "nailtrails_medic_dm_crit" : "nailtrails_medic_dm" );
 	}
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void ClientsideProjectileSyringeCallback(const CEffectData &data)
+void ClientsideProjectileSyringeCallback( const CEffectData &data )
 {
 	// Get the syringe and add it to the client entity list, so we can attach a particle system to it.
-	C_TFPlayer *pPlayer = dynamic_cast<C_TFPlayer*>(ClientEntityList().GetBaseEntityFromHandle(data.m_hEntity));
-	if (pPlayer)
+	C_TFPlayer *pPlayer = dynamic_cast<C_TFPlayer*>( ClientEntityList().GetBaseEntityFromHandle( data.m_hEntity ) );
+	if ( pPlayer )
 	{
-		C_LocalTempEntity *pSyringe = ClientsideProjectileCallback(data, SYRINGE_GRAVITY);
-		if (pSyringe)
+		C_LocalTempEntity *pSyringe = ClientsideProjectileCallback( data, SYRINGE_GRAVITY );
+		if ( pSyringe )
 		{
-			if (pPlayer->GetTeamNumber() == TF_TEAM_RED) pSyringe->m_nSkin = 0;
-			else if (pPlayer->GetTeamNumber() == TF_TEAM_BLUE) pSyringe->m_nSkin = 1;
+			if ( pPlayer->GetTeamNumber() == TF_TEAM_RED ) pSyringe->m_nSkin = 0;
+			else if ( pPlayer->GetTeamNumber() == TF_TEAM_BLUE ) pSyringe->m_nSkin = 1;
 			else pSyringe->m_nSkin = 2;
-			bool bCritical = ((data.m_nDamageType & DMG_CRITICAL) != 0);
+			bool bCritical = ( ( data.m_nDamageType & DMG_CRITICAL ) != 0 );
 
 
-			pPlayer->m_Shared.UpdateParticleColor(pSyringe->AddParticleEffect(GetSyringeTrailParticleName(pPlayer->GetTeamNumber(), bCritical)));
-			pSyringe->AddEffects(EF_NOSHADOW);
+			pPlayer->m_Shared.UpdateParticleColor( pSyringe->AddParticleEffect( GetSyringeTrailParticleName( pPlayer->GetTeamNumber(), bCritical ) ) );
+			pSyringe->AddEffects( EF_NOSHADOW );
 			pSyringe->flags |= FTENT_USEFASTCOLLISIONS;
 		}
 	}
 }
 
-DECLARE_CLIENT_EFFECT(SYRINGE_DISPATCH_EFFECT, ClientsideProjectileSyringeCallback);
+DECLARE_CLIENT_EFFECT( SYRINGE_DISPATCH_EFFECT, ClientsideProjectileSyringeCallback );
 
 #endif
 
@@ -125,16 +130,16 @@ DECLARE_CLIENT_EFFECT(SYRINGE_DISPATCH_EFFECT, ClientsideProjectileSyringeCallba
 #define NAILGUN_NAIL_DISPATCH_EFFECT	"ClientProjectile_Nail"
 #define NAILGUN_NAIL_GRAVITY	0.3f
 
-LINK_ENTITY_TO_CLASS(tf_projectile_nail, CTFProjectile_Nail);
-PRECACHE_REGISTER(tf_projectile_nail);
+LINK_ENTITY_TO_CLASS( tf_projectile_nail, CTFProjectile_Nail );
+PRECACHE_REGISTER( tf_projectile_nail );
 
 short g_sModelIndexNail;
-void PrecacheNail(void *pUser)
+void PrecacheNail( void *pUser )
 {
-	g_sModelIndexNail = modelinfo->GetModelIndex(NAILGUN_NAIL_MODEL);
+	g_sModelIndexNail = modelinfo->GetModelIndex( NAILGUN_NAIL_MODEL );
 }
 
-PRECACHE_REGISTER_FN(PrecacheNail);
+PRECACHE_REGISTER_FN( PrecacheNail );
 
 CTFProjectile_Nail::CTFProjectile_Nail()
 {
@@ -147,11 +152,11 @@ CTFProjectile_Nail::~CTFProjectile_Nail()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-CTFProjectile_Nail *CTFProjectile_Nail::Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical)
+CTFProjectile_Nail *CTFProjectile_Nail::Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical )
 {
-	CTFProjectile_Nail *pNail = static_cast<CTFProjectile_Nail*>(CTFBaseProjectile::Create("tf_projectile_nail", vecOrigin, vecAngles, pOwner, CTFProjectile_Nail::GetInitialVelocity(), g_sModelIndexNail, NAILGUN_NAIL_DISPATCH_EFFECT, pScorer, bCritical));
-//	pNail->SetExplosionDamage(iExplosionDamage);
-//	pNail->SetExplosionRadius(flExplosionRadius);
+	CTFProjectile_Nail *pNail = static_cast<CTFProjectile_Nail*>( CTFBaseProjectile::Create( "tf_projectile_nail", vecOrigin, vecAngles, pOwner, CTFProjectile_Nail::GetInitialVelocity(), g_sModelIndexNail, NAILGUN_NAIL_DISPATCH_EFFECT, pScorer, bCritical ) );
+	//	pNail->SetExplosionDamage(iExplosionDamage);
+	//	pNail->SetExplosionRadius(flExplosionRadius);
 	return pNail;
 	//return static_cast<CTFProjectile_Nail*>(CTFBaseProjectile::Create("tf_projectile_nail", vecOrigin, vecAngles, pOwner, CTFProjectile_Nail::GetInitialVelocity(), g_sModelIndexNail, NAILGUN_NAIL_DISPATCH_EFFECT, pScorer, bCritical));
 }
@@ -159,7 +164,7 @@ CTFProjectile_Nail *CTFProjectile_Nail::Create(const Vector &vecOrigin, const QA
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-const char *CTFProjectile_Nail::GetProjectileModelName(void)
+const char *CTFProjectile_Nail::GetProjectileModelName( void )
 {
 	return NAILGUN_NAIL_MODEL;
 }
@@ -167,37 +172,37 @@ const char *CTFProjectile_Nail::GetProjectileModelName(void)
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-float CTFProjectile_Nail::GetGravity(void)
+float CTFProjectile_Nail::GetGravity( void )
 {
 	return NAILGUN_NAIL_GRAVITY;
 }
 
 #ifdef GAME_DLL
 // Handles explosion
-void CTFProjectile_Nail::ProjectileTouch(CBaseEntity *pOther)
+void CTFProjectile_Nail::ProjectileTouch( CBaseEntity *pOther )
 {
 	// Verify a correct "other."
-	if (pOther)
+	if ( pOther )
 	{
-		Assert(pOther);
-		if (pOther->IsSolidFlagSet(FSOLID_TRIGGER | FSOLID_VOLUME_CONTENTS))
+		Assert( pOther );
+		if ( pOther->IsSolidFlagSet( FSOLID_TRIGGER | FSOLID_VOLUME_CONTENTS ) )
 			return;
 	}
 	// Handle hitting skybox (disappear).
 	const trace_t *pTrace = &CBaseEntity::GetTouchTrace();
-	if (pTrace->surface.flags & SURF_SKY)
+	if ( pTrace->surface.flags & SURF_SKY )
 	{
-		UTIL_Remove(this);
+		UTIL_Remove( this );
 		return;
 	}
 
 	trace_t trace;
-	memcpy(&trace, pTrace, sizeof(trace_t));
-	
+	memcpy( &trace, pTrace, sizeof( trace_t ) );
+
 	// Save this entity as enemy, they will take 100% damage.
-	if (!pOther)
+	if ( !pOther )
 		pOther = pTrace->m_pEnt;
-	
+
 	//m_hEnemy = pOther;
 
 	// Invisible.
@@ -228,14 +233,15 @@ void CTFProjectile_Nail::ProjectileTouch(CBaseEntity *pOther)
 	}
 
 	// DMG_HALF_FALLOFF is needed for of_selfdamage to affect
-	CTakeDamageInfo info(this, pAttacker, Vector(0.0f, 0.0f, 9000.0f), vecOrigin, (float)m_iExplosionDamage, DMG_BLAST | DMG_HALF_FALLOFF);
+	CTakeDamageInfo info( this, pAttacker, Vector( 0.0f, 0.0f, 9000.0f ), vecOrigin, (float)m_iExplosionDamage, DMG_BLAST | DMG_HALF_FALLOFF );
 	//CTFWeaponBase *pTFWeapon = dynamic_cast<CTFWeaponBase*>( GetOriginalLauncher() );
-	//info.SetWeapon( pTFWeapon );
-	//info.SetDamageCustom( TF_DMG_CUSTOM_NONE );
 
+	// A specific weapon entity is needed for tf_gamerules to properly parse BlastJumpDamageForce
+	info.SetWeapon( m_pWeapon );
 	info.SetDamageForceMult( 2.5f );
 
-//	info.SetDamageForForceCalc
+
+	//	info.SetDamageForForceCalc
 
 	float flRadius = m_flExplosionRadius;
 
@@ -255,7 +261,7 @@ void CTFProjectile_Nail::ProjectileTouch(CBaseEntity *pOther)
 	// Remove the rocket.
 	//UTIL_Remove(this);
 
-	BaseClass::ProjectileTouch(pOther);
+	BaseClass::ProjectileTouch( pOther );
 }
 #endif
 
@@ -264,34 +270,34 @@ void CTFProjectile_Nail::ProjectileTouch(CBaseEntity *pOther)
 // Purpose: 
 // Output : const char
 //-----------------------------------------------------------------------------
-const char *GetNailTrailParticleName(int iTeamNumber, bool bCritical)
+const char *GetNailTrailParticleName( int iTeamNumber, bool bCritical )
 {
-	if (iTeamNumber == TF_TEAM_BLUE)
+	if ( iTeamNumber == TF_TEAM_BLUE )
 	{
-		return (bCritical ? "nailtrails_super_blue_crit" : "nailtrails_super_blue");
+		return ( bCritical ? "nailtrails_super_blue_crit" : "nailtrails_super_blue" );
 	}
-	else if (iTeamNumber == TF_TEAM_RED)
+	else if ( iTeamNumber == TF_TEAM_RED )
 	{
-		return (bCritical ? "nailtrails_super_red_crit" : "nailtrails_super_red");
+		return ( bCritical ? "nailtrails_super_red_crit" : "nailtrails_super_red" );
 	}
 	else
 	{
-		return (bCritical ? "nailtrails_super_dm_crit" : "nailtrails_super_dm");
+		return ( bCritical ? "nailtrails_super_dm_crit" : "nailtrails_super_dm" );
 	}
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void ClientsideProjectileNailCallback(const CEffectData &data)
+void ClientsideProjectileNailCallback( const CEffectData &data )
 {
-	C_TFPlayer *pPlayer = dynamic_cast<C_TFPlayer*>(ClientEntityList().GetBaseEntityFromHandle(data.m_hEntity));
-	if (pPlayer)
+	C_TFPlayer *pPlayer = dynamic_cast<C_TFPlayer*>( ClientEntityList().GetBaseEntityFromHandle( data.m_hEntity ) );
+	if ( pPlayer )
 	{
-		C_LocalTempEntity *pNail = ClientsideProjectileCallback(data, NAILGUN_NAIL_GRAVITY);
-		if (pNail)
+		C_LocalTempEntity *pNail = ClientsideProjectileCallback( data, NAILGUN_NAIL_GRAVITY );
+		if ( pNail )
 		{
-			switch (pPlayer->GetTeamNumber())
+			switch ( pPlayer->GetTeamNumber() )
 			{
 			case TF_TEAM_RED:
 				pNail->m_nSkin = 0;
@@ -303,15 +309,15 @@ void ClientsideProjectileNailCallback(const CEffectData &data)
 				pNail->m_nSkin = 2;
 				break;
 			}
-			bool bCritical = ((data.m_nDamageType & DMG_CRITICAL) != 0);
-			pPlayer->m_Shared.UpdateParticleColor(pNail->AddParticleEffect(GetNailTrailParticleName(pPlayer->GetTeamNumber(), bCritical)));
-			pNail->AddEffects(EF_NOSHADOW);
+			bool bCritical = ( ( data.m_nDamageType & DMG_CRITICAL ) != 0 );
+			pPlayer->m_Shared.UpdateParticleColor( pNail->AddParticleEffect( GetNailTrailParticleName( pPlayer->GetTeamNumber(), bCritical ) ) );
+			pNail->AddEffects( EF_NOSHADOW );
 			pNail->flags |= FTENT_USEFASTCOLLISIONS;
 		}
 	}
 }
 
-DECLARE_CLIENT_EFFECT(NAILGUN_NAIL_DISPATCH_EFFECT, ClientsideProjectileNailCallback);
+DECLARE_CLIENT_EFFECT( NAILGUN_NAIL_DISPATCH_EFFECT, ClientsideProjectileNailCallback );
 
 #endif
 
@@ -324,16 +330,16 @@ DECLARE_CLIENT_EFFECT(NAILGUN_NAIL_DISPATCH_EFFECT, ClientsideProjectileNailCall
 #define TRANQ_DISPATCH_EFFECT	"ClientProjectile_Tranq"
 #define TRANQ_GRAVITY	0.01f
 
-LINK_ENTITY_TO_CLASS(tf_projectile_tranq, CTFProjectile_Tranq);
-PRECACHE_REGISTER(tf_projectile_tranq);
+LINK_ENTITY_TO_CLASS( tf_projectile_tranq, CTFProjectile_Tranq );
+PRECACHE_REGISTER( tf_projectile_tranq );
 
 short g_sModelIndexTranq;
-void PrecacheTranq(void *pUser)
+void PrecacheTranq( void *pUser )
 {
-	g_sModelIndexTranq = modelinfo->GetModelIndex(TRANQ_MODEL);
+	g_sModelIndexTranq = modelinfo->GetModelIndex( TRANQ_MODEL );
 }
 
-PRECACHE_REGISTER_FN(PrecacheTranq);
+PRECACHE_REGISTER_FN( PrecacheTranq );
 
 
 CTFProjectile_Tranq::CTFProjectile_Tranq()
@@ -347,15 +353,15 @@ CTFProjectile_Tranq::~CTFProjectile_Tranq()
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-CTFProjectile_Tranq *CTFProjectile_Tranq::Create(const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical)
+CTFProjectile_Tranq *CTFProjectile_Tranq::Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer, int bCritical )
 {
-	return static_cast<CTFProjectile_Tranq*>(CTFBaseProjectile::Create("tf_projectile_tranq", vecOrigin, vecAngles, pOwner, CTFProjectile_Tranq::GetInitialVelocity(), g_sModelIndexTranq, TRANQ_DISPATCH_EFFECT, pScorer, bCritical));
+	return static_cast<CTFProjectile_Tranq*>( CTFBaseProjectile::Create( "tf_projectile_tranq", vecOrigin, vecAngles, pOwner, CTFProjectile_Tranq::GetInitialVelocity(), g_sModelIndexTranq, TRANQ_DISPATCH_EFFECT, pScorer, bCritical ) );
 }
 
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-const char *CTFProjectile_Tranq::GetProjectileModelName(void)
+const char *CTFProjectile_Tranq::GetProjectileModelName( void )
 {
 	return TRANQ_MODEL;
 }
@@ -363,10 +369,84 @@ const char *CTFProjectile_Tranq::GetProjectileModelName(void)
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-float CTFProjectile_Tranq::GetGravity(void)
+float CTFProjectile_Tranq::GetGravity( void )
 {
 	return TRANQ_GRAVITY;
 }
+
+#ifdef GAME_DLL
+void CTFProjectile_Tranq::ProjectileTouch( CBaseEntity *pOther )
+{
+	// Verify a correct "other."
+	Assert( pOther );
+	if ( !pOther->IsSolid() || pOther->IsSolidFlagSet( FSOLID_VOLUME_CONTENTS ) )
+		return;
+
+	// Handle hitting skybox (disappear).
+	const trace_t *pTrace = &CBaseEntity::GetTouchTrace();
+	trace_t *pNewTrace = const_cast<trace_t*>( pTrace );
+
+	if ( pTrace->surface.flags & SURF_SKY )
+	{
+		UTIL_Remove( this );
+		return;
+	}
+
+	// pass through ladders
+	if ( pTrace->surface.flags & CONTENTS_LADDER )
+		return;
+
+	if ( pOther->IsWorld() )
+	{
+		SetAbsVelocity( vec3_origin );
+		AddSolidFlags( FSOLID_NOT_SOLID );
+
+		// Remove immediately. Clientside projectiles will stick in the wall for a bit.
+		UTIL_Remove( this );
+		return;
+	}
+
+	// determine the inflictor, which is the weapon which fired this projectile
+	CBaseEntity *pInflictor = NULL;
+	CBaseEntity *pOwner = GetOwnerEntity();
+	if ( pOwner )
+	{
+		CTFPlayer *pTFPlayer = ToTFPlayer( pOwner );
+		if ( pTFPlayer )
+		{
+
+			pInflictor = pTFPlayer->Weapon_OwnsThisID( GetWeaponID() );
+		}
+	}
+
+	CTakeDamageInfo info;
+	info.SetAttacker( GetOwnerEntity() );		// the player who operated the thing that emitted nails
+	info.SetInflictor( pInflictor );	// the weapon that emitted this projectile
+	info.SetDamage( GetDamage() );
+	info.SetDamageForce( GetDamageForce() );
+	info.SetDamagePosition( GetAbsOrigin() );
+	info.SetDamageType( GetDamageType() );
+	info.SetDamageCustom( GetCustomDamageType() );
+
+	Vector dir;
+	AngleVectors( GetAbsAngles(), &dir );
+
+	pOther->DispatchTraceAttack( info, dir, pNewTrace );
+	ApplyMultiDamage();
+
+	UTIL_Remove( this );
+
+	if ( pOther->IsPlayer() )
+	{
+		CTFPlayer *pPlayer = ToTFPlayer( pOther );
+
+		if ( ( ToTFPlayer( GetOwnerEntity() )->GetTeamNumber() != pPlayer->GetTeamNumber() ) || ( ToTFPlayer( GetOwnerEntity() )->GetTeamNumber() && pPlayer->GetTeamNumber() == TF_TEAM_MERCENARY ) )
+		{
+			pPlayer->m_Shared.Tranq( ToTFPlayer( GetOwnerEntity() ), 12.0f, 0.5f, 1 );
+		}
+	}
+}
+#endif
 
 #ifdef CLIENT_DLL
 
@@ -374,34 +454,34 @@ float CTFProjectile_Tranq::GetGravity(void)
 // Purpose: 
 // Output : const char
 //-----------------------------------------------------------------------------
-const char *GetTranqTrailParticleName(int iTeamNumber, bool bCritical)
+const char *GetTranqTrailParticleName( int iTeamNumber, bool bCritical )
 {
-	if (iTeamNumber == TF_TEAM_BLUE)
+	if ( iTeamNumber == TF_TEAM_BLUE )
 	{
-		return (bCritical ? "nailtrails_medic_blue_crit" : "nailtrails_medic_blue");
+		return ( bCritical ? "nailtrails_super_blue_crit" : "nailtrails_super_blue" );
 	}
-	else if (iTeamNumber == TF_TEAM_RED)
+	else if ( iTeamNumber == TF_TEAM_RED )
 	{
-		return (bCritical ? "nailtrails_medic_red_crit" : "nailtrails_medic_red");
+		return ( bCritical ? "nailtrails_super_red_crit" : "nailtrails_super_red" );
 	}
 	else
 	{
-		return (bCritical ? "tranq_tracer_teamcolor_dm_crit" : "tranq_tracer_teamcolor_dm");
+		return ( bCritical ? "tranq_tracer_teamcolor_dm_crit" : "tranq_tracer_teamcolor_dm" );
 	}
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void ClientsideProjectileTranqCallback(const CEffectData &data)
+void ClientsideProjectileTranqCallback( const CEffectData &data )
 {
-	C_TFPlayer *pPlayer = dynamic_cast<C_TFPlayer*>(ClientEntityList().GetBaseEntityFromHandle(data.m_hEntity));
-	if (pPlayer)
+	C_TFPlayer *pPlayer = dynamic_cast<C_TFPlayer*>( ClientEntityList().GetBaseEntityFromHandle( data.m_hEntity ) );
+	if ( pPlayer )
 	{
-		C_LocalTempEntity *pNail = ClientsideProjectileCallback(data, TRANQ_GRAVITY);
-		if (pNail)
+		C_LocalTempEntity *pNail = ClientsideProjectileCallback( data, TRANQ_GRAVITY );
+		if ( pNail )
 		{
-			switch (pPlayer->GetTeamNumber())
+			switch ( pPlayer->GetTeamNumber() )
 			{
 			case TF_TEAM_RED:
 				pNail->m_nSkin = 0;
@@ -413,14 +493,14 @@ void ClientsideProjectileTranqCallback(const CEffectData &data)
 				pNail->m_nSkin = 2;
 				break;
 			}
-			bool bCritical = ((data.m_nDamageType & DMG_CRITICAL) != 0);
-			pPlayer->m_Shared.UpdateParticleColor(pNail->AddParticleEffect(GetTranqTrailParticleName(pPlayer->GetTeamNumber(), bCritical)));
-			pNail->AddEffects(EF_NOSHADOW);
+			bool bCritical = ( ( data.m_nDamageType & DMG_CRITICAL ) != 0 );
+			pPlayer->m_Shared.UpdateParticleColor( pNail->AddParticleEffect( GetTranqTrailParticleName( pPlayer->GetTeamNumber(), bCritical ) ) );
+			pNail->AddEffects( EF_NOSHADOW );
 			pNail->flags |= FTENT_USEFASTCOLLISIONS;
 		}
 	}
 }
 
-DECLARE_CLIENT_EFFECT(TRANQ_DISPATCH_EFFECT, ClientsideProjectileTranqCallback);
+DECLARE_CLIENT_EFFECT( TRANQ_DISPATCH_EFFECT, ClientsideProjectileTranqCallback );
 
 #endif

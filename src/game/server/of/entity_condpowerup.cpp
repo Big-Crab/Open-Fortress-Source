@@ -14,6 +14,8 @@
 
 #include "tier0/memdbgon.h"
 
+ConVar of_duel_powerup_timers("of_duel_powerup_timers", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Enables powerup timers in duel gamemode");
+
 extern ConVar of_powerups;
 
 //-----------------------------------------------------------------------------
@@ -62,6 +64,10 @@ CCondPowerup::CCondPowerup()
 
 void CCondPowerup::Spawn( void )
 {
+	//disable outline
+	if (TFGameRules()->IsDuelGamemode())
+		m_bDisableShowOutline = true;
+
 	Precache();
 
 	if ( m_iszPowerupModel == MAKE_STRING( "" ) ) 
@@ -101,103 +107,144 @@ bool CCondPowerup::MyTouch( CBasePlayer *pPlayer )
 		CTFPlayer *pTFPlayer = ToTFPlayer( pPlayer );
 		if ( !pTFPlayer )
 			return false;
-		
-		// oh boy...
-		// HACK: can't update all the maps with the old conditions, therefore this has to be remapped!
-		switch ( m_iCondition )
-		{
-			case TF_COND_STEALTHED:
-				m_iCondition = TF_COND_INVIS_POWERUP;
-				break;
-			case TF_COND_CRITBOOSTED:
-				m_iCondition = TF_COND_CRIT_POWERUP;
-				break;
-			case 12:
-				m_iCondition = TF_COND_SPAWNPROTECT;
-				break;
-			case 13:
-				m_iCondition = TF_COND_SHIELD_CHARGE;
-				break;
-			case 14:
-				m_iCondition = TF_COND_BERSERK;
-				break;
-			case 15:
-				m_iCondition = TF_COND_SHIELD;
-				break;
-		}	
-		
-		if ( pTFPlayer->m_Shared.InCond(m_iCondition) )
-			return false;
 
-		bSuccess = true;
-		pTFPlayer->m_Shared.AddCond( m_iCondition , m_flCondDuration );
-		int iRandom = random->RandomInt( 0, 1 );
-		pTFPlayer->SpeakConceptIfAllowed( ( iRandom == 1 ) ? MP_CONCEPT_PLAYER_SPELL_PICKUP_RARE : MP_CONCEPT_PLAYER_SPELL_PICKUP_COMMON );
-		
-		Vector vecOrigin;
-		QAngle vecAngles;
-		CTFDroppedPowerup *pPowerup = static_cast<CTFDroppedPowerup*>( CBaseAnimating::CreateNoSpawn( "tf_dropped_powerup", vecOrigin, vecAngles, pTFPlayer ) );
-		if( pPowerup )
+		bSuccess = DoPowerupEffect( pTFPlayer );
+
+		if( bSuccess )
 		{
-			pPowerup->SetModelName( m_iszPowerupModel );
-			pPowerup->m_nSkin = m_nSkin;
-			Q_strncpy( pPowerup->szTimerIcon, STRING(m_iszTimerIcon), sizeof( pPowerup->szTimerIcon ) );
-			pPowerup->m_iPowerupID = m_iCondition;
-			pPowerup->m_flCreationTime = gpGlobals->curtime;
-			pPowerup->m_flDespawnTime = gpGlobals->curtime + m_flCondDuration;
-			pPowerup->SetContextThink( &CBaseEntity::SUB_Remove, pPowerup->m_flDespawnTime, "DieContext" );
+			//in duel diffuse sound like a normal pickup (same for respawn)
+			if ( TFGameRules()->IsDuelGamemode() )
+			{
+				EmitSound( STRING( m_iszPickupSound ) );
+			}
+			else if ( TeamplayRoundBasedRules() )
+			{
+				if ( Q_strcmp(GetPowerupPickupLine(), "None") || Q_strcmp(GetPowerupPickupLineSelf(), "None") )
+					TeamplayRoundBasedRules()->BroadcastSoundFFA( pTFPlayer->entindex(), GetPowerupPickupLineSelf(), GetPowerupPickupLine() );
+
+				const char *pickupSound = GetPowerupPickupSound();
+				if ( Q_strcmp(pickupSound, "None") )
+					TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, pickupSound, false);
+				else
+					TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, STRING( m_iszPickupSound ), false);
+			}
 		}
-		PowerupHandle hHandle;
-		hHandle = pPowerup;	
-		pTFPlayer->m_hPowerups.AddToTail( hHandle );
-		
-		IGameEvent *event = gameeventmanager->CreateEvent( "add_powerup_timer" );
-		if ( event )
-		{
-			event->SetInt( "player", pTFPlayer->entindex() );
-			event->SetInt( "cond", m_iCondition );
-			event->SetString( "icon", STRING( m_iszTimerIcon ) );
-			gameeventmanager->FireEvent( event );
-		}
-		
-		if ( TeamplayRoundBasedRules() )
-		{
-			if ( strcmp( GetPowerupPickupLine(), "None" ) || strcmp( GetPowerupPickupLineSelf(), "None" ) )
-				TeamplayRoundBasedRules()->BroadcastSoundFFA( pTFPlayer->entindex(), GetPowerupPickupLineSelf(), GetPowerupPickupLine() );
-			
-			if ( strcmp( GetPowerupPickupSound(), "None" ) )
-				TeamplayRoundBasedRules()->BroadcastSound( TEAM_UNASSIGNED, GetPowerupPickupSound(), false );
-			else
-				TeamplayRoundBasedRules()->BroadcastSound( TEAM_UNASSIGNED, STRING( m_iszPickupSound ), false );
-		}
-		m_nRenderFX = kRenderFxDistort;
 	}
+
 	return bSuccess;
 }
 
-CBaseEntity* CCondPowerup::Respawn( void )
+//-----------------------------------------------------------------------------
+// Purpose: MyTouch function for the powerupspawner
+//-----------------------------------------------------------------------------
+bool CCondPowerup::DoPowerupEffect( CTFPlayer *pTFPlayer )
+{
+	// Old maps compatibility
+	switch ( m_iCondition )
+	{
+		case TF_COND_STEALTHED:
+			m_iCondition = TF_COND_INVIS_POWERUP;
+			break;
+		case TF_COND_CRITBOOSTED:
+			m_iCondition = TF_COND_CRIT_POWERUP;
+			break;
+		case 12:
+			m_iCondition = TF_COND_SPAWNPROTECT;
+			break;
+		case 13:
+			m_iCondition = TF_COND_SHIELD_CHARGE;
+			break;
+		case 14:
+			m_iCondition = TF_COND_BERSERK;
+			break;
+		case 15:
+		case TF_COND_SHIELD_DUEL:
+			m_iCondition = TF_COND_SHIELD;
+			break;
+	}	
+	
+	if ( pTFPlayer->m_Shared.InCond(m_iCondition) )
+		return false;
+
+	pTFPlayer->m_Shared.AddCond( m_iCondition , m_flCondDuration );
+	int iRandom = random->RandomInt( 0, 1 );
+	pTFPlayer->SpeakConceptIfAllowed( ( iRandom == 1 ) ? MP_CONCEPT_PLAYER_SPELL_PICKUP_RARE : MP_CONCEPT_PLAYER_SPELL_PICKUP_COMMON );
+	
+	Vector vecOrigin;
+	QAngle vecAngles;
+	CTFDroppedPowerup *pPowerup = static_cast<CTFDroppedPowerup*>( CBaseAnimating::CreateNoSpawn( "tf_dropped_powerup", vecOrigin, vecAngles, pTFPlayer ) );
+	if( pPowerup )
+	{
+		pPowerup->SetModelName( m_iszPowerupModel );
+		pPowerup->m_nSkin = m_nSkin;
+		Q_strncpy( pPowerup->szTimerIcon, STRING(m_iszTimerIcon), sizeof( pPowerup->szTimerIcon ) );
+		pPowerup->m_iPowerupID = m_iCondition;
+		pPowerup->m_flCreationTime = gpGlobals->curtime;
+		pPowerup->m_flDespawnTime = gpGlobals->curtime + m_flCondDuration;
+		pPowerup->SetContextThink( &CBaseEntity::SUB_Remove, pPowerup->m_flDespawnTime, "DieContext" );
+	}
+	PowerupHandle hHandle;
+	hHandle = pPowerup;	
+	pTFPlayer->m_hPowerups.AddToTail( hHandle );
+	
+	IGameEvent *event = gameeventmanager->CreateEvent( "add_powerup_timer" );
+	if ( event )
+	{
+		event->SetInt( "player", pTFPlayer->entindex() );
+		event->SetInt( "cond", m_iCondition );
+		event->SetString( "icon", STRING( m_iszTimerIcon ) );
+		gameeventmanager->FireEvent( event );
+	}
+	return true;
+}
+
+CBaseEntity *CCondPowerup::Respawn( void )
 {
 	CBaseEntity *ret = BaseClass::Respawn();
-	m_nRenderFX = kRenderFxDistort;
 	m_flRespawnTick = GetNextThink();
+
+	//In duel mode don't show the respawn timers, unless the convar allows it
+	if ( TFGameRules()->IsDuelGamemode() && !of_duel_powerup_timers.GetBool() )
+	{
+		m_nRenderFX = kRenderFxNone;
+		AddEffects( EF_NODRAW );
+	}
+	else
+	{
+		m_nRenderFX = kRenderFxDistort;
+	}
+
 	return ret;
 }
 
 void CCondPowerup::Materialize( void )
 {
+	//Making powerup visible at the respawn time (duel only)
+	//Removing the glitchy effect (all cases)
 	if ( !IsDisabled() )
 	{
-		// changing from invisible state to visible.
 		m_nRenderFX = kRenderFxNone;
 		RemoveEffects( EF_NODRAW );
 	}
+
 	m_OnRespawn.FireOutput( this, this );
-	if ( TeamplayRoundBasedRules() && TeamplayRoundBasedRules()->State_Get() != GR_STATE_PREROUND && strcmp(GetPowerupRespawnLine(), "None" ) )
-		TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, GetPowerupRespawnLine() );
-	else if ( TeamplayRoundBasedRules() && TeamplayRoundBasedRules()->State_Get() != GR_STATE_PREROUND )
-		TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, STRING ( m_iszSpawnSound ), false );
+
+	if (TFGameRules()->IsDuelGamemode())
+	{
+		EmitSound( STRING( m_iszSpawnSound ) );
+	}
+	else if (TeamplayRoundBasedRules() && TeamplayRoundBasedRules()->State_Get() != GR_STATE_PREROUND)
+	{
+		const char *respawnSound = GetPowerupRespawnLine();
+		if ( Q_strcmp(respawnSound, "None") )
+			TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, respawnSound);
+		else
+			TeamplayRoundBasedRules()->BroadcastSound(TEAM_UNASSIGNED, STRING(m_iszSpawnSound), false);
+	}
+
 	m_bRespawning = false;
 	bInitialDelay = false;
+
 	SetTouch( &CItem::ItemTouch );
 }
 
@@ -205,7 +252,10 @@ void CCondPowerup::AnnouncerThink()
 {
 	if ( m_bRespawning && ( m_flRespawnTick - gpGlobals->curtime < 10.0f && !bWarningTriggered ) && TeamplayRoundBasedRules() )
 	{
-		TeamplayRoundBasedRules()->BroadcastSound( TEAM_UNASSIGNED, GetPowerupPickupIncomingLine() );
+		//in duel mode powerups should not be announced, players should time them
+		if ( !TFGameRules()->IsDuelGamemode() )
+			TeamplayRoundBasedRules()->BroadcastSound( TEAM_UNASSIGNED, GetPowerupPickupIncomingLine() );
+
 		bWarningTriggered = true;
 	}
 	else if ( m_bRespawning && ( m_flRespawnTick - gpGlobals->curtime > 10.0f && bWarningTriggered ) ) // This fixes the case where you pick up the powerup as soon as it respawns

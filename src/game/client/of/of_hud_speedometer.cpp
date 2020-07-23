@@ -8,19 +8,14 @@
 //=============================================================================
 
 #include "cbase.h"
-#include "hud.h"
 #include "hudelement.h"
 #include "c_tf_player.h"
-#include "tf_weaponbase_melee.h"
 #include "iclientmode.h"
-#include "ienginevgui.h"
-#include <vgui/ILocalize.h>
 #include <vgui/ISurface.h>
 #include <vgui/IVGui.h>
 #include <vgui_controls/EditablePanel.h>
 #include <vgui_controls/ProgressBar.h>
 #include <vgui_controls/Label.h>
-#include "view.h"
 #include <../shared/gamemovement.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -473,7 +468,7 @@ void CHudSpeedometer::Paint(void)
 void CHudSpeedometer::QStrafeJumpHelp()
 {
 	C_TFPlayer *pPlayerBase = C_TFPlayer::GetLocalTFPlayer();
-	if (!pPlayerBase)
+	if (!pPlayerBase || pPlayerBase->GetWaterLevel() > 2 || pPlayerBase->m_Shared.GetHook() || pPlayerBase->GetMoveType() == MOVETYPE_LADDER)
 		return;
 
 	float forwardMove = g_pMoveData->m_flForwardMove;
@@ -498,7 +493,7 @@ void CHudSpeedometer::QStrafeJumpHelp()
 	float wishSpeed = VectorNormalize(wishDir);
 
 	float maxCurSpeed, maxAccel;
-	if (pPlayerBase->m_Shared.IsCSliding()) //csliding
+	if (pPlayerBase->IsCSliding()) //csliding
 	{
 		wishSpeed = min(speed, of_cslidestopspeed.GetFloat());
 		maxAccel = min(of_cslideaccelerate.GetFloat() * wishSpeed * gpGlobals->interval_per_tick, wishSpeed);

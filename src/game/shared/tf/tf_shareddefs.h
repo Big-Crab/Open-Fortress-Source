@@ -9,19 +9,14 @@
 #pragma once
 #endif
 
-#include "shareddefs.h"
 #include "mp_shareddefs.h"
-
-#include "KeyValues.h"
-#include "filesystem.h"
-
 #include "bone_setup.h"
 
 // Using MAP_DEBUG mode?
 #ifdef MAP_DEBUG
-	#define MDEBUG(x) x
+#define MDEBUG(x) x
 #else
-	#define MDEBUG(x)
+#define MDEBUG(x)
 #endif
 
 //-----------------------------------------------------------------------------
@@ -56,7 +51,7 @@ public:
 //-----------------------------------------------------------------------------
 enum
 {
-	TF_TEAM_RED = LAST_SHARED_TEAM+1,
+	TF_TEAM_RED = LAST_SHARED_TEAM + 1,
 	TF_TEAM_BLUE,
 	TF_TEAM_MERCENARY,
 	TF_TEAM_NPC,
@@ -66,20 +61,20 @@ enum
 inline int GetEnemyTeam( CBaseEntity *ent )
 {
 	int enemy_team = ent->GetTeamNumber();
-	
-	switch ( enemy_team ) 
+
+	switch ( enemy_team )
 	{
-		case TF_TEAM_RED:
-			enemy_team = TF_TEAM_BLUE;
-			break;
-		case TF_TEAM_BLUE:
-			enemy_team = TF_TEAM_RED;
-			break;
-		case TF_TEAM_MERCENARY:
-			enemy_team = TF_TEAM_MERCENARY;
-			break;
+	case TF_TEAM_RED:
+		enemy_team = TF_TEAM_BLUE;
+		break;
+	case TF_TEAM_BLUE:
+		enemy_team = TF_TEAM_RED;
+		break;
+	case TF_TEAM_MERCENARY:
+		enemy_team = TF_TEAM_MERCENARY;
+		break;
 	}
-	
+
 	return enemy_team;
 }
 
@@ -100,7 +95,7 @@ extern color32 g_aTeamColors[TF_TEAM_COUNT];
 const char *GetRPCMapImage( char m_szLatchedMapname[MAX_MAP_NAME], const char *pMapIcon );
 
 // Team roles
-enum 
+enum
 {
 	TEAM_ROLE_NONE = 0,
 	TEAM_ROLE_DEFENDERS,
@@ -177,14 +172,14 @@ enum
 	TF_CLASS_UNDEFINED = 0,
 
 	TF_CLASS_SCOUT,			// TF_FIRST_NORMAL_CLASS
-    TF_CLASS_SNIPER,
-    TF_CLASS_SOLDIER,
+	TF_CLASS_SNIPER,
+	TF_CLASS_SOLDIER,
 	TF_CLASS_DEMOMAN,
 	TF_CLASS_MEDIC,
 	TF_CLASS_HEAVYWEAPONS,
 	TF_CLASS_PYRO,
 	TF_CLASS_SPY,
-	TF_CLASS_ENGINEER,		
+	TF_CLASS_ENGINEER,
 
 	// Add any new classes after Engineer
 	TF_CLASS_MERCENARY,
@@ -256,9 +251,9 @@ extern const char *g_aGameTypeNames[];	// localized gametype names
 //-----------------------------------------------------------------------------
 enum
 {
-	TF_BUILDING_SENTRY				= (1<<0),
-	TF_BUILDING_DISPENSER			= (1<<1),
-	TF_BUILDING_TELEPORT			= (1<<2),
+	TF_BUILDING_SENTRY = ( 1 << 0 ),
+	TF_BUILDING_DISPENSER = ( 1 << 1 ),
+	TF_BUILDING_TELEPORT = ( 1 << 2 ),
 };
 
 //-----------------------------------------------------------------------------
@@ -266,13 +261,13 @@ enum
 //-----------------------------------------------------------------------------
 enum
 {
-	TF_ITEM_UNDEFINED		= 0,
-	TF_ITEM_CAPTURE_FLAG	= (1<<0),
-	TF_ITEM_HEALTH_KIT		= (1<<1),
-	TF_ITEM_ARMOR			= (1<<2),
-	TF_ITEM_AMMO_PACK		= (1<<3),
-	TF_ITEM_GRENADE_PACK	= (1<<4),
-	TF_ITEM_WEAPON_SPAWNER	= (1<<5),
+	TF_ITEM_UNDEFINED = 0,
+	TF_ITEM_CAPTURE_FLAG = ( 1 << 0 ),
+	TF_ITEM_HEALTH_KIT = ( 1 << 1 ),
+	TF_ITEM_ARMOR = ( 1 << 2 ),
+	TF_ITEM_AMMO_PACK = ( 1 << 3 ),
+	TF_ITEM_GRENADE_PACK = ( 1 << 4 ),
+	TF_ITEM_WEAPON_SPAWNER = ( 1 << 5 ),
 };
 
 //-----------------------------------------------------------------------------
@@ -295,12 +290,12 @@ enum
 };
 
 int AliasToWeaponID( const char *alias );
-bool IsExplosiveProjectile(const char *alias);
+bool IsExplosiveProjectile( const char *alias );
 
 bool WeaponID_IsSniperRifle( int iWeaponID );
 bool WeaponID_IsRocketWeapon( int iWeaponID );
 bool WeaponID_IsGrenadeWeapon( int iWeaponID );
-bool WeaponID_IsMeleeWeapon(int iWeaponID);
+bool WeaponID_IsMeleeWeapon( int iWeaponID );
 
 //-----------------------------------------------------------------------------
 // Grenade Launcher mode (for pipebombs).
@@ -364,7 +359,7 @@ enum TFWeaponIDs
 	TF_WEAPON_NONE = 0,
 
 	TF_WEAPON_BAT,
-	TF_WEAPON_BOTTLE, 
+	TF_WEAPON_BOTTLE,
 	TF_WEAPON_FIREAXE,
 	TF_WEAPON_CLUB,
 	TF_WEAPON_CROWBAR,
@@ -401,6 +396,7 @@ enum TFWeaponIDs
 	TF_WEAPON_INVIS,
 	TF_WEAPON_RAILGUN,
 	TF_WEAPON_SUPERSHOTGUN,
+	TF_WEAPON_ETERNALSHOTGUN,
 	TF_WEAPON_PISTOL_MERCENARY,
 	TF_WEAPON_REVOLVER_MERCENARY,
 	TF_WEAPON_GATLINGGUN,
@@ -422,7 +418,8 @@ enum TFWeaponIDs
 	TF_WEAPON_GIB,
 	TF_WEAPON_CLAWS,
 	TF_WEAPON_JUGGERNAUGHT,
-	
+	TF_WEAPON_COMBATKNIFE,
+
 	TFC_WEAPON_SHOTGUN_SB,
 	TFC_WEAPON_SHOTGUN_DB,
 	TFC_WEAPON_CROWBAR,
@@ -542,6 +539,10 @@ extern const char *g_szProjectileNames[];
 #define TF_BURNING_FLAME_LIFE_PYRO	0.25		// pyro only displays burning effect momentarily
 #define TF_BURNING_DMG				3
 
+#define TF_POISON_FREQUENCY			0.75f
+#define TF_POISON_STING_LIFE		10.f
+#define TF_POISON_DMG				8
+
 // disguising
 #define TF_TIME_TO_DISGUISE 2.0
 #define TF_TIME_TO_SHOW_DISGUISED_FINISHED_EFFECT 5.0
@@ -557,7 +558,7 @@ extern const char *g_szProjectileNames[];
 // not all of these exist, compatibility only
 // https://csrd.science/misc/datadump/current/tf_conds.txt
 enum
-{	
+{
 	TF_COND_AIMING = 0,		// Sniper aiming, Heavy minigun.
 	TF_COND_ZOOMED,
 	TF_COND_DISGUISING,
@@ -688,14 +689,17 @@ enum
 	TF_COND_AIR_CURRENT,
 
 	// Open fortress
-	TF_COND_SPAWNPROTECT, // 128
-	TF_COND_BERSERK, // 129
-	TF_COND_SHIELD, // 130
-	TF_COND_CRIT_POWERUP, // 131
-	TF_COND_INVIS_POWERUP, // 132
-	TF_COND_HASTE, // 133
-	TF_COND_JAUGGERNAUGHT, // 134
-
+	TF_COND_SPAWNPROTECT,	// 128
+	TF_COND_BERSERK,		// 129
+	TF_COND_SHIELD,			// 130
+	TF_COND_CRIT_POWERUP,	// 131
+	TF_COND_INVIS_POWERUP,	// 132
+	TF_COND_HASTE,			// 133
+	TF_COND_JAUGGERNAUGHT,	// 134
+	TF_COND_SHIELD_DUEL,	// 135
+	TF_COND_POISON,
+	TF_COND_TRANQ,
+	TF_COND_HOOKED,
 	TF_COND_LAST
 };
 
@@ -708,26 +712,24 @@ enum
 	TF_WEARABLE_YARR,
 	TF_WEARABLE_HEADSET,
 	TF_WEARABLE_SPYMASK,
-	
+
 	TF_WEARABLE_LAST
 };
-
-int GetWearableCount( void );
 
 enum
 {
 	TF_CLASSMOD_NONE = 0,		// Sniper aiming, Heavy minigun.
 	TF_CLASSMOD_TFC,
 	TF_CLASSMOD_ZOMBIE,
-	
-	
+
+
 	TF_CLASSMOD_LAST,
 };
 
 //-----------------------------------------------------------------------------
 // TF Player State.
 //-----------------------------------------------------------------------------
-enum 
+enum
 {
 	TF_STATE_ACTIVE = 0,		// Happily running around in the game.
 	TF_STATE_WELCOME,			// First entering the server (shows level intro screen).
@@ -746,7 +748,8 @@ enum
 #define TF_WEAPONSPAWNERINFO_NONE		(1<<2)
 #define TF_WEAPONSPAWNERINFO_TAKEN		(1<<3)
 #define TF_WEAPONSPAWNERINFO_DROPPED	(1<<4)
-enum {
+enum
+{
 	TF_FLAGEVENT_PICKUP = 1,
 	TF_FLAGEVENT_CAPTURE,
 	TF_FLAGEVENT_DEFEND,
@@ -1046,6 +1049,7 @@ enum
 
 	// open fortress
 	TF_DMG_CUSTOM_CRIT_POWERUP,
+	TF_DMG_CUSTOM_POISON,
 };
 
 enum
@@ -1087,7 +1091,7 @@ enum
 //--------------------------------------------------------------------------
 enum
 {
-	OBJ_DISPENSER=0,
+	OBJ_DISPENSER = 0,
 	OBJ_TELEPORTER,
 	OBJ_SENTRYGUN,
 
@@ -1108,7 +1112,7 @@ typedef enum
 	BUILDING_HUD_ALERT_LOW_HEALTH,
 	BUILDING_HUD_ALERT_VERY_LOW_AMMO,
 	BUILDING_HUD_ALERT_VERY_LOW_HEALTH,
-	BUILDING_HUD_ALERT_SAPPER,	
+	BUILDING_HUD_ALERT_SAPPER,
 
 	MAX_BUILDING_HUD_ALERT_LEVEL
 } BuildingHudAlert_t;
@@ -1187,16 +1191,16 @@ enum
 //--------------------------------------------------------------------------
 enum
 {
-	OF_ALLOW_REPEAT_PLACEMENT				= 0x01,
-	OF_MUST_BE_BUILT_ON_ATTACHMENT			= 0x02,
+	OF_ALLOW_REPEAT_PLACEMENT = 0x01,
+	OF_MUST_BE_BUILT_ON_ATTACHMENT = 0x02,
 
-	OF_BIT_COUNT	= 2
+	OF_BIT_COUNT = 2
 };
 
 //--------------------------------------------------------------------------
 // Builder "weapon" states
 //--------------------------------------------------------------------------
-enum 
+enum
 {
 	BS_IDLE = 0,
 	BS_SELECTING,
@@ -1211,7 +1215,7 @@ enum
 enum
 {
 	BUILDER_OBJECT_BITS = 8,
-	BUILDER_INVALID_OBJECT = ((1 << BUILDER_OBJECT_BITS) - 1)
+	BUILDER_INVALID_OBJECT = ( ( 1 << BUILDER_OBJECT_BITS ) - 1 )
 };
 
 // Analyzer state
@@ -1280,7 +1284,7 @@ class CHudTexture;
 class CObjectInfo
 {
 public:
-	CObjectInfo( char *pObjectName );	
+	CObjectInfo( char *pObjectName );
 	~CObjectInfo();
 
 	// This is initialized by the code and matched with a section in objects.txt

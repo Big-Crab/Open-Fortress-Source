@@ -6,73 +6,40 @@
 //=============================================================================
 
 #include "cbase.h"
-#include "tf_player.h"
-#include "nav_pathfind.h"
-#include "baseanimating.h"
 #include "tf_gamerules.h"
 #include "of_shared_schemas.h"
 #include "tf_gamestats.h"
-#include "KeyValues.h"
 #include "viewport_panel_names.h"
-#include "client.h"
-#include "team.h"
-#include "nav_mesh/tf_nav_mesh.h"
-#include "tf_weaponbase.h"
-#include "tf_weaponbase_gun.h"
-#include "tf_client.h"
 #include "tf_team.h"
 #include "tf_viewmodel.h"
-#include "tf_item.h"
 #include "in_buttons.h"
 #include "entity_capture_flag.h"
 #include "effect_dispatch_data.h"
-#include "te_effect_dispatch.h"
-#include "game.h"
 #include "tf_weapon_builder.h"
 #include "tf_obj.h"
 #include "tf_ammo_pack.h"
 #include "of_dropped_weapon.h"
 #include "datacache/imdlcache.h"
 #include "particle_system.h"
-#include "particle_parse.h"
-#include "props_shared.h"
-#include "filesystem.h"
-#include "toolframework_server.h"
 #include "IEffects.h"
-#include "func_respawnroom.h"
-#include "networkstringtable_gamedll.h"
-#include "team_control_point_master.h"
 #include "tf_weapon_pda.h"
 #include "sceneentity.h"
 #include "fmtstr.h"
 #include "tf_weapon_sniperrifle.h"
 #include "tf_weapon_minigun.h"
-#include "trigger_area_capture.h"
-#include "triggers.h"
+#include "func_respawnroom.h"
 #include "tf_weapon_medigun.h"
 #include "hl2orange.spa.h"
 #include "te_tfblood.h"
-#include "activitylist.h"
-#include "steam/steam_api.h"
-#include "cdll_int.h"
-#include "tf_weaponbase.h"
-#include "tf_playerclass_shared.h"
 #include "of_weapon_physcannon.h"
-#include "tf_powerup.h"
-#include "IVehicle.h"
-#include "player_pickup.h"
 #include "eventqueue.h"
-#include "ammodef.h"
-#include "saverestore_utlvector.h"
-#include "tf_obj_sentrygun.h"
-#include "teamplayroundbased_gamerules.h"
 #include "tf_weaponbase_melee.h"
-#include "of_music_player.h"
-#include "entity_ammopack.h"
-#include "entity_healthkit.h"
 #include "of_dropped_powerup.h"
-
+#include "basegrenade_shared.h"
 #include "dt_utlvector_send.h"
+#include "team_control_point_master.h"
+#include "gamevars_shared.h"
+#include "NextBotUtil.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -202,7 +169,7 @@ void TE_PlayerAnimEvent( CBasePlayer *pPlayer, PlayerAnimEvent_t event, int nDat
 	g_TEPlayerAnimEvent.m_iPlayerIndex = pPlayer->entindex();
 	g_TEPlayerAnimEvent.m_iEvent = event;
 	Assert( nData < (1<<ANIMATION_SEQUENCE_BITS) );
-	Assert( (1<<ANIMATION_SEQUENCE_BITS) >= ActivityList_HighestIndex() );
+	//Assert( (1<<ANIMATION_SEQUENCE_BITS) >= ActivityList_HighestIndex() );
 	g_TEPlayerAnimEvent.m_nData = nData;
 	g_TEPlayerAnimEvent.Create( filter, 0 );
 }
@@ -325,17 +292,20 @@ int SendProxyArrayLength_PlayerObjects( const void *pStruct, int objectID )
 }
 
 BEGIN_DATADESC( CTFPlayer )
-	DEFINE_INPUTFUNC( FIELD_STRING, "SetCustomModel", SetCustomModel ),
-	DEFINE_INPUTFUNC( FIELD_STRING, "SetCustomArmModel", SetCustomArmModel ),
-	DEFINE_INPUTFUNC( FIELD_INTEGER, "AddMoney", AddMoney ),
-	DEFINE_INPUTFUNC( FIELD_INTEGER, "SetMoney", SetMoney ),
-	DEFINE_INPUTFUNC( FIELD_VOID, "StripWeapons", InputStripWeapons ),
-	DEFINE_INPUTFUNC( FIELD_STRING, "SpeakResponseConcept", InputSpeakResponseConcept ),
-	DEFINE_INPUTFUNC( FIELD_VOID,	"IgnitePlayer",	InputIgnitePlayer ),
-	DEFINE_INPUTFUNC( FIELD_VOID,	"ExtinguishPlayer",	InputExtinguishPlayer ),
-	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetZombie", InputSetZombie ),
-	DEFINE_INPUTFUNC( FIELD_BOOLEAN, "SetTeamNoKill", InputSetTeamNoKill ),
+	DEFINE_INPUTFUNC( FIELD_STRING,		"SetCustomModel",		SetCustomModel ),
+	DEFINE_INPUTFUNC( FIELD_STRING,		"SetCustomArmModel",	SetCustomArmModel ),
+	DEFINE_INPUTFUNC( FIELD_INTEGER,	"AddMoney",				AddMoney ),
+	DEFINE_INPUTFUNC( FIELD_INTEGER,	"SetMoney",				SetMoney ),
+	DEFINE_INPUTFUNC( FIELD_VOID,		"StripWeapons",			InputStripWeapons ),
+	DEFINE_INPUTFUNC( FIELD_STRING,		"SpeakResponseConcept", InputSpeakResponseConcept ),
+	DEFINE_INPUTFUNC( FIELD_VOID,		"IgnitePlayer",			InputIgnitePlayer ),
+	DEFINE_INPUTFUNC( FIELD_VOID,		"ExtinguishPlayer",		InputExtinguishPlayer ),
+	DEFINE_INPUTFUNC( FIELD_VOID,		"PoisonPlayer",			InputPoisonPlayer),
+	DEFINE_INPUTFUNC( FIELD_VOID,		"DePoisonPlayer",		InputDePoisonPlayer),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN,	"SetZombie",			InputSetZombie ),
+	DEFINE_INPUTFUNC( FIELD_BOOLEAN,	"SetTeamNoKill",		InputSetTeamNoKill ),
 END_DATADESC()
+
 extern void SendProxy_Origin( const SendProp *pProp, const void *pStruct, const void *pData, DVariant *pOut, int iElement, int objectID );
 
 // specific to the local player
@@ -1036,8 +1006,7 @@ void CTFPlayer::PrecachePlayerModels( void )
 //-----------------------------------------------------------------------------
 bool CTFPlayer::IsReadyToPlay( void )
 {
-	return ( ( GetTeamNumber() > LAST_SHARED_TEAM ) &&
-			 ( GetDesiredPlayerClassIndex() > TF_CLASS_UNDEFINED ) );
+	return GetTeamNumber() > LAST_SHARED_TEAM && GetDesiredPlayerClassIndex() > TF_CLASS_UNDEFINED;
 }
 
 //-----------------------------------------------------------------------------
@@ -1226,10 +1195,11 @@ void CTFPlayer::Spawn()
 		{
 			m_Shared.AddCond( TF_COND_HEALTH_BUFF );
 		}
-		if ( TFGameRules()->IsDMGamemode() || of_forcespawnprotect.GetBool() == 1 )
-		{
+
+		//in duel only give spawn protection the first spawn
+		if ((TFGameRules()->IsDMGamemode() || of_forcespawnprotect.GetBool() == 1) && !(TFGameRules()->IsDuelGamemode() && int(MaxSpeed()) != 1))
 			m_Shared.AddCond( TF_COND_SPAWNPROTECT , of_spawnprotecttime.GetFloat() );
-		}
+
 		m_Shared.SetSpawnEffect( V_atoi(engine->GetClientConVarValue(entindex(), "of_respawn_particle")) );
 		
 		if ( !m_bSeenRoundInfo )
@@ -1501,14 +1471,16 @@ void CTFPlayer::Regenerate( void )
 	
 	m_bRegenerating = false;
 	if ( iCurrentHealth > GetHealth() )
-	{
 		SetHealth( iCurrentHealth );
-	}
 
-	if ( m_Shared.InCond( TF_COND_BURNING ) )
-	{
-		m_Shared.RemoveCond( TF_COND_BURNING );
-	}
+	if ( m_Shared.InCond(TF_COND_BURNING))
+		m_Shared.RemoveCond(TF_COND_BURNING);
+
+	if (m_Shared.InCond(TF_COND_POISON))
+		m_Shared.RemoveCond(TF_COND_POISON);
+
+	if (m_Shared.InCond(TF_COND_TRANQ))
+		m_Shared.RemoveCond(TF_COND_TRANQ);
 }
 
 //-----------------------------------------------------------------------------
@@ -2908,14 +2880,24 @@ int CTFPlayer::GetAutoTeam( void )
 //-----------------------------------------------------------------------------
 void CTFPlayer::HandleCommand_JoinTeam( const char *pTeamName, bool bNoKill )
 {
-	if ( !TFGameRules() )
+	if (!TFGameRules())
 		return;
 
 	// civ can't change teams
-	if ( ( TFGameRules()->IsESCGamemode() && IsPlayerClass( TF_CLASS_CIVILIAN ) ) )
+	if ( TFGameRules()->IsESCGamemode() && IsPlayerClass( TF_CLASS_CIVILIAN ) )
 		return;
 
-	if ( stricmp(pTeamName, "spectate") != 0 && TFGameRules()->IsDMGamemode() )
+	//add player to the duel queue if it's not in it
+	if (TFGameRules()->IsDuelGamemode() && TFGameRules()->GetDuelQueuePos(this) == -1)
+	{
+		//Msg("player with index %d was placed in the queue for the first time\n", entindex());
+		TFGameRules()->PlaceIntoDuelQueue(this);
+	}
+
+	//force spectating if player is not one of the two duelers
+	bool bSpectate = !Q_strcmp(pTeamName, "spectate");
+
+	if (!bSpectate && TFGameRules()->IsDMGamemode())
 	{
 		if ( TFGameRules()->IsTeamplay() ) 
 		{
@@ -2924,25 +2906,25 @@ void CTFPlayer::HandleCommand_JoinTeam( const char *pTeamName, bool bNoKill )
 		}
 		else 
 		{
-			if ( !of_allowteams.GetBool() )			
-				ChangeTeam( TF_TEAM_MERCENARY, false );
 			if ( !TFGameRules()->IsAllClassEnabled() ) 
 				SetDesiredPlayerClassIndex(TF_CLASS_MERCENARY);
 			else
 				ShowViewPortPanel( PANEL_CLASS );
-
-			if ( !of_allowteams.GetBool() ) 
+			
+			if (!of_allowteams.GetBool())
+			{
+				ChangeTeam(TF_TEAM_MERCENARY, false);
 				return;
+			}
 		}
-		
 	}
 	
 	int iTeam = TEAM_INVALID;
-	if ( stricmp( pTeamName, "auto" ) == 0 )
+	if (!Q_strcmp(pTeamName, "auto"))
 	{
 		iTeam = GetAutoTeam();
 	}
-	else if ( stricmp( pTeamName, "spectate" ) == 0 )
+	else if (bSpectate)
 	{
 		iTeam = TEAM_SPECTATOR;
 	}
@@ -3197,7 +3179,6 @@ void CTFPlayer::ChangeTeam( int iTeamNum, bool bNoKill )
 	{
 		RemoveNemesisRelationships();
 	}
-
 
 	BaseClass::ChangeTeam( iTeamNum );
 
@@ -5676,11 +5657,12 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	CBaseEntity *pInflictor = info.GetInflictor();
 	CTFPlayer *pPlayerAttacker = NULL;
 
-	if ( info.GetAttacker() && info.GetAttacker()->IsPlayer() )
+	//Medal shenanigans
+	if ( pAttacker && pAttacker->IsPlayer() )
 	{
 		pPlayerAttacker = ToTFPlayer( info.GetAttacker() );
 
-		if (pPlayerAttacker != this)
+		if ( pPlayerAttacker != this )
 		{
 			//Powerup Massacre
 			pPlayerAttacker->m_iPowerupKills += m_Shared.InPowerupCond() ? 1 : 0; //count kills while holding powerup
@@ -5696,27 +5678,6 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 		}
 	}
 	
-	/* undone for medals system
-	CTFWeaponBaseMelee *pWeapon = dynamic_cast<CTFWeaponBaseMelee*>(info.GetWeapon());
-
-	if ( pWeapon && TFGameRules() && TFGameRules()->IsDMGamemode() && !TFGameRules()->DontCountKills() )
-	{
-		if( pWeapon->GetTFWpnData().m_bHolyShit )
-		{
-			if( random->RandomInt( 1, 4 ) == 3 )
-			{
-				TeamplayRoundBasedRules()->BroadcastSoundFFA( info.GetAttacker()->entindex(), "HolyShit" ); 
-				TeamplayRoundBasedRules()->BroadcastSoundFFA( entindex(), "HolyShit" ); 
-			}
-		}
-		else
-		{
-			TeamplayRoundBasedRules()->BroadcastSoundFFA( info.GetAttacker()->entindex(), "Humiliation" ); 
-			TeamplayRoundBasedRules()->BroadcastSoundFFA( entindex(), "Humiliation" ); 			
-		}
-	}
-	*/
-	
 	bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED );
 	// we want the ragdoll to burn if the player was burning and was not a pryo (who only burns momentarily)
 	bool bBurning = m_Shared.InCond( TF_COND_BURNING ) && ( TF_CLASS_PYRO != GetPlayerClass()->GetClassIndex() );
@@ -5727,6 +5688,9 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	if (m_Shared.InPowerupCond())
 		m_bHadPowerup = true;
 	m_Shared.RemoveAllCond( NULL );
+
+	//remove hook as precaution
+	m_Shared.SetHook(NULL);
 
 	// Reset our model if we were disguised
 	if ( bDisguised )
@@ -6396,10 +6360,13 @@ void CTFPlayer::DropAmmoPack( void )
 //-----------------------------------------------------------------------------
 void CC_DropWeapon( void )
 {
+
 	if ( !of_dropweapons.GetBool() )
 		return;
+
 	if( of_randomizer.GetBool() )
 		return;
+
 	CTFPlayer *pPlayer = ToTFPlayer( UTIL_GetCommandClient() );
 	if ( !pPlayer )
 		return;
@@ -6655,6 +6622,11 @@ void CTFPlayer::DropWeapon( CTFWeaponBase *pActiveWeapon, bool bThrown, bool bDi
 		else
 			pDroppedWeapon->m_nSkin = 2;
 		
+		if( pWeapon->GetTeamNumber() > LAST_SHARED_TEAM )
+			pDroppedWeapon->SetTeamNum( pWeapon->GetTeamNumber() );
+		else
+			pDroppedWeapon->SetTeamNum( TEAM_UNASSIGNED );
+		
 		// Give the ammo pack some health, so that trains can destroy it.
 		pDroppedWeapon->SetCollisionGroup( COLLISION_GROUP_DEBRIS );
 		pDroppedWeapon->m_takedamage = DAMAGE_YES;		
@@ -6822,7 +6794,6 @@ void CTFPlayer::BecomeJuggernaught()
 	m_Shared.OnAddJauggernaught();
 }
 
-
 //=========================================================================
 // Displays the state of the items specified by the Goal passed in
 void CTFPlayer::DisplayLocalItemStatus( CTFGoal *pGoal )
@@ -6880,6 +6851,19 @@ void CTFPlayer::TeamFortress_ClientDisconnected( void )
 
 	RemoveNemesisRelationships();
 
+	//if it's duel mode remove this player from the queue
+	if (TFGameRules()->IsDuelGamemode())
+	{
+		//if player leaves in the mid of a duel (ragequit) it resigns,
+		//player who did not leave wins and match ends
+		if (TFGameRules()->IsRageQuitter(this))
+			TFGameRules()->DuelRageQuit(this);
+		else
+			TFGameRules()->RemoveFromDuelQueue(this);
+
+		return;
+	}
+
 	// Drop a pack with their leftover ammo
 	DropAmmoPack();
 	int Clip = -1;
@@ -6900,10 +6884,9 @@ void CTFPlayer::TeamFortress_ClientDisconnected( void )
 	}
 	else
 #endif
-		DropWeapon( m_Shared.GetActiveTFWeapon(), false, false, Clip, Reserve );
 
+	DropWeapon( m_Shared.GetActiveTFWeapon(), false, false, Clip, Reserve );
 	TeamFortress_RemoveEverythingFromWorld();
-
 	RemoveAllWeapons();
 }
 
@@ -9577,14 +9560,27 @@ void CTFPlayer::InputIgnitePlayer( inputdata_t &inputdata )
 	m_Shared.Burn( ToTFPlayer( inputdata.pActivator ), inputdata.value.Float() );
 }
 
-void CTFPlayer::InputExtinguishPlayer( inputdata_t &inputdata )
+void CTFPlayer::InputExtinguishPlayer(inputdata_t &inputdata)
 {
 	if ( m_Shared.InCond( TF_COND_BURNING ) )
 	{
 		EmitSound( "TFPlayer.FlameOut" );
-
 		m_Shared.RemoveCond( TF_COND_BURNING );
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFPlayer::InputPoisonPlayer(inputdata_t &inputdata)
+{
+	m_Shared.Poison(ToTFPlayer(inputdata.pActivator), inputdata.value.Float());
+}
+
+void CTFPlayer::InputDePoisonPlayer(inputdata_t &inputdata)
+{
+	if (m_Shared.InCond(TF_COND_POISON))
+		m_Shared.RemoveCond(TF_COND_POISON);
 }
 
 //-----------------------------------------------------------------------------

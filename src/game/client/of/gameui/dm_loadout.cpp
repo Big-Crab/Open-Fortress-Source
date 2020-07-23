@@ -6,39 +6,12 @@
 //=============================================================================
 
 #include "cbase.h"
-
-#include <vgui_controls/Label.h>
-#include <vgui_controls/Button.h>
-#include <vgui_controls/ComboBox.h>
-#include <vgui_controls/ImagePanel.h>
-#include <vgui_controls/RichText.h>
-#include <vgui_controls/Frame.h>
-#include <vgui_controls/QueryBox.h>
-#include <vgui/IScheme.h>
-#include <vgui/ILocalize.h>
-#include <vgui/ISurface.h>
-#include "ienginevgui.h"
-#include <game/client/iviewport.h>
-#include "tf_tips.h"
-#include "renderparm.h"
-#include "animation.h"
-#include "tf_controls.h"
-#include "cvartogglecheckbutton.h"
-#include "datacache/imdlcache.h"
-
 #include "of_commandbutton.h"
-#include "of_editablebutton.h"
-
 #include "dm_loadout.h"
-
-#include "engine/IEngineSound.h"
-#include "basemodelpanel.h"
-#include "tf_gamerules.h"
 #include "of_shared_schemas.h"
 #include <convar.h>
-#include <vgui_controls/ScrollBarSlider.h>
-#include <vgui_controls/Slider.h>
-#include "fmtstr.h"
+#include "vgui_controls/AnimationController.h"
+#include "filesystem.h"
 
 #include "tier0/dbg.h"
 
@@ -89,6 +62,8 @@ void DMLoadout::ApplySettings( KeyValues *inResourceData )
 	InitLoadoutHandle();
 	BaseClass::ApplySettings( inResourceData );
 
+	GetAnimationController()->SetScriptFile( GetVPanel(), "scripts/HudAnimations_tf.txt" );
+	
 	KeyValues *inNewResourceData = new KeyValues("ResourceData");	
 	if( !inNewResourceData->LoadFromFile( filesystem, m_ResourceName) )
 		return;	
@@ -527,9 +502,12 @@ void DMLoadout::ApplySchemeSettings(IScheme *pScheme)
 }
 
 void DMLoadout::PerformLayout()
-{
+{	
 	BaseClass::PerformLayout();
 
+	GetAnimationController()->StartAnimationSequence( this, "LoadoutPopup" );
+	
+//	GetAnimationController()->StartAnimationSequence("LoadoutPopup");
 }
 
 #define QUICK_CVAR(x) ConVar x(#x, "0", FCVAR_NONE);

@@ -6,82 +6,49 @@
 
 #include "cbase.h"
 #include "c_tf_player.h"
-#include "c_user_message_register.h"
 #include "view.h"
 #include "iclientvehicle.h"
-#include "ivieweffects.h"
 #include "input.h"
 #include "IEffects.h"
 #include "fx.h"
 #include "c_basetempentity.h"
-#include "hud_macros.h"
-#include "engine/ivdebugoverlay.h"
-#include "smoke_fog_overlay.h"
-#include "playerandobjectenumerator.h"
-#include "bone_setup.h"
-#include "in_buttons.h"
-#include "r_efx.h"
-#include "dlight.h"
-#include "shake.h"
-#include "cl_animevent.h"
-#include "tf_weaponbase.h"
 #include "c_tf_playerresource.h"
 #include "toolframework/itoolframework.h"
-#include "tier1/KeyValues.h"
-#include "tier0/vprof.h"
 #include "prediction.h"
-#include "effect_dispatch_data.h"
-#include "c_te_effect_dispatch.h"
-#include "tf_fx_muzzleflash.h"
 #include "tf_gamerules.h"
 #include "of_shared_schemas.h"
 #include "view_scene.h"
 #include "ai_debug_shared.h"
-#include "c_baseobject.h"
-#include "toolframework_client.h"
 #include "soundenvelope.h"
 #include "voice_status.h"
 #include "clienteffectprecachesystem.h"
 #include "functionproxy.h"
 #include "toolframework_client.h"
 #include "choreoevent.h"
-#include "vguicenterprint.h"
 #include "eventlist.h"
 #include "tf_hud_statpanel.h"
-#include "input.h"
 #include "tf_weapon_medigun.h"
 #include "tf_weapon_pipebomblauncher.h"
 #include "tf_hud_mediccallers.h"
 #include "in_main.h"
-#include "basemodelpanel.h"
-#include "c_team.h"
 #include "collisionutils.h"
-#include "tf_viewmodel.h"
-#include "cdll_int.h"
-#include "filesystem.h"
-
 #include "dt_utlvector_recv.h"
+#include "filesystem.h"
+#include "gamevars_shared.h"
 
 // for spy material proxy
 #include "proxyentity.h"
-#include "materialsystem/imaterial.h"
-#include "materialsystem/imaterialvar.h"
 #include "c_tf_team.h"
-#include "c_entitydissolve.h"
 
 #if defined( CTFPlayer )
 #undef CTFPlayer
 #endif
 
-#include "materialsystem/imesh.h"		//for materials->FindMaterial
-#include "iviewrender.h"				//for view->
-
 #include "cam_thirdperson.h"
 #include "tf_hud_chat.h"
 #include "iclientmode.h"
 #include "tf_viewmodel.h"
-
-#include "gameui/of/dm_loadout.h"
+#include "gameui/dm_loadout.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -2569,6 +2536,7 @@ C_TFPlayer::C_TFPlayer() :
 
 	m_pTeleporterEffect = NULL;
 	m_pBurningSound = NULL;
+	m_pTranqSound = NULL;
 	m_pBurningEffect = NULL;
 	m_flBurnEffectStartTime = 0;
 	m_flBurnEffectEndTime = 0;
@@ -2767,6 +2735,10 @@ void C_TFPlayer::SetDormant( bool bDormant )
 		if ( m_pBurningSound ) 
 		{
 			StopBurningSound();
+		}
+		if (m_pTranqSound)
+		{
+			StopTranqSound();
 		}
 		if ( m_bIsDisplayingNemesisIcon )
 		{
@@ -3086,7 +3058,6 @@ void C_TFPlayer::StartBurningSound( void )
 	controller.Play( m_pBurningSound, 0.0, 100 );
 	controller.SoundChangeVolume( m_pBurningSound, 1.0, 0.1 );
 }
-
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
@@ -3096,6 +3067,33 @@ void C_TFPlayer::StopBurningSound( void )
 	{
 		CSoundEnvelopeController::GetController().SoundDestroy( m_pBurningSound );
 		m_pBurningSound = NULL;
+	}
+}
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_TFPlayer::StartTranqSound(void)
+{
+	CSoundEnvelopeController &controller = CSoundEnvelopeController::GetController();
+
+	if (!m_pTranqSound)
+	{
+		CLocalPlayerFilter filter;
+		m_pTranqSound = controller.SoundCreate(filter, entindex(), "PlayerTranqed");
+	}
+
+	controller.Play(m_pTranqSound, 0.0, 100);
+	controller.SoundChangeVolume(m_pTranqSound, 1.0, 0.1);
+}
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_TFPlayer::StopTranqSound(void)
+{
+	if (m_pTranqSound)
+	{
+		CSoundEnvelopeController::GetController().SoundDestroy(m_pTranqSound);
+		m_pTranqSound = NULL;
 	}
 }
 
@@ -3330,7 +3328,7 @@ void C_TFPlayer::UpdatePlayerAttachedModels( void )
 //-----------------------------------------------------------------------------
 void C_TFPlayer::UpdatePartyHat( void )
 {
-	if ( TFGameRules() && TFGameRules()->IsBirthday() && ( m_Shared.WearsHat( 0 ) || GetPlayerClass()->GetClassIndex() != TF_CLASS_MERCENARY ) ) // If the game is in Birthday mode and we don't already wear anything give us a cool hat
+	if ( TFGameRules() && TFGameRules()->IsBirthday() && ( GetPlayerClass()->GetClassIndex() != TF_CLASS_MERCENARY ) ) // If the game is in Birthday mode and we don't already wear anything give us a cool hat
 	{
 		if ( m_hPartyHat )
 		{
@@ -3417,7 +3415,6 @@ void C_TFPlayer::UpdateGameplayAttachments( void )
 }
 void C_TFPlayer::UpdateWearables( void )
 {
-	DevMsg("UpdateWearables: Triggered Update Wearables\n");
 	for( int i = 0; i < GetNumBodyGroups(); i++ )
 	{
 		SetBodygroup( i, 0 );
@@ -3434,7 +3431,7 @@ void C_TFPlayer::UpdateWearables( void )
 
 	if( m_iCosmetics.Count() > 32 || m_iCosmetics.Count() < 0 )
 	{
-		DevMsg("UpdateWearables: Mismatching cosmetic count\n");
+		DevWarning("UpdateWearables: Mismatching cosmetic count\n");
 		return;
 	}
 
@@ -3443,7 +3440,7 @@ void C_TFPlayer::UpdateWearables( void )
 		KeyValues *pCosmetic = GetCosmetic( m_iCosmetics[i] );
 		if( !pCosmetic )
 		{
-			DevMsg("UpdateWearables: Cant find cosmetic with ID %d\n", m_iCosmetics[i]);
+			DevWarning("UpdateWearables: Cant find cosmetic with ID %d\n", m_iCosmetics[i]);
 			continue;
 		}
 		KeyValues* pBodygroups = pCosmetic->FindKey("Bodygroups");
@@ -3475,10 +3472,6 @@ void C_TFPlayer::UpdateWearables( void )
 
 				m_hCosmetic.AddToTail(handle);
 			}
-		}
-		else
-		{
-			DevMsg("UpdateWearables: Blank model\n");
 		}
 	}
 }

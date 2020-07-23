@@ -6,14 +6,10 @@
 
 #include "cbase.h"
 #include "tf_shareddefs.h"
-#include "KeyValues.h"
-#include "takedamageinfo.h"
 #include "tf_gamerules.h"
-#include "bone_setup.h"
 
-#if defined( CLIENT_DLL )
+#ifdef CLIENT_DLL
 #include "c_team.h"
-#include "c_tf_player.h"
 #include "filesystem.h"
 #else
 #include "team.h"
@@ -28,11 +24,11 @@ const char *GetRPCMapImage( char m_szLatchedMapname[MAX_MAP_NAME], const char *p
 	KeyValues* pDiscordRPC = new KeyValues( "Discord" );
 	pDiscordRPC->LoadFromFile( filesystem, "scripts/discord_rpc.txt" );
 	if ( pDiscordRPC )
-	{				
+	{
 		KeyValues *pMaps = pDiscordRPC->FindKey( "Maps" );
-		if( pMaps )
+		if ( pMaps )
 		{
-				return pMaps->GetString( m_szLatchedMapname, pMapIcon );
+			return pMaps->GetString( m_szLatchedMapname, pMapIcon );
 		}
 		pMaps->deleteThis();
 		pDiscordRPC->deleteThis();
@@ -41,56 +37,20 @@ const char *GetRPCMapImage( char m_szLatchedMapname[MAX_MAP_NAME], const char *p
 }
 #endif
 
-int GetWearableCount( void )
-{
-	if ( !TFGameRules() )
-		return 0;
-
-	if ( TFGameRules()->m_iCosmeticCount > 0 )
-		return TFGameRules()->m_iCosmeticCount;
-
-	int i = 0;
-
-	if ( !filesystem )
-		return 0;
-
-	if ( !filesystem->FileExists( "scripts/items/items_game.txt" , "GAME" ) )
-			Error( "Error! items_games.txt is missing. Your game likely didn't download or update properly.\nGo to the open_fortress/scripts/items/ folder and delete the items_games.txt file, and cleanup & update the SVN again." );
-
-	KeyValues* pItemsGame = new KeyValues( "items_game" );
-	pItemsGame->LoadFromFile( filesystem, "scripts/items/items_game.txt", "GAME" );
-	if ( pItemsGame )
-	{
-		KeyValues* pCosmetics = pItemsGame->FindKey( "Cosmetics" );
-		if ( pCosmetics )
-		{
-			for ( KeyValues *pCosmetic = pCosmetics->GetFirstSubKey(); pCosmetic; pCosmetic = pCosmetic->GetNextKey() )
-			{
-				if ( pCosmetic )
-					i++;
-			}
-		}
-	}
-	if ( i > 0 )
-		TFGameRules()->m_iCosmeticCount = i;
-
-	return i;
-}
-
 bool IsGameTeam( int iTeam )
 {
-	return ( iTeam > LAST_SHARED_TEAM && iTeam < TF_TEAM_COUNT ); 
+	return ( iTeam > LAST_SHARED_TEAM && iTeam < TF_TEAM_COUNT );
 }
 
 bool IsTeamName( const char *str )
 {
-	for (int i = 0; i < g_Teams.Size(); ++i)
+	for ( int i = 0; i < g_Teams.Size(); ++i )
 	{
 #if defined( CLIENT_DLL )
-		if (FStrEq( str, g_Teams[i]->Get_Name() ))
+		if ( FStrEq( str, g_Teams[i]->Get_Name() ) )
 			return true;
 #else
-		if (FStrEq( str, g_Teams[i]->GetName() ))
+		if ( FStrEq( str, g_Teams[i]->GetName() ) )
 			return true;
 #endif
 	}
@@ -111,7 +71,7 @@ const char *g_aTeamNames[TF_TEAM_COUNT] =
 	"NPC" //add team
 };
 
-color32 g_aTeamColors[TF_TEAM_COUNT] = 
+color32 g_aTeamColors[TF_TEAM_COUNT] =
 {
 	{ 0, 0, 0, 0 },
 	{ 0, 0, 0, 0 },
@@ -282,21 +242,21 @@ const Vector g_vecFixedPattern[] =
 	Vector( 0, 0, 0 ),
 	Vector( 1, 0, 0 ),
 	Vector( -1, 0, 0 ),
-	
+
 	Vector( 0, -1, 0 ),
 	Vector( 0, 1, 0 ),
 	Vector( 0.85, -0.85, 0 ),
-	
+
 	Vector( 0.85, 0.85, 0 ),
 	Vector( -0.85, -0.85, 0 ),
 	Vector( -0.85, 0.85, 0 ),
-	
+
 	Vector( 0, 0, 0 ),
-	
+
 	Vector( 2, 0, 0 ),
 	Vector( -2, 0, 0 ),
 	Vector( 0, -2, 0 ),
-	
+
 	Vector( 0, 2, 0 ),
 	Vector( 0.42, -0.42, 0 ),
 	Vector( 0.42, 0.42, 0 ),
@@ -313,7 +273,7 @@ const char *g_aWeaponNames[] =
 	"TF_WEAPON_NONE",
 
 	"TF_WEAPON_BAT",
-	"TF_WEAPON_BOTTLE", 
+	"TF_WEAPON_BOTTLE",
 	"TF_WEAPON_FIREAXE",
 	"TF_WEAPON_CLUB",
 	"TF_WEAPON_CROWBAR",
@@ -350,6 +310,7 @@ const char *g_aWeaponNames[] =
 	"TF_WEAPON_INVIS",
 	"TF_WEAPON_RAILGUN",
 	"TF_WEAPON_SUPERSHOTGUN",
+	"TF_WEAPON_ETERNALSHOTGUN",
 	"TF_WEAPON_PISTOL_MERCENARY",
 	"TF_WEAPON_REVOLVER_MERCENARY",
 	"TF_WEAPON_GATLINGGUN",
@@ -371,6 +332,7 @@ const char *g_aWeaponNames[] =
 	"TF_WEAPON_GIB",
 	"TF_WEAPON_CLAWS",
 	"TF_WEAPON_JUGGERNAUGHT",
+	"TF_WEAPON_COMBATKNIFE",
 
 	"TFC_WEAPON_SHOTGUN_SB",
 	"TFC_WEAPON_SHOTGUN_DB",
@@ -403,31 +365,31 @@ const char *g_aWeaponNames[] =
 
 bool WeaponID_IsSniperRifle( int iWeaponID )
 {
-	return iWeaponID == TF_WEAPON_SNIPERRIFLE || 
+	return iWeaponID == TF_WEAPON_SNIPERRIFLE ||
 		iWeaponID == TF_WEAPON_RAILGUN ||
 		iWeaponID == TFC_WEAPON_SNIPER_RIFLE;
 }
 
 bool WeaponID_IsRocketWeapon( int iWeaponID )
 {
-	return iWeaponID == TF_WEAPON_ROCKETLAUNCHER || 
-		iWeaponID == TF_WEAPON_ROCKETLAUNCHER_DM || 
-		iWeaponID == TF_WEAPON_SUPER_ROCKETLAUNCHER || 
-		iWeaponID == TFC_WEAPON_INCENDIARYCANNON || 
+	return iWeaponID == TF_WEAPON_ROCKETLAUNCHER ||
+		iWeaponID == TF_WEAPON_ROCKETLAUNCHER_DM ||
+		iWeaponID == TF_WEAPON_SUPER_ROCKETLAUNCHER ||
+		iWeaponID == TFC_WEAPON_INCENDIARYCANNON ||
 		iWeaponID == TFC_WEAPON_RPG;
 }
 
 bool WeaponID_IsGrenadeWeapon( int iWeaponID )
 {
-	return iWeaponID == TF_WEAPON_GRENADELAUNCHER || 
-		iWeaponID == TF_WEAPON_PIPEBOMBLAUNCHER || 
-		iWeaponID == TF_WEAPON_GRENADELAUNCHER_MERCENARY || 
-		iWeaponID == TF_WEAPON_DYNAMITE_BUNDLE || 
-		iWeaponID == TFC_WEAPON_PIPEBOMBLAUNCHER || 
+	return iWeaponID == TF_WEAPON_GRENADELAUNCHER ||
+		iWeaponID == TF_WEAPON_PIPEBOMBLAUNCHER ||
+		iWeaponID == TF_WEAPON_GRENADELAUNCHER_MERCENARY ||
+		iWeaponID == TF_WEAPON_DYNAMITE_BUNDLE ||
+		iWeaponID == TFC_WEAPON_PIPEBOMBLAUNCHER ||
 		iWeaponID == TFC_WEAPON_GRENADELAUNCHER;
 }
 
-bool WeaponID_IsMeleeWeapon(int iWeaponID)
+bool WeaponID_IsMeleeWeapon( int iWeaponID )
 {
 	return iWeaponID == TF_WEAPON_BAT ||
 		iWeaponID == TF_WEAPON_BOTTLE ||
@@ -482,12 +444,12 @@ const char *g_aExplosiveNames[] =
 	"TF_GRENADE_NORMAL",
 };
 
-bool IsExplosiveProjectile(const char *alias)
+bool IsExplosiveProjectile( const char *alias )
 {
-	if (alias)
+	if ( alias )
 	{
-		for (int i = 0; g_aExplosiveNames[i] != NULL; ++i)
-			if (!Q_stricmp(g_aExplosiveNames[i], alias))
+		for ( int i = 0; g_aExplosiveNames[i] != NULL; ++i )
+			if ( !Q_stricmp( g_aExplosiveNames[i], alias ) )
 				return true;
 	}
 
@@ -496,10 +458,10 @@ bool IsExplosiveProjectile(const char *alias)
 
 int AliasToWeaponID( const char *alias )
 {
-	if (alias)
+	if ( alias )
 	{
-		for( int i=0; g_aWeaponNames[i] != NULL; ++i )
-			if (!Q_stricmp( g_aWeaponNames[i], alias ))
+		for ( int i = 0; g_aWeaponNames[i] != NULL; ++i )
+			if ( !Q_stricmp( g_aWeaponNames[i], alias ) )
 				return i;
 	}
 
@@ -548,8 +510,9 @@ uint g_aWeaponDamageTypes[] =
 	DMG_GENERIC,	// TF_WEAPON_INVIS
 	DMG_BULLET | DMG_USE_HITLOCATIONS,	// TF_WEAPON_RAILGUN,
 	DMG_BUCKSHOT | DMG_USEDISTANCEMOD, //TF_WEAPON_SUPERSHOTGUN
-	DMG_BULLET  | DMG_USEDISTANCEMOD,	// TF_WEAPON_PISTOL_MERCENARY,
-	DMG_BULLET  | DMG_USEDISTANCEMOD,	// TF_WEAPON_REVOLVER_MERCENARY,
+	DMG_BUCKSHOT | DMG_USEDISTANCEMOD, //TF_WEAPON_ETERNALSHOTGUN
+	DMG_BULLET | DMG_USEDISTANCEMOD,	// TF_WEAPON_PISTOL_MERCENARY,
+	DMG_BULLET | DMG_USEDISTANCEMOD,	// TF_WEAPON_REVOLVER_MERCENARY,
 	DMG_BULLET | DMG_USEDISTANCEMOD,		// TF_WEAPON_GATLINGGUN,
 	DMG_BULLET | DMG_USEDISTANCEMOD,	// TF_WEAPON_PISTOL_AKIMBO,
 	DMG_CLUB,		// TF_WEAPON_UMBRELLA,
@@ -569,7 +532,8 @@ uint g_aWeaponDamageTypes[] =
 	DMG_BLAST | DMG_HALF_FALLOFF | DMG_USEDISTANCEMOD,		// TF_WEAPON_GIB,
 	DMG_SLASH, // TF_WEAPON_CLAWS
 	DMG_CLUB,		// TF_WEAPON_JUGGERNAUGHT,
-	
+	DMG_SLASH, // TF_WEAPON_COMBATKNIFE
+
 	DMG_BUCKSHOT | DMG_USEDISTANCEMOD, //TFC_WEAPON_SHOTGUN_SB
 	DMG_BUCKSHOT | DMG_USEDISTANCEMOD, //TFC_WEAPON_SHOTGUN_DB
 	DMG_CLUB,		// TFC_WEAPON_CROWBAR,
@@ -579,7 +543,7 @@ uint g_aWeaponDamageTypes[] =
 	DMG_BULLET | DMG_USEDISTANCEMOD | DMG_NOCLOSEDISTANCEMOD ,		// TFC_WEAPON_NAILGUN,
 	DMG_BULLET | DMG_USEDISTANCEMOD | DMG_NOCLOSEDISTANCEMOD ,		// TFC_WEAPON_NAILGUN_SUPER,
 	DMG_SLASH,		// TFC_WEAPON_KNIFE,
-	DMG_BULLET | DMG_USEDISTANCEMOD | DMG_PREVENT_PHYSICS_FORCE | DMG_PARALYZE,		// TFC_WEAPON_TRANQ,
+	DMG_BULLET | DMG_PREVENT_PHYSICS_FORCE | DMG_PARALYZE,		// TFC_WEAPON_TRANQ,
 	DMG_BLAST | DMG_HALF_FALLOFF | DMG_USEDISTANCEMOD,		// TFC_WEAPON_RPG,
 	DMG_BULLET | DMG_USE_HITLOCATIONS,	// TFC_WEAPON_SNIPER_RIFLE,
 	DMG_BULLET | DMG_USEDISTANCEMOD ,	// TFC_WEAPON_ASSAULT_RIFLE,
@@ -642,7 +606,7 @@ const char *g_szProjectileNames[] =
 };
 
 //NOTENOTE: This has been reworked, above char list not related anymore
-int g_iProjectileWeapons[] = 
+int g_iProjectileWeapons[] =
 {
 	TF_WEAPON_NONE,
 	TF_WEAPON_PISTOL,
@@ -671,44 +635,44 @@ const char *g_pszHintMessages[] =
 	"#Hint_Cannot_Attack_While_Cloaked",
 	"#Hint_ClassMenu",
 
-// Grenades
-	"#Hint_gren_caltrops",
-	"#Hint_gren_concussion",
-	"#Hint_gren_emp",
-	"#Hint_gren_gas",
-	"#Hint_gren_mirv",
-	"#Hint_gren_nail",
-	"#Hint_gren_napalm",
-	"#Hint_gren_normal",
+	// Grenades
+		"#Hint_gren_caltrops",
+		"#Hint_gren_concussion",
+		"#Hint_gren_emp",
+		"#Hint_gren_gas",
+		"#Hint_gren_mirv",
+		"#Hint_gren_nail",
+		"#Hint_gren_napalm",
+		"#Hint_gren_normal",
 
-// Altfires
-	"#Hint_altfire_sniperrifle",
-	"#Hint_altfire_flamethrower",
-	"#Hint_altfire_grenadelauncher",
-	"#Hint_altfire_pipebomblauncher",
-	"#Hint_altfire_rotate_building",
+		// Altfires
+			"#Hint_altfire_sniperrifle",
+			"#Hint_altfire_flamethrower",
+			"#Hint_altfire_grenadelauncher",
+			"#Hint_altfire_pipebomblauncher",
+			"#Hint_altfire_rotate_building",
 
-// Soldier
-	"#Hint_Soldier_rpg_reload",
+			// Soldier
+				"#Hint_Soldier_rpg_reload",
 
-// Engineer
-	"#Hint_Engineer_use_wrench_onown",
-	"#Hint_Engineer_use_wrench_onother",
-	"#Hint_Engineer_use_wrench_onfriend",
-	"#Hint_Engineer_build_sentrygun",
-	"#Hint_Engineer_build_dispenser",
-	"#Hint_Engineer_build_teleporters",
-	"#Hint_Engineer_pickup_metal",
-	"#Hint_Engineer_repair_object",
-	"#Hint_Engineer_metal_to_upgrade",
-	"#Hint_Engineer_upgrade_sentrygun",
+				// Engineer
+					"#Hint_Engineer_use_wrench_onown",
+					"#Hint_Engineer_use_wrench_onother",
+					"#Hint_Engineer_use_wrench_onfriend",
+					"#Hint_Engineer_build_sentrygun",
+					"#Hint_Engineer_build_dispenser",
+					"#Hint_Engineer_build_teleporters",
+					"#Hint_Engineer_pickup_metal",
+					"#Hint_Engineer_repair_object",
+					"#Hint_Engineer_metal_to_upgrade",
+					"#Hint_Engineer_upgrade_sentrygun",
 
-	"#Hint_object_has_sapper",
+					"#Hint_object_has_sapper",
 
-	"#Hint_object_your_object_sapped",
-	"#Hint_enemy_using_dispenser",
-	"#Hint_enemy_using_tp_entrance",
-	"#Hint_enemy_using_tp_exit",
+					"#Hint_object_your_object_sapped",
+					"#Hint_enemy_using_dispenser",
+					"#Hint_enemy_using_tp_entrance",
+					"#Hint_enemy_using_tp_exit",
 };
 
 //-----------------------------------------------------------------------------
@@ -773,11 +737,11 @@ int GetWeaponFromDamage( const CTakeDamageInfo &info )
 
 	if ( !Q_strnicmp( killer_weapon_name, "tf_projectile", 13 ) )
 	{
-		for( int i = 0; i < ARRAYSIZE( g_szProjectileNames ); i++ )
+		for ( int i = 0; i < ARRAYSIZE( g_szProjectileNames ); i++ )
 		{
-			if ( !Q_stricmp( &killer_weapon_name[ 3 ], g_szProjectileNames[ i ] ) )
+			if ( !Q_stricmp( &killer_weapon_name[3], g_szProjectileNames[i] ) )
 			{
-				iWeapon = g_iProjectileWeapons[ i ];
+				iWeapon = g_iProjectileWeapons[i];
 				break;
 			}
 		}
@@ -787,11 +751,11 @@ int GetWeaponFromDamage( const CTakeDamageInfo &info )
 		int iLen = Q_strlen( killer_weapon_name );
 
 		// strip off _projectile from projectiles shot from other projectiles
-		if ( ( iLen < 256 ) && ( iLen > 11 ) && !Q_stricmp( &killer_weapon_name[ iLen - 11 ], "_projectile" ) )
+		if ( ( iLen < 256 ) && ( iLen > 11 ) && !Q_stricmp( &killer_weapon_name[iLen - 11], "_projectile" ) )
 		{
-			char temp[ 256 ];
+			char temp[256];
 			Q_strcpy( temp, killer_weapon_name );
-			temp[ iLen - 11 ] = 0;
+			temp[iLen - 11] = 0;
 
 			// set the weapon used
 			iWeapon = GetWeaponId( temp );
@@ -843,19 +807,19 @@ CObjectInfo::CObjectInfo( char *pObjectName )
 
 CObjectInfo::~CObjectInfo()
 {
-	delete [] m_pClassName;
-	delete [] m_pStatusName;
-	delete [] m_pModeName0;
-	delete [] m_pModeName1;
-	delete [] m_pBuilderWeaponName;
-	delete [] m_pBuilderPlacementString;
-	delete [] m_pIconActive;
-	delete [] m_pIconInactive;
-	delete [] m_pViewModel;
-	delete [] m_pPlayerModel;
-	delete [] m_pExplodeSound;
-	delete [] m_pUpgradeSound;
-	delete [] m_pExplosionParticleEffect;
+	delete[] m_pClassName;
+	delete[] m_pStatusName;
+	delete[] m_pModeName0;
+	delete[] m_pModeName1;
+	delete[] m_pBuilderWeaponName;
+	delete[] m_pBuilderPlacementString;
+	delete[] m_pIconActive;
+	delete[] m_pIconInactive;
+	delete[] m_pViewModel;
+	delete[] m_pPlayerModel;
+	delete[] m_pExplodeSound;
+	delete[] m_pUpgradeSound;
+	delete[] m_pExplosionParticleEffect;
 }
 
 CObjectInfo g_ObjectInfos[OBJ_LAST] =
@@ -903,7 +867,7 @@ void LoadObjectInfos( IBaseFileSystem *pFileSystem )
 	}
 
 	// Now read each class's information in.
-	for ( int iObj=0; iObj < ARRAYSIZE( g_ObjectInfos ); iObj++ )
+	for ( int iObj = 0; iObj < ARRAYSIZE( g_ObjectInfos ); iObj++ )
 	{
 		CObjectInfo *pInfo = &g_ObjectInfos[iObj];
 		KeyValues *pSub = pValues->FindKey( pInfo->m_pObjectName );
@@ -915,15 +879,15 @@ void LoadObjectInfos( IBaseFileSystem *pFileSystem )
 		}
 
 		// Read all the info in.
-		if ( (pInfo->m_flBuildTime = pSub->GetFloat( "BuildTime", -999 )) == -999 ||
-			(pInfo->m_nMaxObjects = pSub->GetInt( "MaxObjects", -999 )) == -999 ||
-			(pInfo->m_Cost = pSub->GetInt( "Cost", -999 )) == -999 ||
-			(pInfo->m_CostMultiplierPerInstance = pSub->GetFloat( "CostMultiplier", -999 )) == -999 ||
-			(pInfo->m_UpgradeCost = pSub->GetInt( "UpgradeCost", -999 )) == -999 ||
-			(pInfo->m_flUpgradeDuration = pSub->GetFloat("UpgradeDuration", -999)) == -999 ||
-			(pInfo->m_MaxUpgradeLevel = pSub->GetInt( "MaxUpgradeLevel", -999 )) == -999 ||
-			(pInfo->m_SelectionSlot = pSub->GetInt( "SelectionSlot", -999 )) == -999 ||
-			(pInfo->m_SelectionPosition = pSub->GetInt( "SelectionPosition", -999 )) == -999 )
+		if ( ( pInfo->m_flBuildTime = pSub->GetFloat( "BuildTime", -999 ) ) == -999 ||
+			( pInfo->m_nMaxObjects = pSub->GetInt( "MaxObjects", -999 ) ) == -999 ||
+			 ( pInfo->m_Cost = pSub->GetInt( "Cost", -999 ) ) == -999 ||
+			 ( pInfo->m_CostMultiplierPerInstance = pSub->GetFloat( "CostMultiplier", -999 ) ) == -999 ||
+			 ( pInfo->m_UpgradeCost = pSub->GetInt( "UpgradeCost", -999 ) ) == -999 ||
+			 ( pInfo->m_flUpgradeDuration = pSub->GetFloat( "UpgradeDuration", -999 ) ) == -999 ||
+			 ( pInfo->m_MaxUpgradeLevel = pSub->GetInt( "MaxUpgradeLevel", -999 ) ) == -999 ||
+			 ( pInfo->m_SelectionSlot = pSub->GetInt( "SelectionSlot", -999 ) ) == -999 ||
+			 ( pInfo->m_SelectionPosition = pSub->GetInt( "SelectionPosition", -999 ) ) == -999 )
 		{
 			Error( "Missing data for object '%s' in %s.", pInfo->m_pObjectName, pFilename );
 			pValues->deleteThis();
@@ -960,7 +924,7 @@ void LoadObjectInfos( IBaseFileSystem *pFileSystem )
 			KeyValues *pSub3 = pSub1->FindKey( "AltMode1" );
 			if ( pSub3 )
 				pInfo->m_pModeName1 = ReadAndAllocStringValue( pSub3, "ModeName", pFilename );
-		}	
+		}
 	}
 
 	pValues->deleteThis();
@@ -974,7 +938,7 @@ const CObjectInfo* GetObjectInfo( int iObject )
 	return &g_ObjectInfos[iObject];
 }
 
-ConVar tf_cheapobjects( "tf_cheapobjects","0", FCVAR_CHEAT | FCVAR_REPLICATED, "Set to 1 and all objects will cost 0" );
+ConVar tf_cheapobjects( "tf_cheapobjects", "0", FCVAR_CHEAT | FCVAR_REPLICATED, "Set to 1 and all objects will cost 0" );
 
 //-----------------------------------------------------------------------------
 // Purpose: Return the cost of another object of the specified type
@@ -989,7 +953,7 @@ int CalculateObjectCost( int iObjectType )
 	{
 		return 0;
 	}
-	
+
 	if ( of_infiniteammo.GetBool() )
 	{
 		return 0;
@@ -1009,7 +973,7 @@ int	CalculateObjectUpgrade( int iObjectType, int iObjectLevel )
 		return 0;
 
 	int iCost = GetObjectInfo( iObjectType )->m_UpgradeCost;
-	for ( int i = 0; i < (iObjectLevel - 1); i++ )
+	for ( int i = 0; i < ( iObjectLevel - 1 ); i++ )
 	{
 		iCost *= OBJECT_UPGRADE_COST_MULTIPLIER_PER_LEVEL;
 	}
