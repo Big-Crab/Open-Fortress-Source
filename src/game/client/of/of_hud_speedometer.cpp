@@ -17,9 +17,14 @@
 #include <vgui_controls/ProgressBar.h>
 #include <vgui_controls/Label.h>
 #include <../shared/gamemovement.h>
+#include "in_buttons.h"
+#include "tf_controls.h"
+#include "tf_gamerules.h"
+
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
+
 
 using namespace vgui;
 
@@ -43,7 +48,7 @@ public:
 	virtual void	Paint(void);
 	void UpdateColours(void);
 
-	Color GetComplimentaryColour( Color color );
+	Color GetComplimentaryColour(Color color);
 private:
 	// The speed bar 
 	ContinuousProgressBar *m_pSpeedPercentageMeter;
@@ -67,7 +72,7 @@ private:
 	Color playerColourBase;						// The player's chosen Merc colour
 	Color playerColourComplementary;			// The colour that compliments the player's colour - pls allow this for cosmetics <3
 	Color *playerColour = &colourDefault;	// The colour we'll use if the player-colour convar is 1 (This references one of the above two)
-	
+
 	Color playerColourShadowbase = Color(0, 0, 0, 255);
 	Color *playerColourShadow = &playerColourShadowbase;
 
@@ -79,6 +84,8 @@ private:
 	void UpdateScreenCentre(void);
 
 	void QStrafeJumpHelp(void);
+
+	void NeedlerThink(void);
 };
 
 DECLARE_HUDELEMENT(CHudSpeedometer);
@@ -102,6 +109,7 @@ ConVar hud_speedometer_vectors_useplayercolour("hud_speedometer_vectors_useplaye
 //ConVar hud_speedometer_keeplevel("hud_speedometer_keeplevel", "1", FCVAR_ARCHIVE, "0: Speedometer is centred on screen. 1: Speedometer shifts up and down to keep level with the horizon.", SpeedometerConvarChanged);
 ConVar hud_speedometer_optimalangle("hud_speedometer_optimalangle", "0", FCVAR_ARCHIVE, "Enables the optimal angle indicator for airstrafing.", SpeedometerConvarChanged);
 
+ConVar needler_enabled("needler_enabled", "0", FCVAR_ARCHIVE | FCVAR_HIDDEN, "Enables The Needler weapon.", SpeedometerConvarChanged);
 
 // Cached versions of the ConVars that get used every frame/draw update (More efficient).
 // These shouldn't be members, as their ConVar counterparts are static and global anyway
@@ -111,6 +119,9 @@ bool bVectors = hud_speedometer_vectors.GetBool();
 bool bOptimalAngle = false;
 const float flSpeedometermax = 1000.0f;
 //float flMaxspeed = -1.0f;
+
+//needler
+bool bNeedlerEnabled = false;
 
 int iCentreScreenX = 0;
 int iCentreScreenY = 0;
@@ -136,11 +147,13 @@ void SpeedometerConvarChanged(IConVar *var, const char *pOldValue, float flOldVa
 
 	// Only draw vectors only if we're also drawing the speedometer - this isn't entirely necessary - if users want it to be separate it's easy enough to change.
 	bVectors = (hud_speedometer_vectors.GetInt() > 0) && (iSpeedometer > 0);
-	
+
 	// Attempt to automatically reload the HUD and scheme each time
 	engine->ExecuteClientCmd("hud_reloadscheme");
 
 	bOptimalAngle = hud_speedometer_optimalangle.GetBool();
+
+	bNeedlerEnabled = needler_enabled.GetBool();
 }
 
 //-----------------------------------------------------------------------------
@@ -156,10 +169,10 @@ CHudSpeedometer::CHudSpeedometer(const char *pElementName) : CHudElement(pElemen
 	// text with change in speed on it is HudSpeedometerDelta - Text gets overwritten. You'll know if it fails lol.
 	m_pDeltaTextLabel = new Label(this, "HudSpeedometerDelta", "CYMRUAMBYTH");
 	m_pDeltaTextLabelDropshadow = new Label(this, "HudSpeedometerDeltaDropshadow", "CYMRUAMBYTH");
-	
+
 	// Text gets overwritten 
 	m_pSpeedTextLabel = new Label(this, "HudSpeedometerText", "CYMRUAMBYTH");
-	m_pSpeedTextLabelDropshadow = new Label(this, "HudSpeedometerTextDropshadow", "CYMRUAMBYTH");	
+	m_pSpeedTextLabelDropshadow = new Label(this, "HudSpeedometerTextDropshadow", "CYMRUAMBYTH");
 
 	SetDialogVariable("speeddelta", "~0");
 
@@ -192,11 +205,11 @@ Color CHudSpeedometer::GetComplimentaryColour(Color colorIn)
 	int alpha = colorIn.a();
 
 	// Use RGB only, no A!
-	colorIn = Color(colorIn.r(), colorIn.g(), colorIn.b(), 0 );
-	
+	colorIn = Color(colorIn.r(), colorIn.g(), colorIn.b(), 0);
+
 	Color out;
 	// Calculate complimentary using RGB only
-	out.SetRawColor( white - colorIn.GetRawColor() );
+	out.SetRawColor(white - colorIn.GetRawColor());
 
 	// Add the alpha back in
 	out = Color(out.r(), out.g(), out.b(), alpha);
@@ -214,7 +227,7 @@ void CHudSpeedometer::ApplySchemeSettings(IScheme *pScheme)
 	SetDialogVariable("speeddelta", "~0");
 
 	BaseClass::ApplySchemeSettings(pScheme);
-	
+
 	UpdateColours();
 	UpdateScreenCentre();
 }
@@ -270,7 +283,7 @@ void CHudSpeedometer::UpdateColours()
 	m_pSpeedTextLabelDropshadow->SetFgColor(*playerColourShadow);
 	m_pDeltaTextLabel->SetFgColor(*playerColour);
 	m_pDeltaTextLabelDropshadow->SetFgColor(*playerColourShadow);
-} 
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -286,14 +299,14 @@ bool CHudSpeedometer::ShouldDraw(void)
 	// Dead men inspect no elements
 	if (!pPlayer->IsAlive())
 		return false;
-	
+
 	// Check convar! If 1 or 2, we draw like cowboys. Shit joke TODO deleteme
 	if (iSpeedometer <= 0)
 		return false;
-	
+
 	// Meter shows only when hud_speedometer is 3
 	m_pSpeedPercentageMeter->SetVisible(iSpeedometer >= 3);
-	
+
 	// Delta between jumps text only shows if convar is 1 or above
 	m_pDeltaTextLabel->SetVisible(bDelta);
 	m_pDeltaTextLabelDropshadow->SetVisible(bDelta);
@@ -317,7 +330,7 @@ float acos_zdoom(float x)
 {
 	if (x < -0.5f)
 		return M_PI - 2.0f * asin(sqrt((1 + x) / 2));
-	
+
 	if (x > 0.5f)
 		return 2.0f * asin(sqrt((1 - x) / 2));
 
@@ -335,10 +348,10 @@ float NormalizedPI(float angle)
 {
 	while (angle > M_PI)
 		angle -= (M_PI * 2);
-	
+
 	while (angle < -M_PI)
 		angle += (M_PI * 2);
-	
+
 	return angle;
 }
 
@@ -364,9 +377,12 @@ void CHudSpeedometer::OnTick(void)
 {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 	C_BasePlayer *pPlayerBase = C_TFPlayer::GetLocalPlayer();
-	
+
 	if (!(pPlayer && pPlayerBase))
 		return;
+
+	if (bNeedlerEnabled)
+		NeedlerThink();
 
 	Vector velHor(0, 0, 0);
 	velHor = pPlayerBase->GetLocalVelocity() * Vector(1, 1, 0); // Player's horizontal velocity.
@@ -375,8 +391,8 @@ void CHudSpeedometer::OnTick(void)
 	if (m_pSpeedPercentageMeter)
 	{
 		// Draw speed text only
-		if (iSpeedometer >= 1)		
-			SetDialogVariable("speedhorizontal", RoundFloatToInt(horSpeed) );
+		if (iSpeedometer >= 1)
+			SetDialogVariable("speedhorizontal", RoundFloatToInt(horSpeed));
 
 		// Draw speed bar, one might call it a "speedometer"... patent pending.
 		if (iSpeedometer >= 3)
@@ -393,7 +409,8 @@ void CHudSpeedometer::OnTick(void)
 			// Are we grounded?
 			bool isGrounded = pPlayerBase->GetGroundEntity();
 
-			if (!isGrounded && groundedInPreviousFrame) {
+			if (!isGrounded && groundedInPreviousFrame)
+			{
 				cyflymder_echdoe = cyflymder_ddoe;
 				cyflymder_ddoe = horSpeed;
 
@@ -413,6 +430,234 @@ void CHudSpeedometer::OnTick(void)
 				groundedInPreviousFrame = isGrounded;
 			}
 		}
+	}
+}
+
+extern ConVar sv_gravity;
+#define NAIL_SPEED 2000
+#define NAILGUN_NAIL_GRAVITY 0.3f
+#define MAXPLAYERS 32
+bool bTargetAcquired = false;
+CTFPlayer* playersArr[MAXPLAYERS];
+CTFPlayer* nearestPlayer = null;
+Vector vCorePos = Vector(0.0f);
+Vector vLeadPos = Vector(0.0f);
+
+
+bool CalculateTrajectory(float TargetDistance, float ProjectileVelocity, float &CalculatedAngle)
+{
+	// in radians
+	// for some reason -G was returning negative values, so we just give +ve G here
+	// I think, following the projectile code, it uses entgravity * sv_gravity to do the actual gravity (a comment even says "rename to m_flGravityScale")
+	float actualGravity = sv_gravity.GetFloat() * NAILGUN_NAIL_GRAVITY;
+	CalculatedAngle = 0.5f * asinf((actualGravity * TargetDistance) / (ProjectileVelocity * ProjectileVelocity));
+	if (isnan(CalculatedAngle))
+	{
+		CalculatedAngle = 0;
+		return false;
+	}
+	return true;
+}
+
+//first-order intercept using relative target position
+float FirstOrderInterceptTime(float shotSpeed, Vector targetRelativePosition, Vector targetRelativeVelocity)
+{
+	float velocitySquared = targetRelativeVelocity.LengthSqr();
+	if (velocitySquared < 0.001f)
+		return 0.0f;
+
+	float a = velocitySquared - shotSpeed * shotSpeed;
+
+	//handle similar velocities
+	if (abs(a) < 0.001f)
+	{
+		float t = -targetRelativePosition.LengthSqr() /
+			(2.0f * targetRelativeVelocity.Dot(targetRelativePosition));
+		return max(t, 0.0f); //don't shoot back in time
+	}
+
+	float b = 2.0f * targetRelativeVelocity.Dot(targetRelativePosition);
+	float c = targetRelativePosition.LengthSqr();
+	float determinant = b * b - 4.0f * a * c;
+
+	if (determinant > 0.0f)
+	{ //determinant > 0; two intercept paths (most common)
+		float t1 = (-b + sqrt(determinant)) / (2.0f * a),
+			t2 = (-b - sqrt(determinant)) / (2.0f * a);
+		if (t1 > 0.0f)
+		{
+			if (t2 > 0.0f)
+				return min(t1, t2); //both are positive
+			else
+				return t1; //only t1 is positive
+		}
+		else
+			return max(t2, 0.0f); //don't shoot back in time
+	}
+	else if (determinant < 0.0f) //determinant < 0; no intercept path
+		return 0.0f;
+	else //determinant = 0; one intercept path, pretty much never happens
+		return max(-b / (2.0f * a), 0.0f); //don't shoot back in time
+}
+
+Vector FirstOrderIntercept(Vector shooterPosition, Vector shooterVelocity, float shotSpeed, Vector targetPosition, Vector targetVelocity)
+{
+	Vector targetRelativePosition = targetPosition - shooterPosition;
+	Vector targetRelativeVelocity = targetVelocity - shooterVelocity;
+	float t = FirstOrderInterceptTime(shotSpeed, targetRelativePosition, targetRelativeVelocity);
+	return targetPosition + t * (targetRelativeVelocity);
+}
+
+// todo: do LoS check
+bool FindNearestPlayer()
+{
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	bool isFirst = true;
+	float smallestDistance = -1.0f;
+	const float maxDistanceAcceptable = 1000.0f;
+	nearestPlayer = null;
+	bool bFound = false;
+
+	if (!pPlayer)
+		return false;
+
+	for (int i = 0; i < MAXPLAYERS; i++)
+	{
+		C_TFPlayer *pEnemy = playersArr[i];
+		if (pEnemy != null)
+		{
+			if (pEnemy->IsPlayerDead())
+			{
+				continue;
+			}
+
+			float distance = (pPlayer->GetAbsOrigin() - pEnemy->GetAbsOrigin()).Length();
+			if ((isFirst || distance < smallestDistance) && distance <= maxDistanceAcceptable)
+			{
+				smallestDistance = distance;
+				nearestPlayer = pEnemy;
+				isFirst = false;
+				bFound = true;
+			}
+		}
+	}
+
+	return bFound;
+}
+
+void CheckPlayers(void)
+{
+	for (int playerIndex = 0; playerIndex < engine->GetMaxClients(); playerIndex++)
+	{
+		player_info_t playerInfo;
+
+		if (engine->GetPlayerInfo(playerIndex, &playerInfo))
+		{
+			if (playerIndex == engine->GetLocalPlayer())
+			{
+				continue;
+			}
+
+			C_BaseEntity *ent;
+			ent = cl_entitylist->GetEnt(playerIndex);
+			C_TFPlayer *pPlayer = ToTFPlayer(ent);
+
+			if (pPlayer != null)
+			{
+				// Ignore teammates
+				if (TFGameRules()->IsTeamplay() && pPlayer->GetTeamNumber() == CTFPlayer::GetLocalTFPlayer()->GetTeamNumber())
+					continue;
+
+				playersArr[playerIndex] = pPlayer;
+				continue;
+			}
+		}
+
+		// Only if we cannot assign a player
+		playersArr[playerIndex] = null;
+	}
+}
+
+// The automatic aiming
+void DoNeedling()
+{
+	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+	if (!pPlayer)
+		return;
+
+	// Nailgun spawn point
+	Vector shotPoint = pPlayer->Weapon_ShootPosition();
+
+	// Enemy spine position
+	//bip_spine_3
+	Vector vecSpinePos; QAngle qaSpineRot;
+	nearestPlayer->GetBonePosition(nearestPlayer->LookupBone("bip_spine_3"), vecSpinePos, qaSpineRot);
+
+	Vector shotTargetPosition = vecSpinePos;
+	Vector shotTargetVelocity = nearestPlayer->GetAbsVelocity();
+
+	float distance = (shotPoint - shotTargetPosition).Length();
+	float trajectoryAngle;
+
+	// Previously, we fed pPlayer->GetAbsVelocity() as the second argument (shooter velocity)
+	// Because nails do not inherit velocity, always pass a zero vector!!
+
+	Vector TargetCenter = FirstOrderIntercept(shotPoint, Vector(0.0f), NAIL_SPEED, shotTargetPosition, shotTargetVelocity);
+	if (CalculateTrajectory(distance, NAIL_SPEED, trajectoryAngle))
+	{
+		float trajectoryHeight = tanf(trajectoryAngle) * distance;
+		TargetCenter.z += trajectoryHeight;	// was previously .y because we forgot that this is Source not Unity (Z Is Up)
+	}
+
+	// now look at the point we calculated
+	Vector target = { TargetCenter.y, TargetCenter.x, TargetCenter.z };
+	//The camera is 64 units higher than the player:
+	Vector camPos = pPlayer->GetAbsOrigin() + pPlayer->GetViewOffset();
+	camPos = { camPos.y, camPos.x, camPos.z };
+
+	// Axis in the game, need to know it to fix up:
+	//              : L - R  ; F - B ;  U - D
+	// Rotation Axis:   x        z        y
+	// Translation  :   y        x        z
+
+	float xdis = target.x - camPos.x;
+	float ydis = target.z - camPos.z;
+	float zdis = target.y - camPos.y;
+	float xzdis = sqrtf(xdis * xdis + zdis * zdis);
+
+	QAngle angles = { RAD2DEG(-atan2f(ydis, xzdis)), RAD2DEG(-(atan2f(-xdis, zdis))), 0 };
+
+	// Apply the snap!
+	engine->SetViewAngles(angles);
+
+
+	vCorePos = shotTargetPosition;
+	vLeadPos = TargetCenter;
+}
+
+void CHudSpeedometer::NeedlerThink(void)
+{
+	if (g_pMoveData->m_nButtons & IN_ATTACK)
+	{
+		CheckPlayers();
+
+		// +attack = acquire target
+		if (!bTargetAcquired)
+		{
+			// ACQUIRE TARGET 
+			bTargetAcquired = FindNearestPlayer();
+		}
+		// +attack + target already acquired = aim
+		else
+		{
+			// AUTO AIM
+			DoNeedling();
+		}
+	}
+	else
+	{
+		// -attack = lose target
+		bTargetAcquired = false;
 	}
 }
 
@@ -462,6 +707,24 @@ void CHudSpeedometer::Paint(void)
 		// Draw the velocity vectors (The player's actual velocity, horizontally, relative to the view direction)
 		surface()->DrawSetColor(*vectorColor_vel);
 		surface()->DrawLine(iCentreScreenX, iCentreScreenY, iCentreScreenX + vecVelocityDirection.y, iCentreScreenY - vecVelocityDirection.x);
+	}
+
+	if (bTargetAcquired)
+	{
+		// Debug information
+		// Reposition the icon based on our target's position
+		int iX, iY;
+		//Vector vecDelta = vecTarget - MainViewOrigin();
+		if (GetVectorInScreenSpace(vLeadPos, iX, iY))
+		{
+			surface()->DrawSetColor(Color(255, 255, 0, 255));
+			surface()->DrawOutlinedCircle(iX, iY, 10, 12);			// Lead position = yellow circle
+		}
+		if (GetVectorInScreenSpace(vCorePos, iX, iY))
+		{
+			surface()->DrawSetColor(Color(255, 0, 0, 255));
+			surface()->DrawOutlinedCircle(iX, iY, 10, 12);			// Core position = red circle
+		}
 	}
 }
 
