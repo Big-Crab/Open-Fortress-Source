@@ -2,11 +2,12 @@
 #include "c_of_trigger_jump.h"
 
 
-IMPLEMENT_CLIENTCLASS_DT( C_OFDTriggerJump, DT_OFDTriggerJump, COFDTriggerJump )
-	RecvPropVector( RECVINFO( m_vecTarget ) ),
-	RecvPropInt( RECVINFO( m_iSound ) ),
-	RecvPropBool( RECVINFO( m_bNoCompensation ) ),
-	RecvPropBool( RECVINFO( m_bNoAirControl ) ),
+IMPLEMENT_CLIENTCLASS_DT(C_OFDTriggerJump, DT_OFDTriggerJump, COFDTriggerJump)
+RecvPropVector(RECVINFO(m_vecTarget)),
+RecvPropFloat(RECVINFO(m_flApexBoost)),
+RecvPropInt(RECVINFO(m_iSound)),
+RecvPropBool(RECVINFO(m_bNoCompensation)),
+RecvPropBool(RECVINFO(m_bNoAirControl)),
 END_RECV_TABLE()
 
 C_EntityClassList< C_OFDTriggerJump > g_TriggerJumpList;
@@ -14,12 +15,12 @@ template<> C_OFDTriggerJump *C_EntityClassList<C_OFDTriggerJump>::m_pClassList =
 
 C_OFDTriggerJump::C_OFDTriggerJump()
 {
-	g_TriggerJumpList.Insert( this );
+	g_TriggerJumpList.Insert(this);
 }
 
 C_OFDTriggerJump::~C_OFDTriggerJump()
 {
-	g_TriggerJumpList.Remove( this );
+	g_TriggerJumpList.Remove(this);
 }
 
 void C_OFDTriggerJump::Spawn()

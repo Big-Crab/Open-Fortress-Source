@@ -21,6 +21,7 @@
 #include "tf_controls.h"
 #include "tf_gamerules.h"
 
+#include "weapon_selection.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -435,21 +436,30 @@ void CHudSpeedometer::OnTick(void)
 
 extern ConVar sv_gravity;
 #define NAIL_SPEED 2000
+#define ROCKET_SPEED 1100
+#define GRENADE_SPEED 1200
 #define NAILGUN_NAIL_GRAVITY 0.3f
+#define GRENADE_GRAVITY 0.5f
 #define MAXPLAYERS 32
+const char* rocketLauncherName = "tf_weapon_rocketlauncher_dm";
+const char* grenadeLauncherName = "tf_weapon_grenadelauncher_mercenary";
+const char* nailgunName = "tf_weapon_nailgun";
+
 bool bTargetAcquired = false;
 CTFPlayer* playersArr[MAXPLAYERS];
 CTFPlayer* nearestPlayer = null;
 Vector vCorePos = Vector(0.0f);
 Vector vLeadPos = Vector(0.0f);
 
+bool bNeedlerActive = false;
+bool bNoPlayersConnected = true;
 
-bool CalculateTrajectory(float TargetDistance, float ProjectileVelocity, float &CalculatedAngle)
+bool CalculateTrajectory(float TargetDistance, float ProjectileVelocity, float &CalculatedAngle, float gravityMultiplier)
 {
 	// in radians
 	// for some reason -G was returning negative values, so we just give +ve G here
 	// I think, following the projectile code, it uses entgravity * sv_gravity to do the actual gravity (a comment even says "rename to m_flGravityScale")
-	float actualGravity = sv_gravity.GetFloat() * NAILGUN_NAIL_GRAVITY;
+	float actualGravity = sv_gravity.GetFloat() * gravityMultiplier;
 	CalculatedAngle = 0.5f * asinf((actualGravity * TargetDistance) / (ProjectileVelocity * ProjectileVelocity));
 	if (isnan(CalculatedAngle))
 	{
@@ -547,6 +557,8 @@ bool FindNearestPlayer()
 
 void CheckPlayers(void)
 {
+	bNoPlayersConnected = true;
+
 	for (int playerIndex = 0; playerIndex < engine->GetMaxClients(); playerIndex++)
 	{
 		player_info_t playerInfo;
@@ -569,6 +581,7 @@ void CheckPlayers(void)
 					continue;
 
 				playersArr[playerIndex] = pPlayer;
+				bNoPlayersConnected = false;
 				continue;
 			}
 		}
@@ -584,6 +597,39 @@ void DoNeedling()
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
 	if (!pPlayer)
 		return;
+
+	// Default: hitscan
+	float projectileSpeed = 99999.0f, projectileGravity = 0.0f;
+	CTFWeaponBase *pSelectedWeapon = pPlayer->GetActiveTFWeapon();
+	if (pSelectedWeapon)
+	{
+		//Msg("Current weapon GetName: %s, ", pSelectedWeapon->GetName());
+		const char* weaponName = pSelectedWeapon->GetName();
+		if (Q_strcmp(weaponName, nailgunName) == 0)
+		{
+			projectileSpeed = NAIL_SPEED;
+			projectileGravity = NAILGUN_NAIL_GRAVITY;
+			//Msg("Nailgun was used.\n");
+		}
+		else if (Q_strcmp(weaponName, grenadeLauncherName) == 0)
+		{
+			projectileSpeed = GRENADE_SPEED;
+			projectileGravity = GRENADE_GRAVITY;
+			//Msg("GL was used.\n");
+		}
+		else if (Q_strcmp(weaponName, rocketLauncherName) == 0)
+		{
+			projectileSpeed = ROCKET_SPEED;
+			projectileGravity = 0.0f;
+			//Msg("RL was used.\n");
+		}
+		else
+		{
+			//Msg("Hitscan was used.\n");
+		}
+		// else = assume hitscan
+	}
+
 
 	// Nailgun spawn point
 	Vector shotPoint = pPlayer->Weapon_ShootPosition();
@@ -602,8 +648,8 @@ void DoNeedling()
 	// Previously, we fed pPlayer->GetAbsVelocity() as the second argument (shooter velocity)
 	// Because nails do not inherit velocity, always pass a zero vector!!
 
-	Vector TargetCenter = FirstOrderIntercept(shotPoint, Vector(0.0f), NAIL_SPEED, shotTargetPosition, shotTargetVelocity);
-	if (CalculateTrajectory(distance, NAIL_SPEED, trajectoryAngle))
+	Vector TargetCenter = FirstOrderIntercept(shotPoint, Vector(0.0f), projectileSpeed, shotTargetPosition, shotTargetVelocity);
+	if (CalculateTrajectory(distance, projectileSpeed, trajectoryAngle, projectileGravity))
 	{
 		float trajectoryHeight = tanf(trajectoryAngle) * distance;
 		TargetCenter.z += trajectoryHeight;	// was previously .y because we forgot that this is Source not Unity (Z Is Up)
@@ -637,9 +683,12 @@ void DoNeedling()
 
 void CHudSpeedometer::NeedlerThink(void)
 {
-	if (g_pMoveData->m_nButtons & IN_ATTACK)
+	//if (g_pMoveData->m_nButtons & IN_ATTACK)
+	if (bNeedlerActive)
 	{
 		CheckPlayers();
+		if (bNoPlayersConnected)
+			return;
 
 		// +attack = acquire target
 		if (!bTargetAcquired)
@@ -650,6 +699,10 @@ void CHudSpeedometer::NeedlerThink(void)
 		// +attack + target already acquired = aim
 		else
 		{
+			C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
+			if (!pPlayer)
+				return;
+
 			// AUTO AIM
 			DoNeedling();
 		}
@@ -825,3 +878,17 @@ void CHudSpeedometer::QStrafeJumpHelp()
 	surface()->DrawSetColor(*playerColour);
 	surface()->DrawFilledRect(xMin, yTop, xOpt, yBottom);
 }
+
+void IN_NeedlerDown()
+{
+	bNeedlerActive = true;
+}
+
+void IN_NeedlerUp()
+{
+	bNeedlerActive = false;
+}
+
+
+ConCommand needleroff("+needler", IN_NeedlerDown);
+ConCommand needleron("-needler", IN_NeedlerUp);
