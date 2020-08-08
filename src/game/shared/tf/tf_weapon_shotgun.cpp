@@ -235,6 +235,7 @@ CTFEternalShotgun::CTFEternalShotgun(void)
 #ifdef GAME_DLL
 	m_hHook = NULL;
 	pBeam = NULL;
+	flLOSGauge = 0.f;
 #endif
 }
 
@@ -312,7 +313,10 @@ void CTFEternalShotgun::ItemPostFrame()
 		if(m_iAttached)
 		{
 #ifdef GAME_DLL
-			if ( !HookLOS(hookPos) || ( pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin() ).Length() <= 72.f )
+			if (HookLOS(hookPos))
+				flLOSGauge = gpGlobals->curtime;
+
+			if ( gpGlobals->curtime > flLOSGauge + 0.15f || (pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 72.f)
 #else
 			if ((pHook->GetAbsOrigin() - pPlayer->GetAbsOrigin()).Length() <= 72.f)
 #endif
@@ -446,16 +450,9 @@ void CTFEternalShotgun::InitiateHook(CTFPlayer *pPlayer, CBaseEntity *pHook)
 	if ( ShouldDrawUsingViewModel() )
 	{
 #endif
-		CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
-		if ( pOwner != NULL )	
-		{
-			CBaseViewModel *vm =pOwner->GetViewModel();
-			
-			if ( vm != NULL )
-			{
-				vm->SetPoseParameter( "reel_direction", 1 );
-			}
-		}
+		CBaseViewModel *vm = pPlayer->GetViewModel();
+		if ( vm )
+			vm->SetPoseParameter( "reel_direction", 1 );
 #ifdef CLIENT_DLL
 	}
 #endif
@@ -705,10 +702,22 @@ bool CTFMeatHook::CreateVPhysics(void)
 
 void CTFMeatHook::HookTouch(CBaseEntity *pOther)
 {
-	if (pOther->IsSolidFlagSet(FSOLID_TRIGGER | FSOLID_VOLUME_CONTENTS))
+	//pass through triggers
+	if ( pOther->IsSolidFlagSet( FSOLID_TRIGGER | FSOLID_VOLUME_CONTENTS ) )
 		return;
 
-	if (pOther == m_hOwner || !pOther->IsPlayer() || !GetOwnerEntity())
+	//do not hook the owner and not-players
+	if ( pOther == m_hOwner || !pOther->IsPlayer() )
+	{
+		m_hOwner->RemoveHook();
+		return;
+	}
+
+	//do not hook if either target or owner player do not exist, or if players are on the same team
+	CTFPlayer *pOwner = (CTFPlayer *)GetOwnerEntity();
+	CTFPlayer *pHooked = ToTFPlayer(pOther);
+	int iTeam = pOwner->GetTeamNumber();
+	if ( !pHooked || !pOwner || ( iTeam != TF_TEAM_MERCENARY && iTeam == pHooked->GetTeamNumber() ) )
 	{
 		m_hOwner->RemoveHook();
 		return;
@@ -718,12 +727,10 @@ void CTFMeatHook::HookTouch(CBaseEntity *pOther)
 
 	SetTouch(NULL);
 	SetThink(NULL);
-
-	CTFPlayer *pOwner = (CTFPlayer *)GetOwnerEntity();
+	
 	pOwner->SetPhysicsFlag(PFLAG_VPHYSICS_MOTIONCONTROLLER, true);
 	pOwner->DoAnimationEvent(PLAYERANIMEVENT_CUSTOM, ACT_GRAPPLE_PULL_START);
-
-	CTFPlayer *pHooked = ToTFPlayer(pOther);
+	
 	m_hOwner->NotifyHookAttached(pHooked);
 	
 	UTIL_Remove(this);

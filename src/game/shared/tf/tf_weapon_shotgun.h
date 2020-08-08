@@ -160,6 +160,7 @@ private:
 #ifdef GAME_DLL
 	CHandle<CBeam>				pBeam;
 	CNetworkHandle(CBaseEntity, m_hHook);		//server hooked player
+	float						flLOSGauge;
 #else
 	EHANDLE						m_hHook;		//client hook relay
 #endif

@@ -1728,7 +1728,6 @@ void CTFGameMovement::GrapplingMove(CBaseEntity *hook, bool inWater)
 	Vector playerCenter = mv->GetAbsOrigin();
 	playerCenter += (m_pTFPlayer->EyePosition() - playerCenter) * 0.5;
 	bool bMeatHook = ToTFPlayer(hook) != NULL;
-
 	float flHookProp = m_pTFPlayer->m_Shared.GetHookProperty();
 
 	if (bMeatHook || !of_hook_pendulum.GetBool())
@@ -1783,6 +1782,14 @@ void CTFGameMovement::GrapplingMove(CBaseEntity *hook, bool inWater)
 				mv->m_vecVelocity += vecWishDirection * gpGlobals->frametime * dot * flWaterMoveMulti;
 			}
 		}
+
+		VectorAdd(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
+		TryPlayerMove();
+		VectorSubtract(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
+
+		//Check if player movement is being halted a lot and if so remove the hook
+		if (flHookProp - mv->m_vecVelocity.Length() > flHookProp * 0.75f)
+			RemoveHook(bMeatHook);
 	}
 	else
 	{
@@ -1810,18 +1817,11 @@ void CTFGameMovement::GrapplingMove(CBaseEntity *hook, bool inWater)
 		//Add a small pull velocity
 		VectorNormalize(ropeVec);
 		mv->m_vecVelocity += (HOOK_REEL_IN * gpGlobals->frametime) * ropeVec;
+
+		VectorAdd(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
+		TryPlayerMove();
+		VectorSubtract(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);	
 	}
-
-	//***************************************
-	//Regular stuff
-
-	VectorAdd(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
-
-	//Check if player movement is being halted and if so remove the hook
-	if (TryPlayerMove() == 2)
-		RemoveHook(bMeatHook);
-
-	VectorSubtract(mv->m_vecVelocity, player->GetBaseVelocity(), mv->m_vecVelocity);
 }
 
 void CTFGameMovement::RemoveHook(bool meatHook)
